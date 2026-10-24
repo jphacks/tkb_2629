@@ -1,17 +1,27 @@
 from collections.abc import Generator
+from pathlib import Path
 
 import pytest
+from alembic import command
+from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from backend import database
-from backend.analysis import EmotionResult
+from backend.analysis import (
+    EMOTION_VECTOR_COLOR_VERSION,
+    EmotionResult,
+    EmotionVector,
+    JevEmotionAnalyzer,
+    MockEmotionAnalyzer,
+    emotion_vector_to_color_code,
+)
 from backend.auth import get_current_user_id
 from backend.database import get_db
 from backend.main import app, get_emotion_analyzer
-from backend.models import Base, EmotionAnalysis, PageReview, User
+from backend.models import EmotionAnalysis, PageReview, User
 
 
 @pytest.fixture
@@ -21,7 +31,10 @@ def client() -> Generator[tuple[TestClient, sessionmaker[Session]], None, None]:
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    Base.metadata.create_all(engine)
+    migration_config = Config(str(Path(__file__).parents[1] / "alembic.ini"))
+    with engine.connect() as connection:
+        migration_config.attributes["connection"] = connection
+        command.upgrade(migration_config, "head")
     sessions = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
     with sessions() as session:
         session.add_all(
@@ -38,13 +51,13 @@ def client() -> Generator[tuple[TestClient, sessionmaker[Session]], None, None]:
 
     app.dependency_overrides[get_db] = override_db
     app.dependency_overrides[get_current_user_id] = lambda: 1
+    app.dependency_overrides[get_emotion_analyzer] = lambda: MockEmotionAnalyzer()
     configured_engine = database.engine
     database.engine = None
     with TestClient(app) as test_client:
         yield test_client, sessions
     database.engine = configured_engine
     app.dependency_overrides.clear()
-    Base.metadata.drop_all(engine)
     engine.dispose()
 
 
@@ -55,6 +68,30 @@ def create_book(test_client: TestClient, total_pages: int = 20) -> dict:
     )
     assert response.status_code == 201
     return response.json()
+
+
+def test_initial_migration_refuses_existing_schema_without_history() -> None:
+    engine = create_engine(
+        "sqlite+pysqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    with engine.begin() as connection:
+        connection.execute(text("CREATE TABLE users (id INTEGER PRIMARY KEY)"))
+
+    migration_config = Config(str(Path(__file__).parents[1] / "alembic.ini"))
+    with engine.connect() as connection:
+        migration_config.attributes["connection"] = connection
+        with pytest.raises(RuntimeError, match="Refusing to baseline existing tables"):
+            command.upgrade(migration_config, "head")
+
+    with engine.connect() as connection:
+        assert connection.scalar(text("SELECT COUNT(*) FROM users")) == 0
+        book_table_count = connection.scalar(
+            text("SELECT COUNT(*) FROM sqlite_master WHERE name = 'books'")
+        )
+        assert book_table_count == 0
+    engine.dispose()
 
 
 def test_book_registration_listing_sharing_and_detail(
@@ -128,6 +165,64 @@ def test_review_put_updates_without_duplicates(
     with sessions() as session:
         assert session.scalar(select(func.count()).select_from(PageReview)) == 1
         assert session.scalar(select(func.count()).select_from(EmotionAnalysis)) == 2
+
+
+def test_jev_affect_and_color_are_persisted_and_returned(
+    client: tuple[TestClient, sessionmaker[Session]],
+) -> None:
+    test_client, sessions = client
+    book_id = create_book(test_client)["id"]
+    vector = EmotionVector(
+        joy=0.75,
+        trust=0.1,
+        fear=0.2,
+        surprise=0.0,
+        sadness=0.1,
+        disgust=0.0,
+        anger=0.25,
+        anticipation=0.5,
+    )
+
+    class FixedJevAnalyzer:
+        def analyze(self, review_text: str) -> EmotionResult:
+            return EmotionResult(
+                emotion_label=None,
+                color_code=emotion_vector_to_color_code(vector),
+                confidence=0.7,
+                model_version="jev-test-model",
+                source="jev",
+                palette_version=EMOTION_VECTOR_COLOR_VERSION,
+                emotion_vector=vector,
+            )
+
+    test_client.app.dependency_overrides[get_emotion_analyzer] = lambda: FixedJevAnalyzer()
+    response = test_client.put(
+        f"/api/v1/books/{book_id}/pages/4/review",
+        json={"review_text": "A hopeful passage."},
+    )
+
+    assert response.status_code == 201
+    analysis = response.json()["analysis"]
+    assert analysis["source"] == "jev"
+    assert analysis["emotion_label"] is None
+    assert analysis["emotion_vector"] == vector.as_dict()
+    assert analysis["color_code"] == emotion_vector_to_color_code(vector)
+    assert analysis["palette_version"] == EMOTION_VECTOR_COLOR_VERSION
+    with sessions() as session:
+        saved = session.scalar(select(EmotionAnalysis))
+        assert saved is not None
+        assert saved.joy == 0.75 and saved.anticipation == 0.5
+        assert saved.palette_version == EMOTION_VECTOR_COLOR_VERSION
+
+
+def test_analyzer_selection_depends_on_api_key_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    assert isinstance(get_emotion_analyzer(), MockEmotionAnalyzer)
+
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-only-placeholder")
+    assert isinstance(get_emotion_analyzer(), JevEmotionAnalyzer)
 
 
 def test_invalid_book_review_and_page_inputs_are_rejected(

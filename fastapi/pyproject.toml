@@ -9,6 +9,7 @@ dependencies = [
     "fastapi[standard]>=0.161.1",
     "psycopg[binary]>=3.3.6",
     "sqlalchemy>=2.1.6",
+    "typesafe-sdk>=0.7.5",
 ]
 
 [dependency-groups]

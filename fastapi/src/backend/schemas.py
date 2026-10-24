@@ -65,11 +65,15 @@ class ReviewSave(BaseModel):
 
 
 class EmotionAnalysisResponse(BaseModel):
-    emotion_label: str
+    emotion_label: str | None
     color_code: str
     confidence: float | None
     model_version: str | None
     source: Literal["mock", "jev"]
+    valence: float | None
+    arousal: float | None
+    palette_version: str | None
+    emotion_vector: dict[str, float] | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

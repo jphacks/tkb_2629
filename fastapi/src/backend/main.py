@@ -1,5 +1,5 @@
 import logging
-from contextlib import asynccontextmanager
+import os
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -8,9 +8,9 @@ from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .analysis import EmotionAnalyzer, MockEmotionAnalyzer
+from .analysis import EmotionAnalyzer, JevEmotionAnalyzer, MockEmotionAnalyzer
 from .auth import get_current_user_id
-from .database import Base, engine, get_db
+from .database import get_db
 from .models import Book, EmotionAnalysis, PageReview, User, UserBook
 from .schemas import (
     BookCreate,
@@ -28,13 +28,7 @@ from .schemas import (
 
 logger = logging.getLogger(__name__)
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    if engine is not None:
-        Base.metadata.create_all(bind=engine)  # 本番ではAlembicを使用
-    yield
-
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 reading_api = APIRouter(prefix="/api/v1")
 
 DbSession = Annotated[Session, Depends(get_db)]
@@ -118,6 +112,8 @@ def delete_user(
 
 
 def get_emotion_analyzer() -> EmotionAnalyzer:
+    if os.getenv("TYPESAFE_API_KEY"):
+        return JevEmotionAnalyzer()
     return MockEmotionAnalyzer()
 
 
@@ -179,6 +175,21 @@ def _page_review_response(db: Session, review: PageReview, book_id: int) -> Page
         )
         if analysis_row is not None:
             analysis = EmotionAnalysisResponse.model_validate(analysis_row)
+            vector = {
+                emotion: getattr(analysis_row, emotion)
+                for emotion in (
+                    "joy",
+                    "trust",
+                    "fear",
+                    "surprise",
+                    "sadness",
+                    "disgust",
+                    "anger",
+                    "anticipation",
+                )
+            }
+            if any(value is not None for value in vector.values()):
+                analysis = analysis.model_copy(update={"emotion_vector": vector})
     return PageReviewResponse(
         id=review.id,
         book_id=book_id,
@@ -395,6 +406,10 @@ def save_page_review(
                     confidence=result.confidence,
                     model_version=result.model_version,
                     source=result.source,
+                    valence=result.valence,
+                    arousal=result.arousal,
+                    palette_version=result.palette_version,
+                    **(result.emotion_vector.as_dict() if result.emotion_vector else {}),
                 )
             )
             db.commit()
