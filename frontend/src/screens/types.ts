@@ -1,0 +1,16 @@
+export type ScreenKey =
+  | 'register'
+  | 'login'
+  | 'verify-email'
+  | 'register-complete'
+  | 'home'
+  | 'bookshelf'
+  | 'reading'
+  | 'search'
+  | 'account'
+  | 'book-detail'
+  | 'book-edit'
+  | 'add-book'
+  | 'account-settings'
+  | 'reading-complete'
+  | 'bookmark';

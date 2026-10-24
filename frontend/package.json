@@ -1,0 +1,31 @@
+{
+  "name": "tkb-2629-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "doctor": "npx expo-doctor@latest"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.3",
+    "expo": "^58.0.0",
+    "expo-blur": "^58.0.5",
+    "expo-status-bar": "~3.0.9",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.0",
+    "react-native-web": "^0.21.4"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "typescript": "~5.9.3"
+  }
+}
