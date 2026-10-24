@@ -67,8 +67,12 @@ Repositoryはトランザクションを管理します。感想本文は分析�
 APIの更新は省略可能な項目追加を基本とし、必須項目・型・意味の変更や削除は破壊的変更として移行手順を用意します。
 URLのバージョン番号と外部API通信の有無は独立した事項です。
 
-`GET /fetch` はGoogle Books API連携用の入口です。現在は501を返し、
-検索条件・成功レスポンス・外部通信は未実装です。認証やDB接続は不要です。
+`GET /fetch?query=...` はGoogle Books APIからタイトル候補を検索します。
+ページ数を取得できる候補だけを返し、`BOOKS_API` が設定されている場合はAPIキーを使用します。
+候補の `google_books_id` を `POST /books/import` に送ると、バックエンドが書誌を再取得して
+共有書誌と現在のユーザーの本棚へ登録します。Google Books IDまたはISBN-13が同じ書誌は
+既存の `books` 行を再利用するため、タイトルの表記揺れによる重複を防ぎます。
+検索自体に認証やDB接続は不要ですが、本棚への追加には認証とDB接続が必要です。
 ユーザーのメール重複などDB制約との競合は409で返します。
 読書APIの認証は、信頼できるミドルウェアが設定する `request.state.user_id` を前提とします。
 ログイン処理や当該ミドルウェアはまだ実装されていません。
@@ -110,7 +114,7 @@ Repositoryの `complete()` はその結果を `emotion_analyses` に保存しま
 0002はvalence/arousalとパレット版、0003は8感情、0004は投影座標を追加します。
 現在の8感情解析ではvalence/arousalは未使用のためNULLになります。
 APIを使う前に `uv run alembic upgrade head`（Dockerでは上記のexecコマンド）で
-0004まで適用してください。アプリ起動時の `create_all()` は行いません。
+0005まで適用してください。アプリ起動時の `create_all()` は行いません。
 既存DBでAlembic履歴がない場合は、冒頭のスキーマ確認・バックアップ手順に従ってください。
 
 DBマイグレーションはinfrastructure層に配置しています。
@@ -137,6 +141,8 @@ Dockerでは設定変更後に `docker compose up -d --force-recreate api` で�
 この状態では `/books` などの読書APIが固定ユーザーの本棚を操作します。
 指定ユーザーを自動作成する処理はありません。
 
+`.env.example` はローカルUIをすぐ確認できるよう、開発環境限定のバイパスを有効にしています。
+`DEV_USER_ID` のユーザーは自動作成されないため、先に `POST /users` で作成してください。
 `AUTH_DISABLED` は未設定または `false` なら通常の認証処理です。
 `true` の場合でも `APP_ENV=development` と正の整数の `DEV_USER_ID` が必要で、
 設定不正の場合は503を返して処理を止めます。本番環境では `AUTH_DISABLED=false` にしてください。

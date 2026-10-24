@@ -62,9 +62,16 @@ PUTの詳細:
 解析未完了・失敗・対応する履歴なしの場合、取得する色は `#808080` です。
 解析状態・感情ベクトル・履歴はAPIレスポンスに含みません。
 
-## 書籍検索と自動生成ルート
+## 書籍検索とGoogle Books登録
 
-- `GET /fetch`: Google Books連携の未実装入口。外部通信・DB操作を行わず501を返します。
+- `GET /fetch?query={title}&limit=10`: Google Booksでタイトル検索します。ページ数を取得できる候補を最大20件返します。
+- `POST /books/import`: `google_books_id` を受け取り、Google Booksから書誌を再取得して現在のユーザーの本棚へ追加します。
+
+検索結果はGoogle Books ID・タイトル・著者・ページ数・ISBN-13・表紙URLです。
+`books.google_books_id` と `books.isbn_13` は一意で、同じ書誌が別表記で検索されても
+既存の共有書誌を再利用します。同じユーザーが同じ書誌を再度追加した場合は409です。
+検索は認証・DB接続を必要としません。登録には読書APIと同じ認証が必要です。
+
 - `GET /docs`: FastAPIのSwagger UI。
 - `GET /redoc`: ReDocのAPIドキュメント。
 - `GET /openapi.json`: API定義。自動生成ルートはいずれも現在無効化していません。

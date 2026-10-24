@@ -21,9 +21,15 @@
 | `title` | varchar(255) | 必須、空白のみ不可 |
 | `author` | varchar(255) | 任意 |
 | `total_pages` | integer | 必須、1以上 |
+| `google_books_id` | varchar(128) | 任意、Google Booksのvolume ID、一意 |
+| `isbn_13` | varchar(13) | 任意、一意 |
+| `thumbnail_url` | text | 任意、表紙画像URL |
 | `created_at` | timestamptz | 必須、DBが設定 |
 
-書誌情報はユーザー間で共有できます。`POST /books` は新規書誌を作成するか、既存の `book_id` と一致する書誌を読書リストに追加します。ISBNによる検索・重複統合は今回の範囲外です。
+書誌情報はユーザー間で共有できます。`POST /books/import` はGoogle Booksのvolume IDで
+書誌を再取得し、Google Books IDまたはISBN-13が一致する既存行を再利用します。
+これにより、利用者が入力したタイトルの表記揺れによる重複を防ぎます。
+既存の `POST /books` は手動登録との後方互換性のため維持します。
 
 ### `user_books`
 

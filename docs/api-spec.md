@@ -20,6 +20,36 @@ FastAPIの入力検証エラーは `422 Unprocessable Entity` です。
 
 DB接続設定がない場合は `503 Service Unavailable` です。DB接続自体の障害はサーバーエラーとなります。
 
+## Google Books検索
+
+`GET /fetch?query=銀河鉄道の夜&limit=10`
+
+タイトルでGoogle Booksを検索し、ページ数を取得できる候補を返します。検索には認証やDB接続は不要です。
+
+```json
+{
+  "items": [
+    {
+      "google_books_id": "volume-id",
+      "title": "銀河鉄道の夜",
+      "author": "宮沢賢治",
+      "total_pages": 180,
+      "isbn_13": "9780000000000",
+      "thumbnail_url": "https://books.google.com/..."
+    }
+  ]
+}
+```
+
+選択した候補は `POST /books/import` で本棚へ追加します。
+
+```json
+{"google_books_id": "volume-id"}
+```
+
+バックエンドがGoogle Booksから書誌を再取得し、Google Books IDまたはISBN-13が一致する
+共有書誌を再利用します。成功は `201 Created`、同じユーザーの本棚に登録済みの場合は409です。
+
 ## 本の登録・読書リストへの追加
 
 `POST /books`
