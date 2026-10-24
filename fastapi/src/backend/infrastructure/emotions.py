@@ -7,10 +7,13 @@ from typing import Protocol
 from typesafe_sdk import Score, TypeSafeClient
 
 from ..domain.emotions import (
-    BASIC_EMOTION_NAMES, EMOTION_INTENSITY_LEVELS, EMOTION_VECTOR_COLOR_VERSION,
-    EmotionAnalyzer, EmotionResult, EmotionVector,
-    emotion_vector_to_color_code, project_emotion_vector,
+    BASIC_EMOTION_NAMES,
+    EMOTION_INTENSITY_LEVELS,
+    EmotionAnalyzer,
+    EmotionResult,
+    EmotionVector,
 )
+
 
 class ScoreAnswer(Protocol):
     score: float
@@ -57,19 +60,14 @@ class JevEmotionAnalyzer(EmotionAnalyzer):
             for emotion in BASIC_EMOTION_NAMES
         }
         vector = EmotionVector(**values)
-        projection = project_emotion_vector(vector)
         confidence = min(
             response.scores[emotion].confidence for emotion in BASIC_EMOTION_NAMES
         )
-        return EmotionResult(
-            emotion_label=None,
-            color_code=emotion_vector_to_color_code(vector),
+        return EmotionResult.from_vector(
+            vector,
             confidence=confidence,
             model_version=response.model,
             source="jev",
-            palette_version=EMOTION_VECTOR_COLOR_VERSION,
-            emotion_vector=vector,
-            emotion_projection=projection,
         )
 
     @staticmethod
@@ -92,14 +90,10 @@ class MockEmotionAnalyzer(EmotionAnalyzer):
             anger=0,
             anticipation=0,
         )
-        projection = project_emotion_vector(vector)
-        return EmotionResult(
+        return EmotionResult.from_vector(
+            vector,
             emotion_label="mock_neutral",
-            color_code=emotion_vector_to_color_code(vector),
             confidence=None,
             model_version="mock-v1",
             source="mock",
-            palette_version=EMOTION_VECTOR_COLOR_VERSION,
-            emotion_vector=vector,
-            emotion_projection=projection,
         )

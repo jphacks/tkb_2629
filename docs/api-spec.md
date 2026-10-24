@@ -1,6 +1,9 @@
 # 読書API仕様
 
-Base URLは `/api/v1` です。JSONを送受信し、時刻はUTCのISO 8601形式です。
+現在のレスポンス形式・実装済み機能は [エンドポイント一覧](../fastapi/docs/endpoints.md) を参照してください。
+本書のレスポンス例と進捗更新は旧設計を含みます。
+
+Base URLは `/` です。JSONを送受信し、時刻はUTCのISO 8601形式です。
 以下の新APIは、信頼済み認証ミドルウェアが `request.state.user_id` に既存
 `users.id` を設定することを前提にします。ユーザーIDをJSONやqueryで指定できません。
 認証情報がなければ `401`、他ユーザーの本は存在を隠すため `404` です。
@@ -19,7 +22,7 @@ DB接続設定がない場合は `503 Service Unavailable` です。DB接続自�
 
 ## 本の登録・読書リストへの追加
 
-`POST /api/v1/books`
+`POST /books`
 
 新しい書誌と読書記録を作成します。`book_id` を指定すると既存書誌をこのユーザーの読書リストへ追加します。
 
@@ -75,7 +78,7 @@ DB動作: 新規時は `books` と `user_books` を作成。既存 `book_id` 時
 
 ## 本の一覧
 
-`GET /api/v1/books?limit=50&offset=0`
+`GET /books?limit=50&offset=0`
 
 認証ユーザーの読書リストだけを返します。`limit` は1-100、`offset` は0以上です。
 
@@ -110,7 +113,7 @@ DB動作: `user_books.user_id` で絞り、`books` と結合して取得しま�
 
 ## 本の詳細
 
-`GET /api/v1/books/{book_id}`
+`GET /books/{book_id}`
 
 成功時 `200 OK`。レスポンスは一覧の1要素と同じです。主なエラーは `401` 未認証、
 `404` 本がない/所有していない、`422` ID不正、`503` DB URL未設定です。DBは
@@ -118,7 +121,7 @@ DB動作: `user_books.user_id` で絞り、`books` と結合して取得しま�
 
 ## 読書進捗の更新
 
-`PATCH /api/v1/books/{book_id}/progress`
+`PATCH /books/{book_id}/progress`
 
 リクエスト:
 
@@ -133,7 +136,7 @@ DB動作: `user_books.user_id` で絞り、`books` と結合して取得しま�
 
 ## ページ感想の取得
 
-`GET /api/v1/books/{book_id}/pages/{page_number}/review`
+`GET /books/{book_id}/pages/{page_number}/review`
 
 成功は `200 OK`。
 
@@ -184,7 +187,7 @@ SDKレスポンスのモデル名です。モック利用時は8値すべて0、
 
 ## ページ感想の保存・更新
 
-`PUT /api/v1/books/{book_id}/pages/{page_number}/review`
+`PUT /books/{book_id}/pages/{page_number}/review`
 
 リクエスト:
 

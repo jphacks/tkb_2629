@@ -194,8 +194,31 @@ class EmotionResult:
     emotion_vector: EmotionVector | None = None
     emotion_projection: EmotionProjection | None = None
 
+    @classmethod
+    def from_vector(
+        cls,
+        vector: EmotionVector,
+        *,
+        source: Literal["mock", "jev"],
+        confidence: float | None,
+        model_version: str | None,
+        emotion_label: str | None = None,
+    ) -> EmotionResult:
+        """Build a consistent analysis result from the eight emotion scores."""
+        return cls(
+            emotion_label=emotion_label,
+            color_code=emotion_vector_to_color_code(vector),
+            confidence=confidence,
+            model_version=model_version,
+            source=source,
+            palette_version=EMOTION_VECTOR_COLOR_VERSION,
+            emotion_vector=vector,
+            emotion_projection=project_emotion_vector(vector),
+        )
+
 
 class EmotionAnalyzer(ABC):
     @abstractmethod
     def analyze(self, review_text: str) -> EmotionResult:
+        """Analyze text and return the result to be persisted by the application."""
         raise NotImplementedError

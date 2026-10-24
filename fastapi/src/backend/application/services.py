@@ -1,8 +1,8 @@
 import logging
 
-from ..domain.emotions import EmotionAnalyzer
+from ..domain.emotions import EmotionAnalyzer, EmotionResult
 from ..domain.entities import Book, Review, User
-from ..domain.values import BookDetails, ReviewText
+from ..domain.values import BookDetails, ReviewText, UserDetails
 from .ports import ReadingRepository, ReviewRepository, UserRepository
 from .results import ReviewSaveResult
 
@@ -13,7 +13,8 @@ class UserService:
         self.users = users
 
     def create(self, name: str, email: str) -> User:
-        return self.users.create(name, email)
+        details = UserDetails(name, email)
+        return self.users.create(details.name, details.email)
 
     def list(self) -> list[User]:
         return self.users.list()
@@ -22,9 +23,10 @@ class UserService:
         return self.users.get(user_id)
 
     def update(self, user_id: int, name: str, email: str) -> User:
+        details = UserDetails(name, email)
         user = self.users.get(user_id)
-        user.name = name
-        user.email = email
+        user.name = details.name
+        user.email = details.email
         return self.users.update(user)
 
     def delete(self, user_id: int) -> None:
@@ -74,7 +76,7 @@ class ReviewService:
         normalized_text = review_text.value
         saved_text = self.reviews.save_text(user_id, book_id, page, normalized_text)
         try:
-            analysis_result = self.analyzer.analyze(normalized_text)
+            analysis_result: EmotionResult = self.analyzer.analyze(normalized_text)
             self.reviews.complete(saved_text.review_id, saved_text.revision, analysis_result)
         except Exception:
             logger.exception(

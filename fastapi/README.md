@@ -42,10 +42,10 @@ PostgreSQLの既存ボリュームがある場合、`POSTGRES_DB` を変更し�
 
 - `src/backend/domain/`: フレームワークに依存しないエンティティ、値オブジェクト、業務例外、感情分析インターフェース。ページ範囲・書籍情報・感想本文のルールを保持します。
 - `src/backend/application/`: ユーザー管理・本棚・感想保存のユースケースとRepository抽象クラス。
-- `src/backend/infrastructure/`: SQLAlchemyモデル、DB接続、Repository実装、モック感情分析。
+- `src/backend/infrastructure/`: SQLAlchemyモデル、DB接続、Repository実装、Jev・モック感情分析。
 - `src/backend/presentation/`: FastAPIルート、入出力スキーマ、認証コンテキストの取得、依存の組み立て。
-- `src/backend/main.py`: アプリケーション生成、業務例外のHTTP変換、起動時のテーブル作成。
-- `migrations/`: AlembicのDBマイグレーション。既存テーブル定義は維持しています。
+- `src/backend/main.py`: アプリケーション生成、業務例外のHTTP変換。
+- `src/backend/infrastructure/migrations/`: AlembicのDBマイグレーション。既存テーブル定義は維持しています。
 
 Repositoryはトランザクションを管理します。感想本文は分析前に確定し、
 分析結果は保存時のリビジョンが一致する場合だけ反映します。
@@ -56,6 +56,16 @@ Repositoryはトランザクションを管理します。感想本文は分析�
 本棚の所有関係・分析状態・分析履歴はDB内部で管理し、レスポンスには含めません。
 既存DBとの互換性のため、進捗用のDBカラムと既存マイグレーションは維持しています。
 分析が未完了・失敗の場合、`color_code` は既定色 `#808080` を返します。
+
+読書APIは `/books` と `/books/{book_id}/pages/{page_number}/review` に配置します。
+旧 `/api/v1/books` は提供しないため、クライアントの呼び出し先を変更してください。
+書籍の登録・一覧・詳細はDB内で完結し、外部書誌サービスへ問い合わせません。
+`/fetch`への集約対象は書籍情報の取得です。感想保存時のJev感情分析は引き続き行います。
+外部書誌の検索・取得は `/fetch` に集約し、取得結果の本棚登録は `POST /books` で明示的に行う設計です。
+通常の参照・登録時に外部書誌を再取得せず、保存済み書誌を自動で上書きしません。
+将来の再取得・反映は、外部IDの保持とユーザーによる反映操作を設計してから追加します。
+APIの更新は省略可能な項目追加を基本とし、必須項目・型・意味の変更や削除は破壊的変更として移行手順を用意します。
+URLのバージョン番号と外部API通信の有無は独立した事項です。
 
 `GET /fetch` はGoogle Books API連携用の入口です。現在は501を返し、
 検索条件・成功レスポンス・外部通信は未実装です。認証やDB接続は不要です。
@@ -87,3 +97,26 @@ uv run ruff format --check .
 - DB依存の `yield` はFastAPIのライフサイクル規約です。セッションを渡し、リクエスト終了後に `finally` で閉じます。
 
 感想本文は前後の空白を除去した後、1〜140文字に制限します。
+
+## 感情解析結果とDBスキーマ
+
+`ReviewService.save()` は正規化した本文を `EmotionAnalyzer.analyze()` に渡し、
+戻り値の `EmotionResult` を `analysis_result` に受け取ります。
+Jev実装は外部APIの8感情スコアを0〜1に正規化し、ドメインの
+`EmotionResult.from_vector()` が投影座標と色を計算します。
+Repositoryの `complete()` はその結果を `emotion_analyses` に保存します。
+
+`src/backend/infrastructure/migrations/` はDBスキーマの履歴であり、リクエストごとに実行する解析処理ではありません。
+0002はvalence/arousalとパレット版、0003は8感情、0004は投影座標を追加します。
+現在の8感情解析ではvalence/arousalは未使用のためNULLになります。
+APIを使う前に `uv run alembic upgrade head`（Dockerでは上記のexecコマンド）で
+0004まで適用してください。アプリ起動時の `create_all()` は行いません。
+既存DBでAlembic履歴がない場合は、冒頭のスキーマ確認・バックアップ手順に従ってください。
+
+DBマイグレーションはinfrastructure層に配置しています。
+`alembic.ini` の `script_location` がこのディレクトリを参照するため、
+既存のAlembicコマンドは同じまま使えます。
+マイグレーションはAlembicから実行し、domain・applicationやAPI処理からはimportしません。
+過去のスキーマ変更を再現できるよう、revision ID・適用順序・各revisionの実装は維持しています。
+
+エンドポイントごとの処理・レスポンス・未実装機能は [docs/endpoints.md](docs/endpoints.md) を参照してください。

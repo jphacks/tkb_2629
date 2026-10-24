@@ -86,7 +86,11 @@ class SqlReadingRepository(ReadingRepository):
         if book_id is None:
             book = Book(title=title, author=author, total_pages=total_pages)
             self.db.add(book)
-            self.db.flush()
+            try:
+                self.db.flush()
+            except IntegrityError as error:
+                self.db.rollback()
+                raise Conflict("Could not create book") from error
         else:
             book = self.db.get(Book, book_id)
             if book is None:

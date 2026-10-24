@@ -3,6 +3,18 @@ from dataclasses import dataclass
 from .errors import InvalidInput
 
 
+@dataclass(frozen=True)
+class UserDetails:
+    name: str
+    email: str
+
+    def __post_init__(self) -> None:
+        if len(self.name) > 100:
+            raise InvalidInput("name must not exceed 100 characters")
+        if len(self.email) > 255:
+            raise InvalidInput("email must not exceed 255 characters")
+
+
 @dataclass(init=False)
 
 class BookDetails:

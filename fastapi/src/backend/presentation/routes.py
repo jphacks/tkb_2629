@@ -13,7 +13,7 @@ from .schemas import (
 
 catalog = APIRouter(tags=["catalog"])
 users = APIRouter(prefix="/users", tags=["users"])
-reading = APIRouter(prefix="/api/v1", tags=["reading"])
+reading = APIRouter(tags=["reading"])
 
 # Annotated attaches FastAPI injection or validation metadata to a type.
 UserServiceDependency = Annotated[UserService, Depends(get_users)]

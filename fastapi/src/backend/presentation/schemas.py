@@ -4,13 +4,13 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserCreate(BaseModel):
-    name: str
-    email: str
+    name: str = Field(max_length=100)
+    email: str = Field(max_length=255)
 
 
 class UserUpdate(BaseModel):
-    name: str
-    email: str
+    name: str = Field(max_length=100)
+    email: str = Field(max_length=255)
 
 
 class UserResponse(BaseModel):
