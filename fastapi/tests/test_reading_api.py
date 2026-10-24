@@ -6,12 +6,20 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from backend import database
-from backend.analysis import EmotionResult
-from backend.auth import get_current_user_id
-from backend.database import get_db
-from backend.main import app, get_emotion_analyzer
-from backend.models import Base, EmotionAnalysis, PageReview, User
+from backend.infrastructure import database
+from backend.domain.emotions import EmotionAnalyzer, EmotionResult
+from backend.presentation.auth import get_current_user_id
+from backend.presentation.dependencies import get_db, get_emotion_analyzer
+from backend.main import app
+from backend.infrastructure.models import Base, EmotionAnalysis, PageReview, User
+
+
+def current_user_one() -> int:
+    return 1
+
+
+def current_user_two() -> int:
+    return 2
 
 
 @pytest.fixture
@@ -37,7 +45,7 @@ def client() -> Generator[tuple[TestClient, sessionmaker[Session]], None, None]:
             yield session
 
     app.dependency_overrides[get_db] = override_db
-    app.dependency_overrides[get_current_user_id] = lambda: 1
+    app.dependency_overrides[get_current_user_id] = current_user_one
     configured_engine = database.engine
     database.engine = None
     with TestClient(app) as test_client:
@@ -66,10 +74,13 @@ def test_book_registration_listing_sharing_and_detail(
 
     listed = test_client.get("/api/v1/books")
     assert listed.status_code == 200
-    assert [item["id"] for item in listed.json()["items"]] == [book_id]
+    listed_ids: list[int] = []
+    for item in listed.json()["items"]:
+        listed_ids.append(item["id"])
+    assert listed_ids == [book_id]
     assert test_client.get(f"/api/v1/books/{book_id}").status_code == 200
 
-    test_client.app.dependency_overrides[get_current_user_id] = lambda: 2
+    test_client.app.dependency_overrides[get_current_user_id] = current_user_two
     shared = test_client.post(
         "/api/v1/books",
         json={
@@ -92,24 +103,6 @@ def test_book_registration_listing_sharing_and_detail(
     ).status_code == 409
 
 
-def test_progress_updates_completion_and_rejects_invalid_page(
-    client: tuple[TestClient, sessionmaker[Session]],
-) -> None:
-    test_client, _ = client
-    book_id = create_book(test_client, total_pages=20)["id"]
-
-    response = test_client.patch(
-        f"/api/v1/books/{book_id}/progress", json={"current_page": 20}
-    )
-
-    assert response.status_code == 200
-    assert response.json()["reading"]["status"] == "completed"
-    assert response.json()["reading"]["completed_at"] is not None
-    assert test_client.patch(
-        f"/api/v1/books/{book_id}/progress", json={"current_page": 21}
-    ).status_code == 422
-
-
 def test_review_put_updates_without_duplicates(
     client: tuple[TestClient, sessionmaker[Session]],
 ) -> None:
@@ -123,7 +116,7 @@ def test_review_put_updates_without_duplicates(
     assert first.status_code == 201
     assert second.status_code == 200
     assert second.json()["review_text"] == "Updated thought"
-    assert second.json()["analysis"]["source"] == "mock"
+    assert second.json()["color_code"] == "#808080"
     assert test_client.get(url).json()["review_text"] == "Updated thought"
     with sessions() as session:
         assert session.scalar(select(func.count()).select_from(PageReview)) == 1
@@ -157,20 +150,23 @@ def test_analysis_failure_preserves_text_and_hides_previous_result(
     url = f"/api/v1/books/{book_id}/pages/2/review"
     test_client.put(url, json={"review_text": "First saved thought"})
 
-    class FailingAnalyzer:
+    class FailingAnalyzer(EmotionAnalyzer):
         def analyze(self, review_text: str) -> EmotionResult:
             raise RuntimeError("analysis unavailable")
 
-    test_client.app.dependency_overrides[get_emotion_analyzer] = lambda: FailingAnalyzer()
+    def failing_analyzer() -> EmotionAnalyzer:
+        return FailingAnalyzer()
+
+    test_client.app.dependency_overrides[get_emotion_analyzer] = failing_analyzer
     response = test_client.put(url, json={"review_text": "Saved despite failure"})
 
     assert response.status_code == 200
     assert response.json()["review_text"] == "Saved despite failure"
-    assert response.json()["analysis_status"] == "failed"
-    assert response.json()["analysis"] is None
+    assert response.json()["color_code"] == "#808080"
     with sessions() as session:
         review = session.scalar(select(PageReview))
         assert review is not None and review.review_text == "Saved despite failure"
+        assert review.analysis_status == "failed"
         assert session.scalar(select(func.count()).select_from(EmotionAnalysis)) == 1
 
 
@@ -181,9 +177,9 @@ def test_missing_auth_and_cross_user_access_are_rejected(
     test_client.app.dependency_overrides.pop(get_current_user_id)
     assert test_client.get("/api/v1/books").status_code == 401
 
-    test_client.app.dependency_overrides[get_current_user_id] = lambda: 1
+    test_client.app.dependency_overrides[get_current_user_id] = current_user_one
     book_id = create_book(test_client)["id"]
-    test_client.app.dependency_overrides[get_current_user_id] = lambda: 2
+    test_client.app.dependency_overrides[get_current_user_id] = current_user_two
     assert test_client.get(f"/api/v1/books/{book_id}").status_code == 404
 
 

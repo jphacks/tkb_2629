@@ -4,7 +4,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from backend.models import Base
+from backend.infrastructure.models import Base
 
 config = context.config
 if config.config_file_name is not None:
@@ -12,7 +12,7 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 database_url = os.getenv("DATABASE_URL")
-if not database_url:
+if database_url is None or database_url == "":
     raise RuntimeError("Set DATABASE_URL before running database migrations")
 config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
@@ -30,8 +30,11 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    database_config = config.get_section(config.config_ini_section)
+    if database_config is None:
+        database_config = {}
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}) or {},
+        database_config,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

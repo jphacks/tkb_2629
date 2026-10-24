@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -31,25 +30,12 @@ class BookCreate(BaseModel):
     total_pages: int = Field(ge=1, le=1_000_000)
 
 
-class ProgressUpdate(BaseModel):
-    current_page: int = Field(ge=0)
-
-
-class ReadingSummary(BaseModel):
-    user_book_id: int
-    current_page: int
-    status: Literal["reading", "completed"]
-    started_at: datetime
-    completed_at: datetime | None
-
-
 class BookResponse(BaseModel):
     id: int
     title: str
     author: str | None
     total_pages: int
     created_at: datetime
-    reading: ReadingSummary
 
 
 class BookListResponse(BaseModel):
@@ -61,18 +47,7 @@ class BookListResponse(BaseModel):
 class ReviewSave(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    review_text: str = Field(min_length=1, max_length=10_000)
-
-
-class EmotionAnalysisResponse(BaseModel):
-    emotion_label: str
-    color_code: str
-    confidence: float | None
-    model_version: str | None
-    source: Literal["mock", "jev"]
-    created_at: datetime
-
-    model_config = ConfigDict(from_attributes=True)
+    review_text: str = Field(min_length=1, max_length=140)
 
 
 class PageReviewResponse(BaseModel):
@@ -80,7 +55,6 @@ class PageReviewResponse(BaseModel):
     book_id: int
     page_number: int
     review_text: str
-    analysis_status: Literal["pending", "completed", "failed"]
-    analysis: EmotionAnalysisResponse | None
+    color_code: str
     created_at: datetime
     updated_at: datetime
