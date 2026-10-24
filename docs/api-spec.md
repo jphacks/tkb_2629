@@ -145,11 +145,24 @@ DB動作: `user_books.user_id` で絞り、`books` と結合して取得しま�
   "review_text": "心に残る場面だった。",
   "analysis_status": "completed",
   "analysis": {
-    "emotion_label": "mock_neutral",
-    "color_code": "#808080",
-    "confidence": null,
-    "model_version": "mock-v1",
-    "source": "mock",
+    "emotion_label": null,
+    "color_code": "#FF8C1A",
+    "confidence": 0.7,
+    "model_version": "jev-1.13.0",
+    "source": "jev",
+    "valence": null,
+    "arousal": null,
+    "palette_version": "emotion-wheel-mix-v1",
+    "emotion_vector": {
+      "joy": 1.0,
+      "trust": 0.0,
+      "fear": 0.0,
+      "surprise": 0.0,
+      "sadness": 0.0,
+      "disgust": 0.0,
+      "anger": 1.0,
+      "anticipation": 0.0
+    },
     "created_at": "2026-10-24T10:01:00Z"
   },
   "created_at": "2026-10-24T10:00:00Z",
@@ -161,6 +174,13 @@ DB動作: `user_books.user_id` で絞り、`books` と結合して取得しま�
 `source=mock` は仮結果であり、AI分析結果として表示しないでください。主なエラーは
 `401`、`404` 感想なし/本がない/所有していない、`422` ページ番号が1未満または
 総ページ数超過、`503` です。DBは本人の読書記録を経由して感想を検索します。
+
+Jev接続時は `TYPESAFE_API_KEY` が設定されている場合にJevアダプターを選択します。
+感想をstateとして1回送り、喜び・信頼・恐れ・驚き・悲しみ・嫌悪・怒り・期待の8つを
+それぞれ5段階の `Score` で評価します。Score値0〜4を `score / 4` で0〜1に正規化します。
+8値は `emotion_vector` に含まれます。各感情の色相を強度で重みづけして円周上で合成し、
+打ち消し合う場合は彩度が下がります。`confidence` は8質問の最低値、`model_version` は
+SDKレスポンスのモデル名です。モック利用時は8値すべて0、`source=mock`、グレーを返します。
 
 ## ページ感想の保存・更新
 
@@ -175,6 +195,7 @@ DB動作: `user_books.user_id` で絞り、`books` と結合して取得しま�
 `review_text` は前後空白を除いて1-10,000文字、ページ番号は1から総ページ数までです。
 初回保存は `201 Created`、更新は `200 OK`。レスポンスは感想取得と同じ形式です。
 分析失敗でも感想保存は成功し、`analysis_status=failed`、`analysis=null` を返します。
+Jevの呼び出し失敗時は感想本文がDBに残ります。再試行APIは今回の対象外です。
 
 主なエラー: `401` 未認証、`404` 本がない/所有していない、`422` 感想やページ番号不正、`503` DB URL未設定。
 
