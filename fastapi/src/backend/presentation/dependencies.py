@@ -5,11 +5,16 @@ from typing import Annotated
 from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from ..application.services import ReadingService, ReviewService, UserService
+from ..application.services import CatalogService, ReadingService, ReviewService, UserService
 from ..domain.emotions import EmotionAnalyzer
 from ..infrastructure import database
 from ..infrastructure.emotions import JevEmotionAnalyzer, MockEmotionAnalyzer
-from ..infrastructure.repositories import SqlReadingRepository, SqlReviewRepository, SqlUserRepository
+from ..infrastructure.google_books import GoogleBooksCatalog
+from ..infrastructure.repositories import (
+    SqlReadingRepository,
+    SqlReviewRepository,
+    SqlUserRepository,
+)
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -21,6 +26,7 @@ def get_db() -> Generator[Session, None, None]:
         yield session
     finally:
         session.close()
+
 
 DbSession = Annotated[Session, Depends(get_db)]
 
@@ -36,9 +42,22 @@ def get_users(db: DbSession) -> UserService:
     return UserService(users=repository)
 
 
-def get_reading(db: DbSession) -> ReadingService:
+def get_book_catalog() -> GoogleBooksCatalog:
+    return GoogleBooksCatalog()
+
+
+def get_catalog_service(
+    catalog: Annotated[GoogleBooksCatalog, Depends(get_book_catalog)],
+) -> CatalogService:
+    return CatalogService(catalog)
+
+
+def get_reading(
+    db: DbSession,
+    catalog: Annotated[GoogleBooksCatalog, Depends(get_book_catalog)],
+) -> ReadingService:
     repository = SqlReadingRepository(db)
-    return ReadingService(books=repository)
+    return ReadingService(books=repository, catalog=catalog)
 
 
 def get_reviews(

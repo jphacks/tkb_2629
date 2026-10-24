@@ -1,13 +1,14 @@
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..application.ports import ReadingRepository, ReviewRepository, UserRepository
 from ..application.results import ReviewTextSaveResult
+from ..domain.catalog import CatalogBook
+from ..domain.emotions import EmotionResult
 from ..domain.entities import Book as BookEntity
 from ..domain.entities import Review
 from ..domain.entities import User as UserEntity
-from ..domain.emotions import EmotionResult
 from ..domain.errors import Conflict, NotFound
 from .models import Book, EmotionAnalysis, PageReview, User, UserBook
 
@@ -19,6 +20,9 @@ def _book(book: Book) -> BookEntity:
         author=book.author,
         total_pages=book.total_pages,
         created_at=book.created_at,
+        google_books_id=book.google_books_id,
+        isbn_13=book.isbn_13,
+        thumbnail_url=book.thumbnail_url,
     )
 
 
@@ -95,17 +99,52 @@ class SqlReadingRepository(ReadingRepository):
             book = self.db.get(Book, book_id)
             if book is None:
                 raise NotFound("Book not found")
-            if (
-                book.title != title
-                or book.author != author
-                or book.total_pages != total_pages
-            ):
+            if book.title != title or book.author != author or book.total_pages != total_pages:
                 raise Conflict("Book metadata does not match the existing book")
         reading = UserBook(user_id=user_id, book_id=book.id)
         self.db.add(reading)
         _commit(self.db)
         self.db.refresh(book)
         self.db.refresh(reading)
+        return _book(book)
+
+    def add_catalog_book(self, user_id: int, catalog_book: CatalogBook) -> BookEntity:
+        conditions = [Book.google_books_id == catalog_book.google_books_id]
+        if catalog_book.isbn_13 is not None:
+            conditions.append(Book.isbn_13 == catalog_book.isbn_13)
+        book = self.db.scalar(select(Book).where(or_(*conditions)))
+
+        if book is None:
+            book = Book(
+                title=catalog_book.title,
+                author=catalog_book.author,
+                total_pages=catalog_book.total_pages,
+                google_books_id=catalog_book.google_books_id,
+                isbn_13=catalog_book.isbn_13,
+                thumbnail_url=catalog_book.thumbnail_url,
+            )
+            self.db.add(book)
+            try:
+                self.db.flush()
+            except IntegrityError as error:
+                self.db.rollback()
+                book = self.db.scalar(select(Book).where(or_(*conditions)))
+                if book is None:
+                    raise Conflict("Could not create catalog book") from error
+
+        existing_reading_id = self.db.scalar(
+            select(UserBook.id).where(
+                UserBook.user_id == user_id,
+                UserBook.book_id == book.id,
+            )
+        )
+        if existing_reading_id is not None:
+            raise Conflict("Book is already in the bookshelf")
+
+        reading = UserBook(user_id=user_id, book_id=book.id)
+        self.db.add(reading)
+        _commit(self.db)
+        self.db.refresh(book)
         return _book(book)
 
     def list(self, user_id: int, limit: int, offset: int) -> list[BookEntity]:
@@ -134,6 +173,7 @@ class SqlReadingRepository(ReadingRepository):
             raise NotFound("Book not found")
         return _book(row)
 
+
 def _revise_page_review(db: Session, review_id: int, review_text: str) -> int:
     revision = db.scalar(
         update(PageReview)
@@ -157,13 +197,16 @@ class SqlReviewRepository(ReviewRepository):
         self.db = db
 
     def _row(self, reading_id: int, page: int) -> PageReview | None:
-        return self.db.scalar(select(PageReview).where(
-            PageReview.user_book_id == reading_id, PageReview.page_number == page)
-            .execution_options(populate_existing=True))
+        return self.db.scalar(
+            select(PageReview)
+            .where(PageReview.user_book_id == reading_id, PageReview.page_number == page)
+            .execution_options(populate_existing=True)
+        )
 
     def _reading_id(self, user_id: int, book_id: int) -> int:
-        reading_id = self.db.scalar(select(UserBook.id).where(
-            UserBook.user_id == user_id, UserBook.book_id == book_id))
+        reading_id = self.db.scalar(
+            select(UserBook.id).where(UserBook.user_id == user_id, UserBook.book_id == book_id)
+        )
         if reading_id is None:
             raise NotFound("Book not found")
         return reading_id
@@ -174,9 +217,12 @@ class SqlReviewRepository(ReviewRepository):
             raise NotFound("Review not found")
         color_code = "#808080"
         if row.analysis_status == "completed":
-            result = self.db.scalar(select(EmotionAnalysis).where(
-                EmotionAnalysis.review_id == row.id,
-                EmotionAnalysis.review_revision == row.analysis_revision))
+            result = self.db.scalar(
+                select(EmotionAnalysis).where(
+                    EmotionAnalysis.review_id == row.id,
+                    EmotionAnalysis.review_revision == row.analysis_revision,
+                )
+            )
             if result is not None:
                 color_code = result.color_code
         return Review(
@@ -195,8 +241,13 @@ class SqlReviewRepository(ReviewRepository):
         if row is not None:
             revision = _revise_page_review(self.db, row.id, text)
             return ReviewTextSaveResult(review_id=row.id, revision=revision, created=False)
-        row = PageReview(user_book_id=reading_id, page_number=page,
-                         review_text=text, analysis_status="pending", analysis_revision=1)
+        row = PageReview(
+            user_book_id=reading_id,
+            page_number=page,
+            review_text=text,
+            analysis_status="pending",
+            analysis_revision=1,
+        )
         self.db.add(row)
         try:
             self.db.flush()

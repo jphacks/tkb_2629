@@ -1,12 +1,28 @@
+from __future__ import annotations
+
 import logging
 
+from ..domain.catalog import CatalogBook
 from ..domain.emotions import EmotionAnalyzer, EmotionResult
 from ..domain.entities import Book, Review, User
+from ..domain.errors import InvalidInput
 from ..domain.values import BookDetails, ReviewText, UserDetails
-from .ports import ReadingRepository, ReviewRepository, UserRepository
+from .ports import BookCatalog, ReadingRepository, ReviewRepository, UserRepository
 from .results import ReviewSaveResult
 
 logger = logging.getLogger(__name__)
+
+
+class CatalogService:
+    def __init__(self, catalog: BookCatalog) -> None:
+        self.catalog = catalog
+
+    def search(self, query: str, limit: int) -> list[CatalogBook]:
+        normalized_query = query.strip()
+        if not normalized_query:
+            raise InvalidInput("query must not be empty")
+        return self.catalog.search(normalized_query, limit)
+
 
 class UserService:
     def __init__(self, users: UserRepository) -> None:
@@ -32,9 +48,15 @@ class UserService:
     def delete(self, user_id: int) -> None:
         self.users.delete(user_id)
 
+
 class ReadingService:
-    def __init__(self, books: ReadingRepository) -> None:
+    def __init__(
+        self,
+        books: ReadingRepository,
+        catalog: BookCatalog | None = None,
+    ) -> None:
         self.books = books
+        self.catalog = catalog
 
     def register(
         self,
@@ -52,6 +74,13 @@ class ReadingService:
 
     def get(self, user_id: int, book_id: int) -> Book:
         return self.books.get(user_id, book_id)
+
+    def import_catalog_book(self, user_id: int, google_books_id: str) -> Book:
+        if self.catalog is None:
+            raise RuntimeError("Book catalog is not configured")
+        catalog_book = self.catalog.get(google_books_id)
+        return self.books.add_catalog_book(user_id, catalog_book)
+
 
 class ReviewService:
     def __init__(

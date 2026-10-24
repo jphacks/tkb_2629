@@ -1,14 +1,24 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
+from fastapi import APIRouter, Depends, Path, Query, Response
 
-from ..application.services import ReadingService, ReviewService, UserService
+from ..application.services import CatalogService, ReadingService, ReviewService, UserService
+from ..domain.catalog import CatalogBook
 from ..domain.entities import Book, Review, User
 from .auth import get_current_user_id
-from .dependencies import get_reading, get_reviews, get_users
+from .dependencies import get_catalog_service, get_reading, get_reviews, get_users
 from .schemas import (
-    BookCreate, BookListResponse, BookResponse, PageReviewResponse,
-    ReviewSave, UserCreate, UserResponse, UserUpdate,
+    BookCreate,
+    BookListResponse,
+    BookResponse,
+    GoogleBookImport,
+    GoogleBookResponse,
+    GoogleBookSearchResponse,
+    PageReviewResponse,
+    ReviewSave,
+    UserCreate,
+    UserResponse,
+    UserUpdate,
 )
 
 catalog = APIRouter(tags=["catalog"])
@@ -17,6 +27,7 @@ reading = APIRouter(tags=["reading"])
 
 # Annotated attaches FastAPI injection or validation metadata to a type.
 UserServiceDependency = Annotated[UserService, Depends(get_users)]
+CatalogServiceDependency = Annotated[CatalogService, Depends(get_catalog_service)]
 ReadingServiceDependency = Annotated[ReadingService, Depends(get_reading)]
 ReviewServiceDependency = Annotated[ReviewService, Depends(get_reviews)]
 CurrentUserId = Annotated[int, Depends(get_current_user_id)]
@@ -54,8 +65,18 @@ def create_book(
     service: ReadingServiceDependency,
     user_id: CurrentUserId,
 ) -> Book:
-    return service.register(user_id, request.title, request.author,
-                            request.total_pages, request.book_id)
+    return service.register(
+        user_id, request.title, request.author, request.total_pages, request.book_id
+    )
+
+
+@reading.post("/books/import", response_model=BookResponse, status_code=201)
+def import_book(
+    request: GoogleBookImport,
+    service: ReadingServiceDependency,
+    user_id: CurrentUserId,
+) -> Book:
+    return service.import_catalog_book(user_id, request.google_books_id)
 
 
 @reading.get("/books", response_model=BookListResponse)
@@ -104,11 +125,13 @@ def save_review(
     return result.review
 
 
-@catalog.get(
-    "/fetch",
-    status_code=501,
-    summary="Fetch book information from Google Books (not implemented)",
-)
-def fetch_books() -> None:
-    """Placeholder for Google Books integration; no external request is made."""
-    raise HTTPException(status_code=501, detail="Google Books integration is not implemented")
+@catalog.get("/fetch", response_model=GoogleBookSearchResponse)
+def fetch_books(
+    service: CatalogServiceDependency,
+    query: str = Query(min_length=1, max_length=200),
+    limit: int = Query(default=10, ge=1, le=20),
+) -> GoogleBookSearchResponse:
+    books: list[CatalogBook] = service.search(query, limit)
+    return GoogleBookSearchResponse(
+        items=[GoogleBookResponse.model_validate(book, from_attributes=True) for book in books]
+    )

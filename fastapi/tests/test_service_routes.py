@@ -47,15 +47,32 @@ def test_delete_user(client, user_service_mock):
 @pytest.mark.parametrize("book_id", [None, 10])
 def test_register_book(client, reading_service_mock, book, book_id):
     reading_service_mock.register.return_value = book
-    response = client.post("/books", json={
-        "book_id": book_id, "title": book.title,
-        "author": book.author, "total_pages": book.total_pages,
-    })
+    response = client.post(
+        "/books",
+        json={
+            "book_id": book_id,
+            "title": book.title,
+            "author": book.author,
+            "total_pages": book.total_pages,
+        },
+    )
     assert response.status_code == 201
     assert response.json()["id"] == book.id
     reading_service_mock.register.assert_called_once_with(
-        1, book.title, book.author, book.total_pages, book_id,
+        1,
+        book.title,
+        book.author,
+        book.total_pages,
+        book_id,
     )
+
+
+def test_import_google_book(client, reading_service_mock, book):
+    reading_service_mock.import_catalog_book.return_value = book
+    response = client.post("/books/import", json={"google_books_id": "google-volume-1"})
+    assert response.status_code == 201
+    assert response.json()["id"] == book.id
+    reading_service_mock.import_catalog_book.assert_called_once_with(1, "google-volume-1")
 
 
 def test_list_books(client, reading_service_mock, book):
@@ -88,7 +105,8 @@ def test_get_review(client, review_service_mock, review):
 def test_save_review(client, review_service_mock, review, created, status_code):
     review_service_mock.save.return_value = ReviewSaveResult(review, created)
     response = client.put(
-        "/books/10/pages/3/review", json={"review_text": "  A hopeful passage  "},
+        "/books/10/pages/3/review",
+        json={"review_text": "  A hopeful passage  "},
     )
     assert response.status_code == status_code
     assert response.json()["review_text"] == review.review_text
@@ -96,10 +114,14 @@ def test_save_review(client, review_service_mock, review, created, status_code):
     review_service_mock.save.assert_called_once_with(1, 10, 3, "A hopeful passage")
 
 
-@pytest.mark.parametrize(("error", "status_code"), [
-    (NotFound("missing"), 404), (Conflict("duplicate"), 409),
-    (InvalidInput("invalid"), 422),
-])
+@pytest.mark.parametrize(
+    ("error", "status_code"),
+    [
+        (NotFound("missing"), 404),
+        (Conflict("duplicate"), 409),
+        (InvalidInput("invalid"), 422),
+    ],
+)
 def test_domain_errors_are_translated(client, user_service_mock, error, status_code):
     user_service_mock.get.side_effect = error
     response = client.get("/users/1")
@@ -125,5 +147,20 @@ def test_missing_auth_does_not_call_service(client, reading_service_mock):
     reading_service_mock.list.assert_not_called()
 
 
-def test_fetch_is_unimplemented(client):
-    assert client.get("/fetch").status_code == 501
+def test_fetch_searches_google_books(client, catalog_service_mock, catalog_book):
+    catalog_service_mock.search.return_value = [catalog_book]
+    response = client.get("/fetch?query=%E9%8A%80%E6%B2%B3%E9%89%84%E9%81%93&limit=5")
+    assert response.status_code == 200
+    assert response.json() == {
+        "items": [
+            {
+                "google_books_id": catalog_book.google_books_id,
+                "title": catalog_book.title,
+                "author": catalog_book.author,
+                "total_pages": catalog_book.total_pages,
+                "isbn_13": catalog_book.isbn_13,
+                "thumbnail_url": catalog_book.thumbnail_url,
+            }
+        ]
+    }
+    catalog_service_mock.search.assert_called_once_with("銀河鉄道", 5)

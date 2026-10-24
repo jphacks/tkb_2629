@@ -36,12 +36,32 @@ class BookResponse(BaseModel):
     author: str | None
     total_pages: int
     created_at: datetime
+    google_books_id: str | None = None
+    isbn_13: str | None = None
+    thumbnail_url: str | None = None
 
 
 class BookListResponse(BaseModel):
     items: list[BookResponse]
     limit: int
     offset: int
+
+
+class GoogleBookResponse(BaseModel):
+    google_books_id: str
+    title: str
+    author: str | None
+    total_pages: int
+    isbn_13: str | None
+    thumbnail_url: str | None
+
+
+class GoogleBookSearchResponse(BaseModel):
+    items: list[GoogleBookResponse]
+
+
+class GoogleBookImport(BaseModel):
+    google_books_id: str = Field(min_length=1, max_length=128)
 
 
 class ReviewSave(BaseModel):

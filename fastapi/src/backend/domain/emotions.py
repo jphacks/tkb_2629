@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Literal
 
-
 AFFECT_COLOR_VERSION = "va-hsl-v1"
 EMOTION_VECTOR_COLOR_VERSION = "emotion-wheel-mix-v1"
 BASIC_EMOTION_NAMES = {

@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 
-from ..domain.entities import Book, Review, User
+from ..domain.catalog import CatalogBook
 from ..domain.emotions import EmotionResult
+from ..domain.entities import Book, Review, User
 from .results import ReviewTextSaveResult
+
 
 class UserRepository(ABC):
     @abstractmethod
@@ -39,11 +41,25 @@ class ReadingRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def add_catalog_book(self, user_id: int, book: CatalogBook) -> Book:
+        raise NotImplementedError
+
+    @abstractmethod
     def list(self, user_id: int, limit: int, offset: int) -> list[Book]:
         raise NotImplementedError
 
     @abstractmethod
     def get(self, user_id: int, book_id: int) -> Book:
+        raise NotImplementedError
+
+
+class BookCatalog(ABC):
+    @abstractmethod
+    def search(self, query: str, limit: int) -> list[CatalogBook]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get(self, google_books_id: str) -> CatalogBook:
         raise NotImplementedError
 
 

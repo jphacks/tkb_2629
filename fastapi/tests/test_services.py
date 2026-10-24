@@ -2,9 +2,14 @@ from unittest.mock import Mock, call, create_autospec
 
 import pytest
 
-from backend.application.ports import ReadingRepository, ReviewRepository, UserRepository
+from backend.application.ports import (
+    BookCatalog,
+    ReadingRepository,
+    ReviewRepository,
+    UserRepository,
+)
 from backend.application.results import ReviewTextSaveResult
-from backend.application.services import ReadingService, ReviewService, UserService
+from backend.application.services import CatalogService, ReadingService, ReviewService, UserService
 from backend.domain.emotions import EmotionAnalyzer, EmotionResult
 from backend.domain.errors import InvalidInput, NotFound
 
@@ -33,10 +38,18 @@ def reviews_repo(review):
 def analyzer():
     mock = create_autospec(EmotionAnalyzer, instance=True, spec_set=True)
     mock.analyze.return_value = EmotionResult(
-        emotion_label="hope", color_code="#FFCC00", confidence=0.8,
-        model_version="test-model", source="jev",
+        emotion_label="hope",
+        color_code="#FFCC00",
+        confidence=0.8,
+        model_version="test-model",
+        source="jev",
     )
     return mock
+
+
+@pytest.fixture
+def catalog():
+    return create_autospec(BookCatalog, instance=True, spec_set=True)
 
 
 def test_user_create_and_list(users_repo, user):
@@ -64,9 +77,13 @@ def test_user_get_update_and_delete(users_repo, user):
 
 
 @pytest.mark.parametrize("method", ["create", "update"])
-@pytest.mark.parametrize(("name", "email"), [
-    ("x" * 101, "valid@example.test"), ("Valid", "x" * 256),
-])
+@pytest.mark.parametrize(
+    ("name", "email"),
+    [
+        ("x" * 101, "valid@example.test"),
+        ("Valid", "x" * 256),
+    ],
+)
 def test_invalid_user_is_rejected_before_repository(users_repo, method, name, email):
     service = UserService(users_repo)
     with pytest.raises(InvalidInput):
@@ -106,6 +123,22 @@ def test_reading_list_and_get_preserve_owner_and_pagination(books_repo, book):
     assert service.get(7, 10) == book
     books_repo.list.assert_called_once_with(7, 5, 2)
     books_repo.get.assert_called_once_with(7, 10)
+
+
+def test_catalog_search_normalizes_query(books_repo, catalog, catalog_book):
+    catalog.search.return_value = [catalog_book]
+    service = CatalogService(catalog)
+    assert service.search("  銀河鉄道の夜  ", 10) == [catalog_book]
+    catalog.search.assert_called_once_with("銀河鉄道の夜", 10)
+
+
+def test_catalog_import_uses_canonical_metadata(books_repo, catalog, catalog_book, book):
+    catalog.get.return_value = catalog_book
+    books_repo.add_catalog_book.return_value = book
+    service = ReadingService(books_repo, catalog)
+    assert service.import_catalog_book(7, catalog_book.google_books_id) == book
+    catalog.get.assert_called_once_with(catalog_book.google_books_id)
+    books_repo.add_catalog_book.assert_called_once_with(7, catalog_book)
 
 
 def test_review_get_checks_ownership(books_repo, reviews_repo, analyzer, review):
@@ -151,7 +184,11 @@ def test_invalid_review_is_not_saved(books_repo, reviews_repo, analyzer, text):
 
 @pytest.mark.parametrize("created", [True, False])
 def test_review_saves_text_before_analysis_and_passes_revision(
-    books_repo, reviews_repo, analyzer, review, created,
+    books_repo,
+    reviews_repo,
+    analyzer,
+    review,
+    created,
 ):
     reviews_repo.save_text.return_value = ReviewTextSaveResult(100, 2, created)
     timeline = Mock()
@@ -170,7 +207,11 @@ def test_review_saves_text_before_analysis_and_passes_revision(
 
 @pytest.mark.parametrize("failure", ["analyze", "complete"])
 def test_analysis_failure_preserves_saved_text_and_returns_latest_review(
-    books_repo, reviews_repo, analyzer, review, failure,
+    books_repo,
+    reviews_repo,
+    analyzer,
+    review,
+    failure,
 ):
     if failure == "analyze":
         analyzer.analyze.side_effect = RuntimeError("unavailable")
