@@ -74,6 +74,9 @@
 | `disgust` | float | 任意、0〜1の嫌悪強度 |
 | `anger` | float | 任意、0〜1の怒り強度 |
 | `anticipation` | float | 任意、0〜1の期待強度 |
+| `projection_x`, `projection_y` | float | 任意、正規化した2次元座標（-1〜1） |
+| `coherence` | float | 任意、ベクトルのまとまり度（0〜1） |
+| `intensity` | float | 任意、8感情の最大強度（0〜1） |
 | `palette_version` | varchar(32) | 任意。色変換ルールの識別子 |
 | `created_at` | timestamptz | 必須 |
 
@@ -81,16 +84,17 @@
 APIは現在のrevisionと一致する分析だけ返します。更新後に遅れて完了した古い分析は
 条件付き更新に失敗し、最新結果として表示されません。現在の分析は
 `source=mock` または `source=jev` で区別します。Jev Scoreの値は0〜4を0〜1へ正規化し、
-8感情ベクトルとして保存します。`palette_version` により、同じベクトルから同じ色を
-再現できます。confidenceには8質問のうち最も低い値を保存します。旧 `valence` / `arousal`
-列は既存データ互換のため残し、新しい分析では使用しません。
+8感情ベクトルとして保存します。ベクトルを合成した正規化座標、まとまり度、最大強度も
+保存します。`palette_version` により、同じベクトルから同じ色を再現できます。
+confidenceには8質問のうち最も低い値を保存します。旧 `valence` / `arousal` 列は既存データ
+互換のため残し、新しい分析では使用しません。
 
 ## マイグレーションと既存DB
 
 `fastapi/migrations` はAlembicです。接続先を `DATABASE_URL` に設定し、
 `fastapi/` から `uv run alembic upgrade head` を実行します。連続値の追加は
 `0002_continuous_affect`、8感情列の追加は `0003_eight_emotion_scores` で行います。
-既存の `users` や
+2次元投影値の追加は `0004_emotion_projection` で行います。既存の `users` や
 `create_all` が先に作成した読書テーブルは再作成しません。テーブル単位で既存有無を
 確認するため、部分的に異なるスキーマの場合は適用前に管理者が実DBを調査してください。
 downgradeはデータのある読書テーブルを削除せず、エラーで停止します。
@@ -99,8 +103,10 @@ downgradeはデータのある読書テーブルを削除せず、エラーで�
 
 ## 将来の拡張
 
-色相の初期割り当てはanger 0°、anticipation 30°、joy 60°、trust 120°、fear 180°、
-surprise 240°、sadness 270°、disgust 300°です。これはバージョン付きの暫定パレットで、
-画像の正確な色値に校正したものではありません。認証機能、ISBNによる書誌統合、ページ単位の分析再試行は別途対応します。JevのAPIキーは
+色相の初期割り当てはanger 0°、anticipation 30°、joy 60°、trust 90°、fear 180°、
+surprise 210°、sadness 270°、disgust 300°です。これはバージョン付きの暫定パレットで、
+画像の正確な色値に校正したものではありません。方向に応じて隣接する色相アンカー間を
+円周上で補間し、彩度にはcoherence、明度にはintensityを使います。認証機能、ISBNによる
+書誌統合、ページ単位の分析再試行は別途対応します。JevのAPIキーは
 `TYPESAFE_API_KEY` 環境変数で設定します。認証方式やアカウント削除方針を確定した後に、
 ユーザーIDの契約を固定してください。

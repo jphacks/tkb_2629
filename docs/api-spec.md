@@ -146,7 +146,7 @@ DB動作: `user_books.user_id` で絞り、`books` と結合して取得しま�
   "analysis_status": "completed",
   "analysis": {
     "emotion_label": null,
-    "color_code": "#FF8C1A",
+    "color_code": "#E69443",
     "confidence": 0.7,
     "model_version": "jev-1.13.0",
     "source": "jev",
@@ -163,6 +163,12 @@ DB動作: `user_books.user_id` で絞り、`books` と結合して取得しま�
       "anger": 1.0,
       "anticipation": 0.0
     },
+    "emotion_projection": {
+      "x": -0.5,
+      "y": 0.5,
+      "coherence": 0.7071,
+      "intensity": 1.0
+    },
     "created_at": "2026-10-24T10:01:00Z"
   },
   "created_at": "2026-10-24T10:00:00Z",
@@ -178,9 +184,14 @@ DB動作: `user_books.user_id` で絞り、`books` と結合して取得しま�
 Jev接続時は `TYPESAFE_API_KEY` が設定されている場合にJevアダプターを選択します。
 感想をstateとして1回送り、喜び・信頼・恐れ・驚き・悲しみ・嫌悪・怒り・期待の8つを
 それぞれ5段階の `Score` で評価します。Score値0〜4を `score / 4` で0〜1に正規化します。
-8値は `emotion_vector` に含まれます。各感情の色相を強度で重みづけして円周上で合成し、
-打ち消し合う場合は彩度が下がります。`confidence` は8質問の最低値、`model_version` は
-SDKレスポンスのモデル名です。モック利用時は8値すべて0、`source=mock`、グレーを返します。
+8値は `emotion_vector` に含まれます。図に合わせて恐れ0°、喜び90°、怒り180°、悲しみ270°
+を基本方向に設定し、それぞれのベクトルを合成します。合成値を総スコアで割った座標を
+`emotion_projection.x/y`、合成ベクトルの長さをcoherence、最大の感情スコアをintensity
+として返します。`confidence` は8質問の最低値、`model_version` はSDKレスポンスのモデル名です。
+
+色相は座標方向と色相アンカーを円周上で補間し、彩度にcoherence、HSV明度に
+`0.55 + 0.35 * intensity` を使ってHEXを算出します。感情がすべて0の場合はニュートラルグレーです。
+モック利用時は8値と座標が0、`source=mock`、グレーを返します。
 
 ## ページ感想の保存・更新
 
