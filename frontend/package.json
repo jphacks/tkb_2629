@@ -17,6 +17,7 @@
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "expo": "^58.0.0",
+    "expo-blur": "^58.0.5",
     "expo-status-bar": "~3.0.9",
     "react": "19.3.0",
     "react-native": "0.88.0"
