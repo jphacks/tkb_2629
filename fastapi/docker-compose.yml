@@ -1,4 +1,14 @@
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   postgres:
     image: postgres:17
     container_name: postgres
@@ -25,10 +35,14 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
     volumes:
       - .:/app
       - fastapi_venv:/app/.venv
     depends_on:
+      redis:
+        condition: service_healthy
       postgres:
         condition: service_healthy
 

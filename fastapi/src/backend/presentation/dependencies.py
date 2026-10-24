@@ -1,8 +1,10 @@
 import os
 from collections.abc import Generator
+from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, HTTPException
+from redis import Redis
 from sqlalchemy.orm import Session
 
 from ..application.services import CatalogService, ReadingService, ReviewService, UserService
@@ -42,8 +44,18 @@ def get_users(db: DbSession) -> UserService:
     return UserService(users=repository)
 
 
+@lru_cache
+def get_books_cache() -> Redis:
+    return Redis.from_url(
+        os.getenv("REDIS_URL", "redis://localhost:6379/0"),
+        socket_connect_timeout=1,
+        socket_timeout=1,
+        decode_responses=True,
+    )
+
+
 def get_book_catalog() -> GoogleBooksCatalog:
-    return GoogleBooksCatalog()
+    return GoogleBooksCatalog(cache=get_books_cache())
 
 
 def get_catalog_service(

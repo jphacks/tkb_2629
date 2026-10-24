@@ -1,16 +1,22 @@
 from __future__ import annotations
 
+import json
+import logging
 import os
 from collections.abc import Mapping
 from typing import Any
 
 import httpx
+from redis import Redis
+from redis.exceptions import RedisError
 
 from ..application.ports import BookCatalog
 from ..domain.catalog import CatalogBook
 from ..domain.errors import ExternalServiceError, NotFound
 
 GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
+CACHE_TTL_SECONDS = 30 * 24 * 60 * 60
+logger = logging.getLogger(__name__)
 
 
 class GoogleBooksCatalog(BookCatalog):
@@ -18,9 +24,11 @@ class GoogleBooksCatalog(BookCatalog):
         self,
         client: httpx.Client | None = None,
         api_key: str | None = None,
+        cache: Redis | None = None,
     ) -> None:
         self._client = client
         self._api_key = api_key if api_key is not None else os.getenv("BOOKS_API")
+        self._cache = cache
 
     def search(self, query: str, limit: int) -> list[CatalogBook]:
         payload = self._request(
@@ -38,15 +46,41 @@ class GoogleBooksCatalog(BookCatalog):
         for item in items:
             book = self._parse_book(item)
             if book is not None:
+                self._store(book.google_books_id, item)
                 books.append(book)
         return books
 
     def get(self, google_books_id: str) -> CatalogBook:
+        if self._cache is not None:
+            try:
+                cached = self._cache.get(self._cache_key(google_books_id))
+                if cached is not None:
+                    book = self._parse_book(json.loads(cached))
+                    if book is not None and book.google_books_id == google_books_id:
+                        return book
+            except (RedisError, ValueError, TypeError):
+                logger.warning("Google Books cache read failed; fetching from API")
         payload = self._request(f"{GOOGLE_BOOKS_URL}/{google_books_id}")
         book = self._parse_book(payload)
         if book is None:
             raise NotFound("Google Books volume is missing required book information")
+        self._store(google_books_id, payload)
         return book
+
+    @staticmethod
+    def _cache_key(google_books_id: str) -> str:
+        return f"google_books:v1:{google_books_id}"
+
+    def _store(self, google_books_id: str, payload: object) -> None:
+        if self._cache is None:
+            return
+        try:
+            # Set value and expiry atomically. Reads never extend the retention period.
+            self._cache.set(
+                self._cache_key(google_books_id), json.dumps(payload), ex=CACHE_TTL_SECONDS
+            )
+        except RedisError:
+            logger.warning("Google Books cache write failed")
 
     def _request(
         self,
