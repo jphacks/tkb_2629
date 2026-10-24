@@ -18,17 +18,18 @@
 | カラム | 型 | 制約 |
 | --- | --- | --- |
 | `id` | integer | 主キー |
-| `title` | varchar(255) | 必須、空白のみ不可 |
-| `author` | varchar(255) | 任意 |
-| `total_pages` | integer | 必須、1以上 |
+| `title` | varchar(255) | 手動登録書籍のみ必須。Google Books書籍ではNULL |
+| `author` | varchar(255) | 手動登録書籍のみ使用 |
+| `total_pages` | integer | 手動登録書籍のみ必須。Google Books書籍ではNULL |
 | `google_books_id` | varchar(128) | 任意、Google Booksのvolume ID、一意 |
-| `isbn_13` | varchar(13) | 任意、一意 |
-| `thumbnail_url` | text | 任意、表紙画像URL |
 | `created_at` | timestamptz | 必須、DBが設定 |
 
 書誌情報はユーザー間で共有できます。`POST /books/import` はGoogle Booksのvolume IDで
-書誌を再取得し、Google Books IDまたはISBN-13が一致する既存行を再利用します。
+書誌を再取得し、Google Books IDが一致する既存行を再利用します。
 これにより、利用者が入力したタイトルの表記揺れによる重複を防ぎます。
+Google Books由来のタイトル・著者・ページ数・ISBN・表紙URLはDBへ保存せず、
+表示とページ範囲検証の都度Google Books APIから取得します。レスポンスにキャッシュ
+許可期間がないため、現在はサーバーキャッシュを行いません。
 既存の `POST /books` は手動登録との後方互換性のため維持します。
 
 ### `user_books`

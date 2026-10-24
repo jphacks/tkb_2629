@@ -28,18 +28,23 @@ class Book(Base):
     __tablename__ = "books"
     __table_args__ = (
         UniqueConstraint("google_books_id", name="uq_books_google_books_id"),
-        UniqueConstraint("isbn_13", name="uq_books_isbn_13"),
-        CheckConstraint("length(trim(title)) > 0", name="ck_books_title_nonempty"),
-        CheckConstraint("total_pages >= 1", name="ck_books_total_pages_positive"),
+        CheckConstraint(
+            "google_books_id IS NOT NULL OR "
+            "(title IS NOT NULL AND length(trim(title)) > 0)",
+            name="ck_books_title_nonempty",
+        ),
+        CheckConstraint(
+            "google_books_id IS NOT NULL OR "
+            "(total_pages IS NOT NULL AND total_pages >= 1)",
+            name="ck_books_total_pages_positive",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    title: Mapped[str | None] = mapped_column(String(255))
     author: Mapped[str | None] = mapped_column(String(255))
-    total_pages: Mapped[int] = mapped_column(Integer, nullable=False)
+    total_pages: Mapped[int | None] = mapped_column(Integer)
     google_books_id: Mapped[str | None] = mapped_column(String(128))
-    isbn_13: Mapped[str | None] = mapped_column(String(13))
-    thumbnail_url: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

@@ -70,9 +70,15 @@ URLのバージョン番号と外部API通信の有無は独立した事項で�
 `GET /fetch?query=...` はGoogle Books APIからタイトル候補を検索します。
 ページ数を取得できる候補だけを返し、`BOOKS_API` が設定されている場合はAPIキーを使用します。
 候補の `google_books_id` を `POST /books/import` に送ると、バックエンドが書誌を再取得して
-共有書誌と現在のユーザーの本棚へ登録します。Google Books IDまたはISBN-13が同じ書誌は
-既存の `books` 行を再利用するため、タイトルの表記揺れによる重複を防ぎます。
+共有書誌と現在のユーザーの本棚へ登録します。Google Books IDが同じ書誌は既存の
+`books` 行を再利用するため、タイトルの表記揺れによる重複を防ぎます。
 検索自体に認証やDB接続は不要ですが、本棚への追加には認証とDB接続が必要です。
+
+Google Books由来のタイトル・著者・ページ数・ISBN・表紙URLはDBへ保存しません。
+`books` へ永続化する外部書誌情報は `google_books_id` のみです。本棚表示、書籍詳細、
+感想のページ範囲検証ではIDを使ってGoogle Books APIから書誌情報を取得します。
+Google Books APIのレスポンスにキャッシュ許可期間がないため、現在はRedisなどへの
+サーバーキャッシュも行いません。APIキーはバックエンドだけで使用します。
 ユーザーのメール重複などDB制約との競合は409で返します。
 読書APIの認証は、信頼できるミドルウェアが設定する `request.state.user_id` を前提とします。
 ログイン処理や当該ミドルウェアはまだ実装されていません。
@@ -114,7 +120,7 @@ Repositoryの `complete()` はその結果を `emotion_analyses` に保存しま
 0002はvalence/arousalとパレット版、0003は8感情、0004は投影座標を追加します。
 現在の8感情解析ではvalence/arousalは未使用のためNULLになります。
 APIを使う前に `uv run alembic upgrade head`（Dockerでは上記のexecコマンド）で
-0005まで適用してください。アプリ起動時の `create_all()` は行いません。
+0006まで適用してください。アプリ起動時の `create_all()` は行いません。
 既存DBでAlembic履歴がない場合は、冒頭のスキーマ確認・バックアップ手順に従ってください。
 
 DBマイグレーションはinfrastructure層に配置しています。

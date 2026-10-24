@@ -68,9 +68,13 @@ PUTの詳細:
 - `POST /books/import`: `google_books_id` を受け取り、Google Booksから書誌を再取得して現在のユーザーの本棚へ追加します。
 
 検索結果はGoogle Books ID・タイトル・著者・ページ数・ISBN-13・表紙URLです。
-`books.google_books_id` と `books.isbn_13` は一意で、同じ書誌が別表記で検索されても
-既存の共有書誌を再利用します。同じユーザーが同じ書誌を再度追加した場合は409です。
+これらの書誌情報はレスポンス中だけで使用し、DBにはGoogle Books IDだけを保存します。
+`books.google_books_id` は一意で、同じ検索候補が別表記で検索されても既存の共有書誌を
+再利用します。本棚表示やページ範囲検証ではGoogle Books IDから情報を再取得します。
+同じユーザーが同じ書誌を再度追加した場合は409です。
 検索は認証・DB接続を必要としません。登録には読書APIと同じ認証が必要です。
+キャッシュ許可期間を示すレスポンスヘッダーがないため、現在はサーバーキャッシュを
+行わず、必要な都度Google Books APIへ問い合わせます。
 
 - `GET /docs`: FastAPIのSwagger UI。
 - `GET /redoc`: ReDocのAPIドキュメント。

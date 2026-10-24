@@ -1,8 +1,8 @@
-from sqlalchemy import or_, select, update
+from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..application.ports import ReadingRepository, ReviewRepository, UserRepository
+from ..application.ports import BookCatalog, ReadingRepository, ReviewRepository, UserRepository
 from ..application.results import ReviewTextSaveResult
 from ..domain.catalog import CatalogBook
 from ..domain.emotions import EmotionResult
@@ -13,16 +13,29 @@ from ..domain.errors import Conflict, NotFound
 from .models import Book, EmotionAnalysis, PageReview, User, UserBook
 
 
-def _book(book: Book) -> BookEntity:
+def _book(book: Book, catalog: BookCatalog | None) -> BookEntity:
+    if book.google_books_id is not None:
+        if catalog is None:
+            raise RuntimeError("Book catalog is required to resolve Google Books metadata")
+        catalog_book = catalog.get(book.google_books_id)
+        return BookEntity(
+            id=book.id,
+            title=catalog_book.title,
+            author=catalog_book.author,
+            total_pages=catalog_book.total_pages,
+            created_at=book.created_at,
+            google_books_id=book.google_books_id,
+            isbn_13=catalog_book.isbn_13,
+            thumbnail_url=catalog_book.thumbnail_url,
+        )
+    if book.title is None or book.total_pages is None:
+        raise RuntimeError("Manual book metadata is incomplete")
     return BookEntity(
         id=book.id,
         title=book.title,
         author=book.author,
         total_pages=book.total_pages,
         created_at=book.created_at,
-        google_books_id=book.google_books_id,
-        isbn_13=book.isbn_13,
-        thumbnail_url=book.thumbnail_url,
     )
 
 
@@ -76,8 +89,9 @@ class SqlUserRepository(UserRepository):
 
 
 class SqlReadingRepository(ReadingRepository):
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, catalog: BookCatalog | None = None) -> None:
         self.db = db
+        self.catalog = catalog
 
     def add(
         self,
@@ -106,29 +120,23 @@ class SqlReadingRepository(ReadingRepository):
         _commit(self.db)
         self.db.refresh(book)
         self.db.refresh(reading)
-        return _book(book)
+        return _book(book, self.catalog)
 
     def add_catalog_book(self, user_id: int, catalog_book: CatalogBook) -> BookEntity:
-        conditions = [Book.google_books_id == catalog_book.google_books_id]
-        if catalog_book.isbn_13 is not None:
-            conditions.append(Book.isbn_13 == catalog_book.isbn_13)
-        book = self.db.scalar(select(Book).where(or_(*conditions)))
+        book = self.db.scalar(
+            select(Book).where(Book.google_books_id == catalog_book.google_books_id)
+        )
 
         if book is None:
-            book = Book(
-                title=catalog_book.title,
-                author=catalog_book.author,
-                total_pages=catalog_book.total_pages,
-                google_books_id=catalog_book.google_books_id,
-                isbn_13=catalog_book.isbn_13,
-                thumbnail_url=catalog_book.thumbnail_url,
-            )
+            book = Book(google_books_id=catalog_book.google_books_id)
             self.db.add(book)
             try:
                 self.db.flush()
             except IntegrityError as error:
                 self.db.rollback()
-                book = self.db.scalar(select(Book).where(or_(*conditions)))
+                book = self.db.scalar(
+                    select(Book).where(Book.google_books_id == catalog_book.google_books_id)
+                )
                 if book is None:
                     raise Conflict("Could not create catalog book") from error
 
@@ -145,7 +153,16 @@ class SqlReadingRepository(ReadingRepository):
         self.db.add(reading)
         _commit(self.db)
         self.db.refresh(book)
-        return _book(book)
+        return BookEntity(
+            id=book.id,
+            title=catalog_book.title,
+            author=catalog_book.author,
+            total_pages=catalog_book.total_pages,
+            created_at=book.created_at,
+            google_books_id=catalog_book.google_books_id,
+            isbn_13=catalog_book.isbn_13,
+            thumbnail_url=catalog_book.thumbnail_url,
+        )
 
     def list(self, user_id: int, limit: int, offset: int) -> list[BookEntity]:
         statement = (
@@ -159,7 +176,7 @@ class SqlReadingRepository(ReadingRepository):
         rows = self.db.scalars(statement).all()
         books: list[BookEntity] = []
         for row in rows:
-            books.append(_book(row))
+            books.append(_book(row, self.catalog))
         return books
 
     def get(self, user_id: int, book_id: int) -> BookEntity:
@@ -171,7 +188,7 @@ class SqlReadingRepository(ReadingRepository):
         row = self.db.scalars(statement).one_or_none()
         if row is None:
             raise NotFound("Book not found")
-        return _book(row)
+        return _book(row, self.catalog)
 
 
 def _revise_page_review(db: Session, review_id: int, review_text: str) -> int:

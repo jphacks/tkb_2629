@@ -56,14 +56,15 @@ def get_reading(
     db: DbSession,
     catalog: Annotated[GoogleBooksCatalog, Depends(get_book_catalog)],
 ) -> ReadingService:
-    repository = SqlReadingRepository(db)
+    repository = SqlReadingRepository(db, catalog)
     return ReadingService(books=repository, catalog=catalog)
 
 
 def get_reviews(
     db: DbSession,
     analyzer: Annotated[EmotionAnalyzer, Depends(get_emotion_analyzer)],
+    catalog: Annotated[GoogleBooksCatalog, Depends(get_book_catalog)],
 ) -> ReviewService:
-    books = SqlReadingRepository(db)
+    books = SqlReadingRepository(db, catalog)
     reviews = SqlReviewRepository(db)
     return ReviewService(books=books, reviews=reviews, analyzer=analyzer)

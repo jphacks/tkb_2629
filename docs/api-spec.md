@@ -47,8 +47,10 @@ DB接続設定がない場合は `503 Service Unavailable` です。DB接続自�
 {"google_books_id": "volume-id"}
 ```
 
-バックエンドがGoogle Booksから書誌を再取得し、Google Books IDまたはISBN-13が一致する
-共有書誌を再利用します。成功は `201 Created`、同じユーザーの本棚に登録済みの場合は409です。
+バックエンドがGoogle Booksから書誌を再取得し、Google Books IDが一致する共有書誌を
+再利用します。DBに保存するGoogle Books由来の値はIDだけで、タイトル・著者・ページ数・
+ISBN・表紙URLは表示や検証のたびにAPIから取得します。成功は `201 Created`、
+同じユーザーの本棚に登録済みの場合は409です。
 
 ## 本の登録・読書リストへの追加
 
