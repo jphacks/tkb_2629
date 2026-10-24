@@ -1,3 +1,4 @@
+import os
 from collections.abc import Generator
 from typing import Annotated
 
@@ -7,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..application.services import ReadingService, ReviewService, UserService
 from ..domain.emotions import EmotionAnalyzer
 from ..infrastructure import database
-from ..infrastructure.emotions import MockEmotionAnalyzer
+from ..infrastructure.emotions import JevEmotionAnalyzer, MockEmotionAnalyzer
 from ..infrastructure.repositories import SqlReadingRepository, SqlReviewRepository, SqlUserRepository
 
 
@@ -25,6 +26,8 @@ DbSession = Annotated[Session, Depends(get_db)]
 
 
 def get_emotion_analyzer() -> EmotionAnalyzer:
+    if os.getenv("TYPESAFE_API_KEY"):
+        return JevEmotionAnalyzer()
     return MockEmotionAnalyzer()
 
 

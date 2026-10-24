@@ -227,6 +227,20 @@ class SqlReviewRepository(ReviewRepository):
             confidence=result.confidence,
             model_version=result.model_version,
             source=result.source,
+            valence=result.valence,
+            arousal=result.arousal,
+            palette_version=result.palette_version,
+            **(result.emotion_vector.as_dict() if result.emotion_vector else {}),
+            **(
+                {
+                    "projection_x": result.emotion_projection.x,
+                    "projection_y": result.emotion_projection.y,
+                    "coherence": result.emotion_projection.coherence,
+                    "intensity": result.emotion_projection.intensity,
+                }
+                if result.emotion_projection
+                else {}
+            ),
         )
         self.db.add(analysis)
         self.db.commit()

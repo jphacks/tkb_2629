@@ -5,6 +5,7 @@ revision = "0001_reading_records"
 down_revision = None
 branch_labels = None
 depends_on = None
+BASELINE_TABLES = {"users", "books", "user_books", "page_reviews", "emotion_analyses"}
 
 
 def _create_users_if_missing() -> None:
@@ -19,6 +20,14 @@ def _create_users_if_missing() -> None:
 
 
 def upgrade() -> None:
+    existing_tables = set(sa.inspect(op.get_bind()).get_table_names()) & BASELINE_TABLES
+    if existing_tables:
+        names = ", ".join(sorted(existing_tables))
+        raise RuntimeError(
+            "Refusing to baseline existing tables without Alembic history "
+            f"({names}). Verify the schema, then explicitly stamp revision 0001."
+        )
+
     _create_users_if_missing()
     inspector = sa.inspect(op.get_bind())
     if not inspector.has_table("books"):
