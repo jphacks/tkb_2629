@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "TKB 2629",
+    "slug": "tkb-2629",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F4F7F2"
+      }
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
