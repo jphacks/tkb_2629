@@ -120,3 +120,23 @@ DBマイグレーションはinfrastructure層に配置しています。
 過去のスキーマ変更を再現できるよう、revision ID・適用順序・各revisionの実装は維持しています。
 
 エンドポイントごとの処理・レスポンス・未実装機能は [docs/endpoints.md](docs/endpoints.md) を参照してください。
+
+## 開発時の認証スキップ
+
+認証なしでDB保存を確認する場合は、先に `POST /users` でユーザーを作成し、
+返されたIDを `.env` の `DEV_USER_ID` に設定します。
+
+```dotenv
+APP_ENV=development
+AUTH_DISABLED=true
+DEV_USER_ID=1
+```
+
+Dockerでは設定変更後に `docker compose up -d --force-recreate api` で環境変数を反映します。
+ローカル実行ではこれらを環境変数として渡してください（この認証処理は `.env` を直接読みません）。
+この状態では `/books` などの読書APIが固定ユーザーの本棚を操作します。
+指定ユーザーを自動作成する処理はありません。
+
+`AUTH_DISABLED` は未設定または `false` なら通常の認証処理です。
+`true` の場合でも `APP_ENV=development` と正の整数の `DEV_USER_ID` が必要で、
+設定不正の場合は503を返して処理を止めます。本番環境では `AUTH_DISABLED=false` にしてください。
