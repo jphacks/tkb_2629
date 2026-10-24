@@ -21,14 +21,24 @@ BASIC_EMOTION_NAMES = {
     "anticipation": "期待",
 }
 BASIC_EMOTION_HUES = {
-    "anger": 0.0,
-    "anticipation": 30.0,
-    "joy": 60.0,
-    "trust": 120.0,
     "fear": 180.0,
-    "surprise": 240.0,
-    "sadness": 270.0,
+    "trust": 90.0,
+    "joy": 60.0,
+    "anticipation": 30.0,
+    "anger": 0.0,
     "disgust": 300.0,
+    "sadness": 270.0,
+    "surprise": 210.0,
+}
+EMOTION_VECTOR_ANGLES = {
+    "fear": 0.0,
+    "trust": 45.0,
+    "joy": 90.0,
+    "anticipation": 135.0,
+    "anger": 180.0,
+    "disgust": 225.0,
+    "sadness": 270.0,
+    "surprise": 315.0,
 }
 EMOTION_INTENSITY_LEVELS = (
     "Not expressed",
@@ -103,25 +113,82 @@ class EmotionVector:
 
 
 def emotion_vector_to_color_code(vector: EmotionVector) -> str:
-    """Blend eight emotion hues by intensity; opposing hues reduce saturation."""
-    scores = vector.as_dict()
-    red_axis = sum(
-        scores[emotion] * math.cos(math.radians(hue))
-        for emotion, hue in BASIC_EMOTION_HUES.items()
-    )
-    green_axis = sum(
-        scores[emotion] * math.sin(math.radians(hue))
-        for emotion, hue in BASIC_EMOTION_HUES.items()
-    )
-    magnitude = math.hypot(red_axis, green_axis)
-    if magnitude < 1e-12:
+    """Project an emotion vector to 2D, then map its direction and intensity to HSV."""
+    projection = project_emotion_vector(vector)
+    if projection.intensity == 0:
         return "#8C8C8C"
 
-    hue = (math.degrees(math.atan2(green_axis, red_axis)) % 360) / 360
-    saturation = min(magnitude, 1.0)
-    red, green, blue = colorsys.hls_to_rgb(hue, 0.55, saturation)
+    hue = (
+        emotion_direction_to_hue(projection.direction_degrees)
+        if projection.direction_degrees is not None
+        else 0.0
+    )
+    saturation = projection.coherence
+    value = 0.55 + 0.35 * projection.intensity
+    red, green, blue = colorsys.hsv_to_rgb(hue / 360, saturation, value)
     channels = (round(red * 255), round(green * 255), round(blue * 255))
     return "#" + "".join(f"{channel:02X}" for channel in channels)
+
+
+@dataclass(frozen=True)
+class EmotionProjection:
+    x: float
+    y: float
+    coherence: float
+    intensity: float
+    direction_degrees: float | None
+
+    def as_dict(self) -> dict[str, float]:
+        return {
+            "x": self.x,
+            "y": self.y,
+            "coherence": self.coherence,
+            "intensity": self.intensity,
+        }
+
+
+def project_emotion_vector(vector: EmotionVector) -> EmotionProjection:
+    scores = vector.as_dict()
+    total = sum(scores.values())
+    intensity = max(scores.values())
+    if total == 0:
+        return EmotionProjection(x=0, y=0, coherence=0, intensity=0, direction_degrees=None)
+
+    x = sum(
+        scores[emotion] * math.cos(math.radians(angle))
+        for emotion, angle in EMOTION_VECTOR_ANGLES.items()
+    ) / total
+    y = sum(
+        scores[emotion] * math.sin(math.radians(angle))
+        for emotion, angle in EMOTION_VECTOR_ANGLES.items()
+    ) / total
+    magnitude = math.hypot(x, y)
+    coherence = 0.0 if magnitude <= 1e-12 else min(magnitude, 1.0)
+    direction = math.degrees(math.atan2(y, x)) % 360 if coherence > 1e-12 else None
+    return EmotionProjection(
+        x=x,
+        y=y,
+        coherence=coherence,
+        intensity=intensity,
+        direction_degrees=direction,
+    )
+
+
+def emotion_direction_to_hue(direction_degrees: float) -> float:
+    if not math.isfinite(direction_degrees):
+        raise ValueError("direction_degrees must be finite")
+    direction = direction_degrees % 360
+    anchors = sorted(EMOTION_VECTOR_ANGLES.items(), key=lambda item: item[1])
+    for index, (emotion, start_angle) in enumerate(anchors):
+        next_emotion, next_angle = anchors[(index + 1) % len(anchors)]
+        end_angle = next_angle if index + 1 < len(anchors) else 360.0
+        if start_angle <= direction <= end_angle:
+            fraction = (direction - start_angle) / (end_angle - start_angle)
+            start_hue = BASIC_EMOTION_HUES[emotion]
+            end_hue = BASIC_EMOTION_HUES[next_emotion]
+            hue_delta = (end_hue - start_hue + 180) % 360 - 180
+            return (start_hue + fraction * hue_delta) % 360
+    raise ValueError("Unable to map direction to a hue")
 
 
 def affect_to_color_code(scores: AffectScores) -> str:
@@ -149,6 +216,7 @@ class EmotionResult:
     arousal: float | None = None
     palette_version: str | None = None
     emotion_vector: EmotionVector | None = None
+    emotion_projection: EmotionProjection | None = None
 
 
 class EmotionAnalyzer(Protocol):
@@ -177,6 +245,7 @@ class JevEmotionAnalyzer:
             for emotion in BASIC_EMOTION_NAMES
         }
         vector = EmotionVector(**values)
+        projection = project_emotion_vector(vector)
         confidence = min(
             response.scores[emotion].confidence for emotion in BASIC_EMOTION_NAMES
         )
@@ -188,6 +257,7 @@ class JevEmotionAnalyzer:
             source="jev",
             palette_version=EMOTION_VECTOR_COLOR_VERSION,
             emotion_vector=vector,
+            emotion_projection=projection,
         )
 
     @staticmethod
@@ -210,6 +280,7 @@ class MockEmotionAnalyzer:
             anger=0,
             anticipation=0,
         )
+        projection = project_emotion_vector(vector)
         return EmotionResult(
             emotion_label="mock_neutral",
             color_code=emotion_vector_to_color_code(vector),
@@ -218,4 +289,5 @@ class MockEmotionAnalyzer:
             source="mock",
             palette_version=EMOTION_VECTOR_COLOR_VERSION,
             emotion_vector=vector,
+            emotion_projection=projection,
         )

@@ -5,11 +5,14 @@ import pytest
 from backend.analysis import (
     BASIC_EMOTION_NAMES,
     EMOTION_INTENSITY_LEVELS,
+    EMOTION_VECTOR_ANGLES,
     AffectScores,
     EmotionVector,
     JevEmotionAnalyzer,
     affect_to_color_code,
+    emotion_direction_to_hue,
     emotion_vector_to_color_code,
+    project_emotion_vector,
 )
 
 
@@ -42,8 +45,8 @@ def test_emotion_vector_maps_to_weighted_color() -> None:
         joy=1, trust=0, fear=0, surprise=0, sadness=0, disgust=0, anger=1, anticipation=0
     )
 
-    assert emotion_vector_to_color_code(anger) == "#FF1A1A"
-    assert emotion_vector_to_color_code(joy_and_anger) == "#FF8C1A"
+    assert emotion_vector_to_color_code(anger) == "#E60000"
+    assert emotion_vector_to_color_code(joy_and_anger) == "#E69443"
 
 
 def test_opposing_emotions_blend_to_neutral_gray() -> None:
@@ -51,7 +54,37 @@ def test_opposing_emotions_blend_to_neutral_gray() -> None:
         joy=0, trust=0, fear=1, surprise=0, sadness=0, disgust=0, anger=1, anticipation=0
     )
 
-    assert emotion_vector_to_color_code(mixed) == "#8C8C8C"
+    projection = project_emotion_vector(mixed)
+    assert projection.coherence == 0
+    assert projection.direction_degrees is None
+    assert emotion_vector_to_color_code(mixed) == "#E6E6E6"
+
+
+def test_projection_uses_color_wheel_directions_and_hue_anchors() -> None:
+    vector = EmotionVector(
+        joy=0,
+        trust=0,
+        fear=0.2,
+        surprise=0,
+        sadness=0.5,
+        disgust=0.3,
+        anger=0.8,
+        anticipation=0,
+    )
+
+    projection = project_emotion_vector(vector)
+
+    assert projection.x == pytest.approx(-0.451184, abs=1e-5)
+    assert projection.y == pytest.approx(-0.395629, abs=1e-5)
+    assert projection.coherence == pytest.approx(0.600075, abs=1e-5)
+    assert projection.intensity == 0.8
+    assert projection.direction_degrees == pytest.approx(221.246, abs=1e-3)
+    assert EMOTION_VECTOR_ANGLES["fear"] == 0
+    assert EMOTION_VECTOR_ANGLES["joy"] == 90
+    assert EMOTION_VECTOR_ANGLES["anger"] == 180
+    assert EMOTION_VECTOR_ANGLES["sadness"] == 270
+    assert emotion_direction_to_hue(180) == 0
+    assert emotion_direction_to_hue(225) == 300
 
 
 def test_emotion_vector_rejects_scores_outside_zero_to_one() -> None:

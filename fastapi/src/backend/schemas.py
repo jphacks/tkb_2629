@@ -74,6 +74,7 @@ class EmotionAnalysisResponse(BaseModel):
     arousal: float | None
     palette_version: str | None
     emotion_vector: dict[str, float] | None = None
+    emotion_projection: dict[str, float] | None = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

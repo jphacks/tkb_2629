@@ -188,8 +188,19 @@ def _page_review_response(db: Session, review: PageReview, book_id: int) -> Page
                     "anticipation",
                 )
             }
-            if any(value is not None for value in vector.values()):
-                analysis = analysis.model_copy(update={"emotion_vector": vector})
+            projection = {
+                "x": analysis_row.projection_x,
+                "y": analysis_row.projection_y,
+                "coherence": analysis_row.coherence,
+                "intensity": analysis_row.intensity,
+            }
+            analysis_updates = {}
+            if all(value is not None for value in vector.values()):
+                analysis_updates["emotion_vector"] = vector
+            if all(value is not None for value in projection.values()):
+                analysis_updates["emotion_projection"] = projection
+            if analysis_updates:
+                analysis = analysis.model_copy(update=analysis_updates)
     return PageReviewResponse(
         id=review.id,
         book_id=book_id,
@@ -410,6 +421,16 @@ def save_page_review(
                     arousal=result.arousal,
                     palette_version=result.palette_version,
                     **(result.emotion_vector.as_dict() if result.emotion_vector else {}),
+                    **(
+                        {
+                            "projection_x": result.emotion_projection.x,
+                            "projection_y": result.emotion_projection.y,
+                            "coherence": result.emotion_projection.coherence,
+                            "intensity": result.emotion_projection.intensity,
+                        }
+                        if result.emotion_projection
+                        else {}
+                    ),
                 )
             )
             db.commit()

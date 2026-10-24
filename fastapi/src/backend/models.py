@@ -158,6 +158,22 @@ class EmotionAnalysis(Base):
             "anticipation IS NULL OR (anticipation >= 0 AND anticipation <= 1)",
             name="ck_emotion_analyses_anticipation",
         ),
+        CheckConstraint(
+            "projection_x IS NULL OR (projection_x >= -1 AND projection_x <= 1)",
+            name="ck_emotion_analyses_projection_x",
+        ),
+        CheckConstraint(
+            "projection_y IS NULL OR (projection_y >= -1 AND projection_y <= 1)",
+            name="ck_emotion_analyses_projection_y",
+        ),
+        CheckConstraint(
+            "coherence IS NULL OR (coherence >= 0 AND coherence <= 1)",
+            name="ck_emotion_analyses_coherence",
+        ),
+        CheckConstraint(
+            "intensity IS NULL OR (intensity >= 0 AND intensity <= 1)",
+            name="ck_emotion_analyses_intensity",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -181,6 +197,10 @@ class EmotionAnalysis(Base):
     disgust: Mapped[float | None] = mapped_column(Float)
     anger: Mapped[float | None] = mapped_column(Float)
     anticipation: Mapped[float | None] = mapped_column(Float)
+    projection_x: Mapped[float | None] = mapped_column(Float)
+    projection_y: Mapped[float | None] = mapped_column(Float)
+    coherence: Mapped[float | None] = mapped_column(Float)
+    intensity: Mapped[float | None] = mapped_column(Float)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

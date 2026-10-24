@@ -17,6 +17,7 @@ from backend.analysis import (
     JevEmotionAnalyzer,
     MockEmotionAnalyzer,
     emotion_vector_to_color_code,
+    project_emotion_vector,
 )
 from backend.auth import get_current_user_id
 from backend.database import get_db
@@ -193,6 +194,7 @@ def test_jev_affect_and_color_are_persisted_and_returned(
                 source="jev",
                 palette_version=EMOTION_VECTOR_COLOR_VERSION,
                 emotion_vector=vector,
+                emotion_projection=project_emotion_vector(vector),
             )
 
     test_client.app.dependency_overrides[get_emotion_analyzer] = lambda: FixedJevAnalyzer()
@@ -206,6 +208,10 @@ def test_jev_affect_and_color_are_persisted_and_returned(
     assert analysis["source"] == "jev"
     assert analysis["emotion_label"] is None
     assert analysis["emotion_vector"] == vector.as_dict()
+    assert analysis["emotion_projection"]["x"] == pytest.approx(-0.1752, abs=1e-4)
+    assert analysis["emotion_projection"]["y"] == pytest.approx(0.5654, abs=1e-4)
+    assert analysis["emotion_projection"]["coherence"] == pytest.approx(0.5919, abs=1e-4)
+    assert analysis["emotion_projection"]["intensity"] == pytest.approx(0.75)
     assert analysis["color_code"] == emotion_vector_to_color_code(vector)
     assert analysis["palette_version"] == EMOTION_VECTOR_COLOR_VERSION
     with sessions() as session:
@@ -213,6 +219,33 @@ def test_jev_affect_and_color_are_persisted_and_returned(
         assert saved is not None
         assert saved.joy == 0.75 and saved.anticipation == 0.5
         assert saved.palette_version == EMOTION_VECTOR_COLOR_VERSION
+        assert saved.projection_x == pytest.approx(-0.1752, abs=1e-4)
+        assert saved.projection_y == pytest.approx(0.5654, abs=1e-4)
+        assert saved.coherence == pytest.approx(0.5919, abs=1e-4)
+        assert saved.intensity == pytest.approx(0.75)
+
+
+def test_response_supports_vector_rows_without_projection_data(
+    client: tuple[TestClient, sessionmaker[Session]],
+) -> None:
+    test_client, sessions = client
+    book_id = create_book(test_client)["id"]
+    url = f"/api/v1/books/{book_id}/pages/5/review"
+    assert test_client.put(url, json={"review_text": "Legacy vector row"}).status_code == 201
+
+    with sessions() as session:
+        analysis = session.scalar(select(EmotionAnalysis))
+        assert analysis is not None
+        analysis.projection_x = None
+        analysis.projection_y = None
+        analysis.coherence = None
+        analysis.intensity = None
+        session.commit()
+
+    response = test_client.get(url)
+    assert response.status_code == 200
+    assert response.json()["analysis"]["emotion_vector"]["joy"] == 0
+    assert response.json()["analysis"]["emotion_projection"] is None
 
 
 def test_analyzer_selection_depends_on_api_key_configuration(
