@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { colors } from '../../theme/colors';
+import { gradients } from '../../theme/gradients';
 import { BookmarkAddIcon } from '../atoms/BookmarkAddIcon';
 
 type FloatingActionButtonProps = {
@@ -21,9 +22,9 @@ export function FloatingActionButton({ onPress, disabled = false }: FloatingActi
       <Svg height="100%" pointerEvents="none" preserveAspectRatio="none" style={styles.gradient} viewBox="0 0 100 100" width="100%">
         <Defs>
           <LinearGradient id="floatingActionGradient" x1="0" x2="1" y1="0" y2="1">
-            <Stop offset="0" stopColor="#FF8C8C" />
-            <Stop offset="0.45" stopColor="#DE7ECD" />
-            <Stop offset="1" stopColor={colors.navAccent} />
+            <Stop offset="0" stopColor={gradients.button.start} />
+            <Stop offset="0.45" stopColor={gradients.button.middle} />
+            <Stop offset="1" stopColor={gradients.button.end} />
           </LinearGradient>
         </Defs>
         <Rect fill="url(#floatingActionGradient)" height="100" rx="30" width="100" />
