@@ -4,7 +4,28 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
+from ..domain.reactions import ReactionKind
 from ..domain.values import ReviewVisibility
+
+
+class ReactionUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: ReactionKind
+
+
+class ReactionCounts(BaseModel):
+    empathy: int
+    insight: int
+    curious: int
+
+
+class ReactionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    review_id: int
+    counts: ReactionCounts
+    my_reaction: ReactionKind | None
 
 
 class ReviewVisibilityUpdate(BaseModel):

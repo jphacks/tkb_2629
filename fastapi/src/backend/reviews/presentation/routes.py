@@ -19,6 +19,8 @@ from .schemas import (
     PublicReviewDistributionResponse,
     PublicReviewResponse,
     PublicReviewsResponse,
+    ReactionResponse,
+    ReactionUpdate,
     ReviewSave,
     ReviewSpoilersUpdate,
     ReviewVisibilityUpdate,
@@ -28,6 +30,59 @@ router = APIRouter(tags=["reviews"])
 ReviewServiceDependency = Annotated[ReviewService, Depends(get_review_service)]
 CurrentUserId = Annotated[int, Depends(get_current_user_id)]
 PageNumber = Annotated[int, Path(ge=1)]
+GoogleBooksId = Annotated[str, Path(min_length=1, max_length=256, pattern=r"^\S+$")]
+ReviewId = Annotated[int, Path(ge=1)]
+PublicService = Annotated[PublicReviewService, Depends(get_public_review_service)]
+
+
+@router.get(
+    "/catalog/books/{google_books_id}/reviews/{review_id}/reactions",
+    response_model=ReactionResponse,
+)
+def get_reactions(
+    google_books_id: GoogleBooksId,
+    review_id: ReviewId,
+    service: PublicService,
+    user_id: CurrentUserId,
+    response: Response,
+) -> ReactionResponse:
+    response.headers["Cache-Control"] = "no-store"
+    return ReactionResponse.model_validate(
+        service.reaction_summary(google_books_id, review_id, user_id)
+    )
+
+
+@router.put(
+    "/catalog/books/{google_books_id}/reviews/{review_id}/reaction",
+    response_model=ReactionResponse,
+)
+def put_reaction(
+    google_books_id: GoogleBooksId,
+    review_id: ReviewId,
+    request: ReactionUpdate,
+    service: PublicService,
+    user_id: CurrentUserId,
+    response: Response,
+) -> ReactionResponse:
+    response.headers["Cache-Control"] = "no-store"
+    return ReactionResponse.model_validate(
+        service.react(google_books_id, review_id, user_id, request.kind)
+    )
+
+
+@router.delete(
+    "/catalog/books/{google_books_id}/reviews/{review_id}/reaction",
+    response_model=ReactionResponse,
+)
+def delete_reaction(
+    google_books_id: GoogleBooksId,
+    review_id: ReviewId,
+    service: PublicService,
+    user_id: CurrentUserId,
+    response: Response,
+) -> ReactionResponse:
+    response.headers["Cache-Control"] = "no-store"
+    return ReactionResponse.model_validate(service.react(google_books_id, review_id, user_id, None))
 
 
 @router.get(

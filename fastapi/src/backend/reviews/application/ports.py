@@ -6,12 +6,14 @@ from types import TracebackType
 from typing import Protocol, Self
 
 from ..domain.entities import PageReview
+from ..domain.reactions import ReactionKind
 from .results import (
     AnalysisPreview,
     EmotionSummary,
     PagePopularity,
     PublicReading,
     PublicReviewCount,
+    ReactionSummary,
     ReadingScope,
 )
 
@@ -61,7 +63,14 @@ class ReviewRepository(Protocol):
     def page_popularity(self, reading_ids: Sequence[int]) -> list[PagePopularity]: ...
 
 
+class ReactionRepository(Protocol):
+    def summary(self, review_id: int, user_id: int) -> ReactionSummary: ...
+    def set(self, review_id: int, user_id: int, kind: ReactionKind | None) -> None: ...
+
+
 class ReviewUnitOfWork(Protocol):
+    @property
+    def reactions(self) -> ReactionRepository: ...
     @property
     def reviews(self) -> ReviewRepository: ...
     @property

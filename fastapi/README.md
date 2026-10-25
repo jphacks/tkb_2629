@@ -39,6 +39,8 @@ PostgreSQLの既存ボリュームがある場合、`POSTGRES_DB` を変更し�
 本人用の公開用表示名APIについては [公開用表示名](docs/public-profile.md) を参照してください。
 ログイン済みの読者向けの感想取得・範囲絞り込み・全件分布・感情色は
 [公開感想一覧・分布API](docs/public-reviews.md) を参照してください。
+感想への共感・なるほど・気になるは [リアクションAPI](docs/review-reactions.md) を参照してください。
+リアクションを使う前に `0013_review_reactions` まで移行を適用してください。
 
 構成と境界の詳細は [コンテキスト設計](docs/contexts.md) を参照してください。
 
