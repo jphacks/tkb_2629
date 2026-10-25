@@ -13,39 +13,89 @@ import { ScreenFrame } from '../../components/organisms/ScreenFrame';
 import { getBook, type Book } from '../../lib/api';
 import type { Navigate } from '../types';
 
-export type ReadingStatus = 'reading' | 'completed'; // 読み途中 or 読了
-
 type BookDetailScreenProps = {
-  onNavigate: (route: ScreenKey) => void;
-  readingStatus?: ReadingStatus;
+  bookId: number;
+  onNavigate: Navigate;
 };
 
-export function BookDetailScreen({ onNavigate, readingStatus = 'reading' }: BookDetailScreenProps) {
+type BookDetailState =
+  | { bookId: number; status: 'loading' }
+  | { bookId: number; status: 'success'; book: Book }
+  | { bookId: number; status: 'error'; message: string };
+
+export function BookDetailScreen({ bookId, onNavigate }: BookDetailScreenProps) {
+  const [state, setState] = useState<BookDetailState>({ bookId, status: 'loading' });
+  const [requestVersion, setRequestVersion] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setState({ bookId, status: 'loading' });
+    getBook(bookId)
+      .then((book) => {
+        if (active) {
+          setState({ bookId, status: 'success', book });
+        }
+      })
+      .catch((reason: unknown) => {
+        if (active) {
+          setState({
+            bookId,
+            status: 'error',
+            message: reason instanceof Error ? reason.message : '本の詳細の取得に失敗しました。',
+          });
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [bookId, requestVersion]);
+
+  const book = state.bookId === bookId && state.status === 'success' ? state.book : null;
   const emotionColor = getAggregateEmotionColor(allBookmarks);
   const emotionTint = getEmotionTint(emotionColor);
-  const isReading = readingStatus === 'reading'; //一旦読み途中で登録
+  const isReading = book?.reading_status === 'reading';
 
   return (
     <ScreenFrame activeRoute="bookshelf" onNavigate={onNavigate} title="本の詳細">
       <ScrollView contentContainerStyle={styles.content}>
-        <GlassSurface style={styles.hero}>
-          <Pressable accessibilityLabel="本の情報を編集" accessibilityRole="button" onPress={() => onNavigate('book-edit')} style={styles.editButton}>
-            <Ionicons color={emotionColor} name="pencil" size={22} />
-          </Pressable>
-          <BookCover large title="星の旅" />
-          <View style={styles.info}>
-            <Text style={styles.title}>星の旅</Text>
-            <Text style={styles.author}>著者名</Text>
-            <Text style={styles.publisher}>出版社 ・ 2025年</Text>
+        {(state.bookId !== bookId || state.status === 'loading') && (
+          <Text style={styles.message}>本の詳細を読み込んでいます…</Text>
+        )}
+        {state.bookId === bookId && state.status === 'error' && (
+          <View style={styles.error}>
+            <Text accessibilityRole="alert" style={styles.message}>{state.message}</Text>
+            <ActionButton label="再試行" onPress={() => {
+              setState({ bookId, status: 'loading' });
+              setRequestVersion((version) => version + 1);
+            }} />
           </View>
-        </GlassSurface>
-        {isReading && <GlassSurface style={styles.card}>
-          <ReadingProgress color={emotionColor} currentPage={42} totalPages={180} />
-        </GlassSurface>}
-        <BookmarkListCard accentColor={emotionColor} tintColor={emotionTint} />
-        <EmotionAnalysisCard bookmarks={allBookmarks} />
+        )}
+        {book && (
+          <>
+            <GlassSurface style={styles.hero}>
+              <Pressable accessibilityLabel="本の情報を編集" accessibilityRole="button" onPress={() => onNavigate({ name: 'book-edit', bookId })} style={styles.editButton}>
+                <Ionicons color={emotionColor} name="pencil" size={22} />
+              </Pressable>
+              <BookCover large title={book.title} author={book.author ?? '著者不明'} />
+              <View style={styles.info}>
+                <Text style={styles.title}>{book.title}</Text>
+                <Text style={styles.author}>{book.author ?? '著者不明'}</Text>
+                <Text style={styles.status}>{isReading ? '読書中' : '読了'}</Text>
+              </View>
+            </GlassSurface>
+            {isReading && (
+              <GlassSurface style={styles.card}>
+                <ReadingProgress color={emotionColor} currentPage={book.current_page} totalPages={book.total_pages} />
+              </GlassSurface>
+            )}
+            {isReading && <Text style={styles.message}>しおり追加は接続準備中です。</Text>}
+            <Text style={styles.message}>しおり一覧・感情分析・感情色はサンプル表示です。</Text>
+            <BookmarkListCard accentColor={emotionColor} tintColor={emotionTint} />
+            <EmotionAnalysisCard bookmarks={allBookmarks} />
+          </>
+        )}
       </ScrollView>
-      {isReading && <FloatingActionButton onPress={() => onNavigate('bookmark')} />}
+      {isReading && <FloatingActionButton disabled />}
     </ScreenFrame>
   );
 }
@@ -57,6 +107,8 @@ const styles = StyleSheet.create({
   editButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 18, elevation: 2, height: 36, justifyContent: 'center', position: 'absolute', right: 14, top: 14, width: 36 },
   title: { color: '#464646', fontSize: 24, fontWeight: '700'},
   author: { color: '#777777', fontSize: 14, marginTop: 8 },
-  publisher: { color: '#9CA3AF', fontSize: 12, marginTop: 6 },
+  status: { color: '#777777', fontSize: 12, marginTop: 6 },
+  message: { color: '#777777', fontSize: 14, marginTop: 16 },
+  error: { gap: 16 },
   card: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, elevation: 2, marginTop: 16, padding: 18, shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } },
 });

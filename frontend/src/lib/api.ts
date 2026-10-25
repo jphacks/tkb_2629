@@ -85,8 +85,8 @@ export async function importGoogleBook(googleBooksId: string): Promise<Book> {
   return parseResponse<Book>(response, '本棚への追加に失敗しました');
 }
 
-export async function getBooks(): Promise<Book[]> {
-  const response = await fetch(`${API_URL}/books?limit=100&offset=0`);
+export async function getBooks(offset = 0): Promise<Book[]> {
+  const response = await fetch(`${API_URL}/books?limit=100&offset=${offset}`);
   const payload = await parseResponse<{ items: Book[] }>(
     response,
     '本棚の取得に失敗しました',

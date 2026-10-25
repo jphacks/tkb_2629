@@ -4,16 +4,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 
 type FloatingActionButtonProps = {
-  onPress: () => void;
+  onPress?: () => void;
+  disabled?: boolean;
 };
 
-export function FloatingActionButton({ onPress }: FloatingActionButtonProps) {
+export function FloatingActionButton({ onPress, disabled = false }: FloatingActionButtonProps) {
   return (
     <Pressable
       accessibilityLabel="しおりを追加"
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.button, disabled && styles.disabled, pressed && styles.pressed]}
     >
       <Ionicons color={colors.background} name="bookmark" size={24} />
     </Pressable>
@@ -41,4 +44,5 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   pressed: { opacity: 0.78, transform: [{ scale: 0.94 }] },
+  disabled: { opacity: 0.4 },
 });
