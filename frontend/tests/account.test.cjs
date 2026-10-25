@@ -20,7 +20,7 @@ function load(file, deps) {
   const code = ts.transpileModule(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2020 },
   }).outputText;
-  vm.runInNewContext(code, { exports, Error, Promise, require: (name) => deps[name] ?? stub });
+  vm.runInNewContext(code, { exports, Error, Promise, process: { env: {} }, require: (name) => deps[name] ?? stub });
   return exports;
 }
 
@@ -354,7 +354,7 @@ test('app password reset back pops the actual entry route for authenticated and 
       'react/jsx-runtime': { jsx, jsxs: jsx },
       './src/lib/auth': { currentUser: () => user },
     });
-    const render = () => { cursor = 0; return App(); };
+    const render = () => { cursor = 0; return App().type(); };
     for (let repeat = 0; repeat < 2; repeat += 1) {
       render().props.onNavigate('forgot-password');
       const tree = render();
