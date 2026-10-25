@@ -30,6 +30,8 @@ type AddBookScreenProps = {
   subtitle?: string;
 };
 
+const genres = ['小説', 'ミステリー', 'SF', 'ファンタジー', 'エッセイ', '歴史', 'ビジネス', '科学'];
+
 export function AddBookScreen({
   onNavigate,
   activeRoute = 'bookshelf',
@@ -206,6 +208,23 @@ export function AddBookScreen({
             <Ionicons color={colors.background} name="search" size={21} />
           </Pressable>
         </View>
+        <View style={styles.genres}>
+          <Text style={styles.genreHeading}>ジャンルから探す</Text>
+          <Text style={styles.genreHint}>ジャンル名でキーワード検索します</Text>
+          <View style={styles.genreList}>
+            {genres.map((genre) => (
+              <Pressable
+                key={genre}
+                accessibilityLabel={`${genre}の本を探す`}
+                accessibilityRole="button"
+                onPress={() => { void search(genre); }}
+                style={({ pressed }) => [styles.genreButton, pressed && styles.searchButtonPressed]}
+              >
+                <Text style={styles.genreLabel}>{genre}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
         <SearchHistory
           items={history.items} error={history.error} loading={history.loading}
           onSelect={(value) => { void search(value); }}
@@ -281,6 +300,12 @@ const styles = StyleSheet.create({
   searchButton: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 12, height: 40, justifyContent: 'center', overflow: 'hidden', position: 'absolute', right: 6, top: 6, width: 40 },
   searchGradient: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
   searchButtonPressed: { opacity: 0.72, transform: [{ scale: 0.94 }] },
+  genres: { gap: 8 },
+  genreHeading: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  genreHint: { color: colors.textSecondary, fontSize: 12 },
+  genreList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  genreButton: { minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 22, backgroundColor: colors.backgroundSoft },
+  genreLabel: { color: colors.text, fontSize: 14, fontWeight: '600' },
   message: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
   resultCount: { color: colors.text, fontSize: 16, fontWeight: '700', marginTop: 8 },
   result: {

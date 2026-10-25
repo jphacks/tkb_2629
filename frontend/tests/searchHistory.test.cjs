@@ -202,3 +202,83 @@ for (const scope of ['catalog', 'bookshelf']) {
     assert.equal(nodes(render()).filter((node) => node.type === 'SearchHistory').length, 1);
   });
 }
+
+function genreHarness() {
+  const h = hooks(), requests = [], remembered = [];
+  const { AddBookScreen } = load('src/screens/books/AddBookScreen.tsx', {
+    react: h.react,
+    'react/jsx-runtime': { jsx, jsxs: jsx },
+    'react-native': { StyleSheet: { create: (x) => x }, View: 'View', Text: 'Text', ScrollView: 'ScrollView', Pressable: 'Pressable' },
+    '../../lib/readingBooks': { loadAllBooks: async () => [] },
+    '../../lib/searchHistory': { useSearchHistory: () => ({
+      items: [], error: null, loading: false,
+      remember: async (query) => { remembered.push(query); },
+    }) },
+    '../../lib/api': {
+      searchGoogleBooks: (query) => new Promise((resolve, reject) => { requests.push({ query, resolve, reject }); }),
+      importGoogleBook: () => { assert.fail('genre selection must not import a book'); },
+    },
+  });
+  const render = () => h.render(() => AddBookScreen({ onNavigate() {} }));
+  const press = (label) => nodes(render()).find((node) => node.props?.accessibilityLabel === label).props.onPress();
+  const input = () => nodes(render()).find((node) => node.type === 'ShadowInput');
+  return { render, press, input, requests, remembered };
+}
+
+test('all genre buttons perform real keyword searches, populate the input and record history', async () => {
+  const h = genreHarness();
+  const genres = ['小説', 'ミステリー', 'SF', 'ファンタジー', 'エッセイ', '歴史', 'ビジネス', '科学'];
+  assert.equal(h.requests.length, 0);
+  for (const genre of genres) {
+    const button = nodes(h.render()).find((node) => node.props?.accessibilityLabel === `${genre}の本を探す`);
+    assert.equal(button.props.accessibilityRole, 'button');
+    assert.ok(button.props.style({ pressed: false })[0].minHeight >= 44);
+    assert.ok(button.props.style({ pressed: false })[0].minWidth >= 44);
+    button.props.onPress();
+    assert.equal(h.input().props.value, genre);
+    assert.equal(h.requests.at(-1).query, genre);
+    assert.equal(h.remembered.at(-1), genre);
+    h.requests.at(-1).resolve([]);
+    await flush();
+    assert.ok(nodes(h.render()).some((node) => node.props?.children === 'ページ数を確認できる書籍が見つかりませんでした。'));
+  }
+  h.input().props.onChangeText('自由なタイトル');
+  h.input().props.onSubmitEditing();
+  assert.equal(h.requests.at(-1).query, '自由なタイトル');
+  h.requests.at(-1).reject(new Error('検索サービスに接続できません'));
+  await flush();
+  assert.ok(nodes(h.render()).some((node) => node.props?.children === '検索サービスに接続できません'));
+});
+
+test('rapid genre changes ignore outdated results and failures and can recover after an error', async () => {
+  const h = genreHarness();
+  h.press('小説の本を探す');
+  h.press('科学の本を探す');
+  const book = { google_books_id: 'science', title: '科学の本', total_pages: 120 };
+  h.requests[1].resolve([book]);
+  await flush();
+  h.requests[0].reject(new Error('古い検索の失敗'));
+  await flush();
+  const result = () => nodes(h.render()).find((node) => node.props?.accessibilityLabel === '科学の本の検索結果');
+  assert.ok(result());
+  assert.equal(h.input().props.value, '科学');
+  assert.ok(!nodes(h.render()).some((node) => node.props?.children === '古い検索の失敗'));
+  h.press('歴史の本を探す');
+  h.press('SFの本を探す');
+  h.requests[3].reject(new Error('最新の検索の失敗'));
+  await flush();
+  h.requests[2].resolve([book]);
+  await flush();
+  assert.equal(result(), undefined);
+  assert.ok(nodes(h.render()).some((node) => node.props?.children === '最新の検索の失敗'));
+  h.press('科学の本を探す');
+  h.requests[4].resolve([book]);
+  await flush();
+  assert.ok(result());
+  nodes(h.render()).find((node) => node.props?.accessibilityLabel === '科学の本の詳細を見る').props.onPress();
+  let tree = h.render();
+  assert.equal(tree.type, 'BookPreviewScreen');
+  tree.props.onBack();
+  assert.ok(result());
+  assert.equal(h.input().props.value, '科学');
+});
