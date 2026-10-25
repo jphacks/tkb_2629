@@ -3,7 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from ..domain.reactions import ReactionKind
 from ..domain.values import ReviewVisibility
+
+
+@dataclass(frozen=True)
+class ReactionSummary:
+    review_id: int
+    counts: dict[ReactionKind, int]
+    my_reaction: ReactionKind | None
 
 
 @dataclass(frozen=True)

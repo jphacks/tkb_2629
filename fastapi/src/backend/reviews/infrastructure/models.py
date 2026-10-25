@@ -18,7 +18,25 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.shared.database import Base
 
+from ..domain.reactions import ReactionKind
 from ..domain.values import ReviewVisibility
+
+
+class ReviewReaction(Base):
+    __tablename__ = "review_reactions"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('empathy', 'insight', 'curious')", name="ck_review_reactions_kind"
+        ),
+    )
+
+    review_id: Mapped[int] = mapped_column(
+        ForeignKey("page_reviews.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+    kind: Mapped[ReactionKind] = mapped_column(String(7), nullable=False)
 
 
 class PageReview(Base):

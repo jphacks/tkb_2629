@@ -1,6 +1,7 @@
-from ..domain.errors import InvalidInput
+from ..domain.errors import InvalidInput, NotFound
+from ..domain.reactions import REACTION_KINDS, ReactionKind
 from .ports import AnalysisGateway, PublicAuthorGateway, PublicReadingGateway, UnitOfWorkFactory
-from .results import PublicReading, PublicReviewCount, PublicReviewView
+from .results import PublicReading, PublicReviewCount, PublicReviewView, ReactionSummary
 
 
 class PublicReviewService:
@@ -15,6 +16,42 @@ class PublicReviewService:
         self.readings = readings
         self.authors = authors
         self.analyses = analyses
+
+    def reaction_summary(
+        self, google_books_id: str, review_id: int, user_id: int
+    ) -> ReactionSummary:
+        return self._reaction(google_books_id, review_id, user_id, change=False)
+
+    def react(
+        self, google_books_id: str, review_id: int, user_id: int, kind: ReactionKind | None
+    ) -> ReactionSummary:
+        return self._reaction(google_books_id, review_id, user_id, change=True, kind=kind)
+
+    def _reaction(
+        self,
+        google_books_id: str,
+        review_id: int,
+        user_id: int,
+        *,
+        change: bool,
+        kind: ReactionKind | None = None,
+    ) -> ReactionSummary:
+        if review_id < 1 or user_id < 1 or (kind is not None and kind not in REACTION_KINDS):
+            raise InvalidInput("Invalid reaction")
+        eligible, _ = self._eligible(google_books_id)
+        if not eligible:
+            raise NotFound("Public review not found")
+        with self.units() as unit:
+            # Serialize writers on the parent even before a user's first reaction exists.
+            row = unit.reviews.get(review_id, lock=change)
+            if row is None or row.visibility != "public" or row.reading_id not in eligible:
+                raise NotFound("Public review not found")
+            if change:
+                unit.reactions.set(review_id, user_id, kind)
+            summary = unit.reactions.summary(review_id, user_id)
+            if change:
+                unit.commit()
+            return summary
 
     def _eligible(self, google_books_id: str) -> tuple[dict[int, PublicReading], dict[int, str]]:
         if (
