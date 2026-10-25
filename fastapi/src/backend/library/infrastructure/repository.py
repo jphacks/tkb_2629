@@ -5,9 +5,9 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from ..domain.entities import Reading, StoredBook
-from ..domain.errors import NotFound
-from ..domain.values import BookDetails
-from .models import Book, UserBook
+from ..domain.errors import InvalidInput, NotFound
+from ..domain.values import BookDetails, CoverStyle
+from .models import Book, BookCoverStyle, BookMemo, UserBook
 
 
 def stored_book(row: Book) -> StoredBook:
@@ -33,6 +33,39 @@ def reading_entity(row: UserBook) -> Reading:
 class SqlBookRepository:
     def __init__(self, db: Session):
         self.db = db
+
+    def get_cover(self, user_id: int, book_id: int) -> CoverStyle:
+        row = self.db.get(BookCoverStyle, (user_id, book_id))
+        if row is None:
+            return CoverStyle()
+        if row.color_mode not in ("auto", "palette", "mine", "others"):
+            raise InvalidInput("Invalid stored cover color mode")
+        return CoverStyle(row.color_mode, row.palette, row.pattern)
+
+    def save_cover(self, user_id: int, book_id: int, style: CoverStyle) -> None:
+        row = self.db.get(BookCoverStyle, (user_id, book_id))
+        if style == CoverStyle():
+            if row is not None:
+                self.db.delete(row)
+            return
+        if row is None:
+            row = BookCoverStyle(user_id=user_id, book_id=book_id)
+            self.db.add(row)
+        row.color_mode, row.palette, row.pattern = style.color_mode, style.palette, style.pattern
+
+    def get_memo(self, user_id: int, book_id: int) -> str:
+        row = self.db.get(BookMemo, (user_id, book_id))
+        return row.content if row is not None else ""
+
+    def save_memo(self, user_id: int, book_id: int, content: str) -> None:
+        row = self.db.get(BookMemo, (user_id, book_id))
+        if not content:
+            if row is not None:
+                self.db.delete(row)
+        elif row is None:
+            self.db.add(BookMemo(user_id=user_id, book_id=book_id, content=content))
+        else:
+            row.content = content
 
     def find_catalog(self, google_books_id: str) -> StoredBook | None:
         row = self.db.scalar(select(Book).where(Book.google_books_id == google_books_id))

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from ..domain.catalog import CatalogBook
+from ..domain.values import CoverStyle
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,7 @@ class BookView:
     started_at: datetime | None = None
     completed_at: datetime | None = None
     last_read_at: datetime | None = None
+    cover_style: CoverStyle | None = None
 
 
 @dataclass(frozen=True)

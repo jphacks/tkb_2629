@@ -9,6 +9,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
     func,
     text,
@@ -94,3 +95,46 @@ class UserBook(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
+
+
+class BookMemo(Base):
+    __tablename__ = "book_memos"
+    __table_args__ = (
+        CheckConstraint("length(content) <= 10000", name="ck_book_memos_content_length"),
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    book_id: Mapped[int] = mapped_column(
+        ForeignKey("books.id", ondelete="CASCADE"), primary_key=True
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class BookCoverStyle(Base):
+    __tablename__ = "book_cover_styles"
+    __table_args__ = (
+        CheckConstraint(
+            "color_mode IN ('auto', 'palette', 'mine', 'others')",
+            name="ck_book_cover_styles_mode",
+        ),
+        CheckConstraint(
+            "(color_mode = 'palette' AND palette IS NOT NULL AND palette BETWEEN 0 AND 7) "
+            "OR (color_mode != 'palette' AND palette IS NULL)",
+            name="ck_book_cover_styles_palette",
+        ),
+        CheckConstraint(
+            "pattern IS NULL OR pattern BETWEEN 0 AND 3", name="ck_book_cover_styles_pattern"
+        ),
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    book_id: Mapped[int] = mapped_column(
+        ForeignKey("books.id", ondelete="CASCADE"), primary_key=True
+    )
+    color_mode: Mapped[str] = mapped_column(String(16), nullable=False)
+    palette: Mapped[int | None] = mapped_column(Integer)
+    pattern: Mapped[int | None] = mapped_column(Integer)
