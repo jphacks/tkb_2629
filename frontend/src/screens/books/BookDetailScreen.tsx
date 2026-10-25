@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BookCover } from '../../components/molecules/BookCover';
+import { FloatingActionButton } from '../../components/molecules/FloatingActionButton';
 import { ReadingProgress } from '../../components/molecules/ReadingProgress';
 import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { EmotionAnalysisCard, getAggregateEmotionColor, getEmotionTint } from '../../components/organisms/EmotionAnalysisCard';
@@ -9,9 +10,17 @@ import { allBookmarks, BookmarkListCard } from '../../components/organisms/Bookm
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
 import type { ScreenKey } from '../types';
 
-export function BookDetailScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => void }) {
+export type ReadingStatus = 'reading' | 'completed'; // 読み途中 or 読了
+
+type BookDetailScreenProps = {
+  onNavigate: (route: ScreenKey) => void;
+  readingStatus?: ReadingStatus;
+};
+
+export function BookDetailScreen({ onNavigate, readingStatus = 'reading' }: BookDetailScreenProps) {
   const emotionColor = getAggregateEmotionColor(allBookmarks);
   const emotionTint = getEmotionTint(emotionColor);
+  const isReading = readingStatus === 'reading'; //一旦読み途中で登録
 
   return (
     <ScreenFrame activeRoute="bookshelf" onNavigate={onNavigate} title="本の詳細">
@@ -27,12 +36,13 @@ export function BookDetailScreen({ onNavigate }: { onNavigate: (route: ScreenKey
             <Text style={styles.publisher}>出版社 ・ 2025年</Text>
           </View>
         </GlassSurface>
-        <GlassSurface style={styles.card}>
+        {isReading && <GlassSurface style={styles.card}>
           <ReadingProgress color={emotionColor} currentPage={42} totalPages={180} />
-        </GlassSurface>
+        </GlassSurface>}
         <BookmarkListCard accentColor={emotionColor} tintColor={emotionTint} />
         <EmotionAnalysisCard bookmarks={allBookmarks} />
       </ScrollView>
+      {isReading && <FloatingActionButton onPress={() => onNavigate('bookmark')} />}
     </ScreenFrame>
   );
 }
