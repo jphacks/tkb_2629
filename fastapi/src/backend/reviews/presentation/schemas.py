@@ -4,6 +4,14 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ..domain.values import ReviewVisibility
+
+
+class ReviewVisibilityUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    visibility: ReviewVisibility
+
 
 class PagePopularityPoint(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -45,3 +53,4 @@ class PageReviewResponse(BaseModel):
     iteration_number: int
     analysis_status: str
     source: str | None
+    visibility: ReviewVisibility = "private"

@@ -16,6 +16,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.shared.database import Base
 
+from ..domain.values import ReviewVisibility
+
 
 class PageReview(Base):
     __tablename__ = "page_reviews"
@@ -27,6 +29,10 @@ class PageReview(Base):
             "analysis_status IN ('pending', 'completed', 'failed')",
             name="ck_page_reviews_analysis_status",
         ),
+        CheckConstraint(
+            "visibility IN ('private', 'public')",
+            name="ck_page_reviews_visibility",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -35,6 +41,9 @@ class PageReview(Base):
     )
     page_number: Mapped[int] = mapped_column(Integer, nullable=False)
     review_text: Mapped[str] = mapped_column(Text, nullable=False)
+    visibility: Mapped[ReviewVisibility] = mapped_column(
+        String(7), nullable=False, default="private", server_default="private"
+    )
     analysis_revision: Mapped[int] = mapped_column(
         Integer, nullable=False, default=1, server_default="1"
     )

@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from ..domain.values import ReviewVisibility
+
 
 @dataclass(frozen=True)
 class ReviewView:
@@ -16,6 +18,7 @@ class ReviewView:
     iteration_number: int = 1
     analysis_status: str = "pending"
     source: str | None = None
+    visibility: ReviewVisibility = "private"
 
 
 @dataclass(frozen=True)

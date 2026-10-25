@@ -4,7 +4,7 @@ import logging
 
 from ..domain.entities import PageReview
 from ..domain.errors import NotFound
-from ..domain.values import ReviewPage, ReviewText
+from ..domain.values import ReviewPage, ReviewText, ReviewVisibility
 from .errors import AnalysisUnavailable
 from .ports import AnalysisGateway, Clock, ReadingGateway, UnitOfWorkFactory
 from .results import EmotionSummary, PagePopularity, ReadingScope, ReviewSaveResult, ReviewView
@@ -38,6 +38,7 @@ class ReviewService:
                 updated_at=row.updated_at,
                 iteration_number=scope.iteration_number,
                 analysis_status=row.analysis_status,
+                visibility=row.visibility,
                 color_code=previews[(row.id, row.revision)].color_code
                 if (row.id, row.revision) in previews
                 else "#808080",
@@ -116,6 +117,23 @@ class ReviewService:
         with self.units() as unit:
             references = unit.reviews.analysis_references(reading_ids)
         return self.analyses.summarize(references)
+
+    def set_visibility(
+        self,
+        user_id: int,
+        book_id: int,
+        page: int,
+        visibility: ReviewVisibility,
+        iteration: int | None = None,
+    ) -> None:
+        scope = self.readings.resolve(user_id, book_id, iteration)
+        with self.units() as unit:
+            row = unit.reviews.find(scope.id, page, lock=True)
+            if row is None:
+                raise NotFound("Review not found")
+            row.set_visibility(visibility, self.clock.now())
+            unit.reviews.save_visibility(row)
+            unit.commit()
 
     def page_popularity(self, user_id: int, book_id: int) -> list[PagePopularity]:
         self.readings.resolve(user_id, book_id, None)
