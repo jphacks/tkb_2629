@@ -20,7 +20,13 @@ import type { Navigate, Route } from './src/screens/types';
 export default function App() {
   const [route, setRoute] = useState<Route>({ name: 'register' });
   const navigate: Navigate = (target) => {
-    setRoute(typeof target === 'string' ? { name: target } : target);
+    if (typeof target !== 'string') {
+      setRoute(target);
+    } else if (target === 'bookmark') {
+      setRoute({ name: 'bookmark' });
+    } else {
+      setRoute({ name: target });
+    }
   };
 
   switch (route.name) {
@@ -38,6 +44,6 @@ export default function App() {
     case 'add-book': return <AddBookScreen onNavigate={navigate} />;
     case 'account-settings': return <AccountSettingsScreen onNavigate={navigate} />;
     case 'reading-complete': return <ReadingCompleteScreen onNavigate={navigate} />;
-    case 'bookmark': return <BookmarkScreen onNavigate={navigate} />;
+    case 'bookmark': return <BookmarkScreen bookId={route.bookId} iteration={route.iteration} onNavigate={navigate} />;
   }
 }

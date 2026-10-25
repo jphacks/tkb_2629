@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from backend.application.ports import BookCatalog
 from backend.domain.catalog import CatalogBook
-from backend.domain.errors import Conflict
+from backend.domain.emotions import EmotionResult
+from backend.domain.errors import Conflict, NotFound
 from backend.infrastructure.database import Base
 from backend.infrastructure.models import Book, User, UserBook
 from backend.infrastructure.repositories import SqlReadingRepository, SqlReviewRepository
@@ -53,6 +54,46 @@ def test_catalog_book_is_shared_between_users(db, catalog_book):
     assert stored_book.title is None
     assert stored_book.author is None
     assert stored_book.total_pages is None
+
+
+def test_review_list_is_scoped_ordered_paginated_and_uses_current_analysis(db):
+    readings = SqlReadingRepository(db)
+    reviews = SqlReviewRepository(db)
+    first = readings.add(1, "First", None, 180, None)
+    second = readings.add(1, "Second", None, 180, None)
+    readings.add(2, "First", None, 180, first.id)
+    later = reviews.save_text(1, first.id, 42, "Joy", 1)
+    result = EmotionResult(
+        emotion_label="joy",
+        color_code="#F0CC20",
+        confidence=0.8,
+        model_version="test",
+        source="jev",
+    )
+    reviews.complete(later.review_id, later.revision, result)
+    reviews.save_text(1, first.id, 3, "Pending", 1)
+    reviews.save_text(2, first.id, 7, "Other user", 1)
+    reviews.save_text(1, second.id, 5, "Other book", 1)
+    listed = reviews.list(1, first.id, None, 100, 0)
+    assert [item.page_number for item in listed] == [3, 42]
+    assert listed[0].analysis_status == "pending"
+    assert listed[0].source is None
+    assert listed[1].color_code == "#F0CC20"
+    assert listed[1].source == "jev"
+    assert reviews.get(1, first.id, 42, 1) == listed[1]
+    assert [item.page_number for item in reviews.list(1, first.id, 1, 1, 1)] == [42]
+    revised = reviews.save_text(1, first.id, 42, "Changed", 1)
+    pending = reviews.list(1, first.id, 1, 100, 0)[1]
+    assert pending.color_code == "#808080"
+    assert pending.source is None
+    reviews.fail(revised.review_id, revised.revision)
+    assert reviews.list(1, first.id, 1, 100, 0)[1].analysis_status == "failed"
+    readings.complete_iteration(1, first.id, 1, 180)
+    readings.start_iteration(1, first.id)
+    assert reviews.list(1, first.id, None, 100, 0) == []
+    assert len(reviews.list(1, first.id, 1, 100, 0)) == 2
+    with pytest.raises(NotFound):
+        reviews.list(2, second.id, None, 100, 0)
 
 
 def test_catalog_book_cannot_be_added_twice_to_same_bookshelf(db, catalog_book):

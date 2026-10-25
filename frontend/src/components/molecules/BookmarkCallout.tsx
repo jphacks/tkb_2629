@@ -11,6 +11,7 @@ export function BookmarkCallout({ accentColor = '#FF7171', bookmark, position, t
       <Text style={styles.body}>{bookmark.note}</Text>
       <Text style={[styles.meta, { color: accentColor }]}>{bookmark.page}ページ ・ {bookmark.date}</Text>
       <Text style={styles.author}>{bookmark.author}</Text>
+      {bookmark.analysisLabel && <Text style={styles.author}>{bookmark.analysisLabel}</Text>}
     </View>
   );
 }

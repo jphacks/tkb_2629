@@ -154,6 +154,18 @@ def get_page_popularity(
     )
 
 
+@reading.get("/books/{book_id}/reviews", response_model=list[PageReviewResponse])
+def list_reviews(
+    book_id: int,
+    service: ReviewServiceDependency,
+    user_id: CurrentUserId,
+    iteration: int | None = Query(default=None, ge=1),
+    limit: int = Query(default=100, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> list[Review]:
+    return service.list(user_id, book_id, iteration, limit, offset)
+
+
 @reading.get("/books/{book_id}/pages/{page_number}/review", response_model=PageReviewResponse)
 def get_review(
     book_id: int,

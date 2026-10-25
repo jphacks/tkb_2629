@@ -89,6 +89,12 @@ class BookCatalog(ABC):
 
 class ReviewRepository(ABC):
     @abstractmethod
+    def list(
+        self, user_id: int, book_id: int, iteration_number: int | None, limit: int, offset: int
+    ) -> list[Review]:
+        raise NotImplementedError
+
+    @abstractmethod
     def get(
         self,
         user_id: int,

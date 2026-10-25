@@ -3,22 +3,22 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BookmarkCallout } from './BookmarkCallout';
 import type { Bookmark } from '../../types/bookmark';
 
-type BookmarkTimelineProps = { accentColor?: string; bookmarks: Bookmark[]; selectedBookmark?: Bookmark; onSelect: (id: string) => void; tintColor?: string };
+type BookmarkTimelineProps = { accentColor?: string; bookmarks: Bookmark[]; selectedBookmark?: Bookmark; onSelect: (id: string) => void; tintColor?: string; totalPages?: number };
 
-export function BookmarkTimeline({ accentColor = '#FF7171', bookmarks, selectedBookmark, onSelect, tintColor = '#FFD6D6' }: BookmarkTimelineProps) {
+export function BookmarkTimeline({ accentColor = '#FF7171', bookmarks, selectedBookmark, onSelect, tintColor = '#FFD6D6', totalPages = 180 }: BookmarkTimelineProps) {
   return (
     <>
       <View style={styles.timeline}>
         <View style={[styles.line, { backgroundColor: tintColor }]} />
         {bookmarks.map((bookmark) => (
           <Pressable key={bookmark.id} accessibilityLabel={`${bookmark.page}ページのしおり`} accessibilityRole="button" onPress={() => onSelect(bookmark.id)} style={[styles.marker, { left: `${bookmark.position}%` }]}>
-            <View style={[styles.dot, { backgroundColor: accentColor }, selectedBookmark?.id === bookmark.id && styles.selectedDot]} />
+            <View style={[styles.dot, { backgroundColor: bookmark.color ?? accentColor }, selectedBookmark?.id === bookmark.id && styles.selectedDot]} />
             <Text style={styles.page}>{bookmark.page}p</Text>
           </Pressable>
         ))}
-        {selectedBookmark && <BookmarkCallout accentColor={accentColor} bookmark={selectedBookmark} position={selectedBookmark.position} tintColor={tintColor} />}
+        {selectedBookmark && <BookmarkCallout accentColor={selectedBookmark.color ?? accentColor} bookmark={selectedBookmark} position={selectedBookmark.position} tintColor={tintColor} />}
       </View>
-      <View style={styles.labels}><Text>1ページ</Text><Text>180ページ</Text></View>
+      <View style={styles.labels}><Text>1ページ</Text><Text>{totalPages}ページ</Text></View>
     </>
   );
 }

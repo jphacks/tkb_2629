@@ -42,6 +42,8 @@ class Review:
     created_at: datetime
     updated_at: datetime
     iteration_number: int = 1
+    analysis_status: str = "pending"
+    source: str | None = None
 
 
 @dataclass(frozen=True)

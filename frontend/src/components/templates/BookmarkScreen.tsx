@@ -1,41 +1,227 @@
-import { useRef, useState } from 'react';
-import { Animated, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Keyboard, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 
+import { getBook, getPageReview, reviewAnalysisLabel, savePageReview, type Book, type PageReview } from '../../lib/api';
 import { colors } from '../../theme/colors';
+import { ActionButton } from '../molecules/ActionButton';
 import { BookmarkCard } from '../organisms/BookmarkCard';
 import { BookmarkRibbon } from '../organisms/BookmarkRibbon';
 import { BottomNavigation } from '../organisms/BottomNavigation';
+import { ScreenFrame } from '../organisms/ScreenFrame';
 import type { Navigate } from '../../screens/types';
 
-type BookmarkScreenProps = { onNavigate?: Navigate };
+type BookmarkScreenProps = { bookId?: number; iteration?: number; onNavigate: Navigate };
 
-export function BookmarkScreen({ onNavigate }: BookmarkScreenProps) {
-  const [isAdded, setIsAdded] = useState(false);
+export function BookmarkScreen({ bookId, iteration, onNavigate }: BookmarkScreenProps) {
+  if (bookId === undefined || iteration === undefined) {
+    return (
+      <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title="しおりを追加">
+        <View style={styles.messageState}>
+          <Text style={styles.message}>本棚で本を選び、詳細のしおりボタンから記録してください。</Text>
+          <ActionButton label="本棚で本を選ぶ" onPress={() => onNavigate('bookshelf')} />
+        </View>
+      </ScreenFrame>
+    );
+  }
+  return <SelectedBookmarkScreen key={`${bookId}:${iteration}`} bookId={bookId} iteration={iteration} onNavigate={onNavigate} />;
+}
+
+type BookState =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'success'; book: Book };
+
+function SelectedBookmarkScreen({ bookId, iteration, onNavigate }: Required<BookmarkScreenProps>) {
+  const [bookState, setBookState] = useState<BookState>({ status: 'loading' });
+  const [requestVersion, setRequestVersion] = useState(0);
+  const [pageVersion, setPageVersion] = useState(0);
+  const [page, setPage] = useState('');
+  const [thoughts, setThoughts] = useState('');
+  const [loaded, setLoaded] = useState(false);
+  const [existing, setExisting] = useState<PageReview | null>(null);
+  const [result, setResult] = useState<PageReview | null>(null);
+  const [completed, setCompleted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const locked = useRef(false);
+  const mounted = useRef(false);
   const translateY = useRef(new Animated.Value(0)).current;
 
-  const resetBookmark = () => {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      translateY.stopAnimation();
+    };
+  }, [translateY]);
+
+  useEffect(() => {
+    let active = true;
+    setBookState({ status: 'loading' });
+    getBook(bookId).then((book) => {
+      if (active) {
+        setBookState({ status: 'success', book });
+      }
+    }).catch((reason: unknown) => {
+      if (active) {
+        setBookState({
+          status: 'error',
+          message: reason instanceof Error ? reason.message : '本の取得に失敗しました。',
+        });
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [bookId, requestVersion]);
+
+  const book = bookState.status === 'success' ? bookState.book : null;
+  const canEdit = book?.reading_status === 'reading' && book.latest_iteration === iteration;
+
+  useEffect(() => {
+    if (!book || !canEdit) {
+      return;
+    }
+    let active = true;
+    setLoaded(false);
+    setExisting(null);
+    setThoughts('');
+    setError(null);
+    if (!page.trim()) return;
+    const pageNumber = Number(page.trim());
+    if (!/^\d+$/.test(page.trim()) || !Number.isSafeInteger(pageNumber) || pageNumber < 1 || pageNumber > book.total_pages) {
+      setError(`ページは1〜${book.total_pages}の整数を入力してください。`);
+      return;
+    }
+    const timer = setTimeout(() => {
+      getPageReview(bookId, pageNumber, iteration).then((review) => {
+        if (active) {
+          setExisting(review);
+          setThoughts(review?.review_text ?? '');
+          setLoaded(true);
+        }
+      }).catch((reason: unknown) => {
+        if (active) {
+          setError(reason instanceof Error ? reason.message : 'しおりの取得に失敗しました。');
+        }
+      });
+    }, 350);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [book, bookId, iteration, page, pageVersion, canEdit]);
+
+  async function save() {
+    if (locked.current || !loaded || !canEdit) {
+      return;
+    }
+    const text = thoughts.trim();
+    if (Array.from(text).length < 1 || Array.from(text).length > 140) {
+      setError('感想は前後の空白を除いて1〜140文字で入力してください。');
+      return;
+    }
+    locked.current = true;
+    setBusy(true);
+    setError(null);
+    Keyboard.dismiss();
+    try {
+      const saved = await savePageReview(bookId, Number(page), iteration, text);
+      if (!mounted.current) {
+        return;
+      }
+      setResult(saved);
+      setThoughts(saved.review_text);
+      Animated.timing(translateY, { duration: 600, toValue: -720, useNativeDriver: true }).start(() => {
+        if (mounted.current) {
+          setCompleted(true);
+        }
+      });
+    } catch (reason) {
+      if (mounted.current) {
+        setError(reason instanceof Error ? reason.message : 'しおりの保存に失敗しました。');
+        Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
+        setBusy(false);
+      }
+      locked.current = false;
+    }
+  }
+
+  function choosePage() {
+    setPage('');
+    setLoaded(false);
+    setExisting(null);
+    setThoughts('');
+    setResult(null);
+    setCompleted(false);
+    setError(null);
+    setBusy(false);
+    locked.current = false;
     translateY.setValue(0);
-    setIsAdded(false);
-  };
+  }
+
+  if (!book || !canEdit) {
+    return (
+      <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title="しおりを追加">
+        <View style={styles.messageState}>
+          {bookState.status === 'loading' && <Text style={styles.message}>本を読み込んでいます…</Text>}
+          {bookState.status === 'error' && (
+            <>
+              <Text accessibilityRole="alert" style={styles.message}>{bookState.message}</Text>
+              <ActionButton label="再試行" onPress={() => setRequestVersion((version) => version + 1)} />
+            </>
+          )}
+          {book && <Text style={styles.message}>この読書回には記録できません。読了状態・最新の読書回を詳細で確認してください。</Text>}
+          <ActionButton label="本の詳細へ" secondary onPress={() => onNavigate({ name: 'book-detail', bookId })} />
+        </View>
+      </ScreenFrame>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
       <View style={styles.screen}>
-        {!isAdded && <BookmarkRibbon translateY={translateY} />}
-        {!isAdded && <BookmarkCard onAdded={() => setIsAdded(true)} translateY={translateY} />}
-        {isAdded && (
+        {!completed && (
+          <>
+            <BookmarkRibbon translateY={translateY} color={result?.color_code ?? existing?.color_code} />
+            <BookmarkCard
+              translateY={translateY}
+              title={book.title}
+              page={page}
+              thoughts={thoughts}
+              loaded={loaded}
+              updating={existing !== null}
+              busy={busy}
+              error={error}
+              color={result?.color_code ?? existing?.color_code}
+              analysisLabel={result ? reviewAnalysisLabel(result) : existing ? reviewAnalysisLabel(existing) : undefined}
+              onPageChange={(value) => {
+                setPage(value);
+                setLoaded(false);
+                setExisting(null);
+                setThoughts('');
+                setError(null);
+              }}
+              onThoughtsChange={(value) => { setThoughts(value); setError(null); }}
+              onRetry={() => setPageVersion((version) => version + 1)}
+              onSubmit={save}
+            />
+          </>
+        )}
+        {completed && result && (
           <View style={styles.successState}>
-            <Ionicons color={colors.navAccent} name="checkmark-circle" size={56} />
-            <Text style={styles.successTitle}>しおりを追加しました</Text>
-            <Pressable onPress={resetBookmark} style={styles.resetButton}>
-              <Text style={styles.resetButtonText}>もう一度追加</Text>
-            </Pressable>
+            <Ionicons color={result.color_code} name="checkmark-circle" size={56} />
+            <Text style={styles.successTitle}>しおりを{existing ? '更新' : '追加'}しました</Text>
+            <Text style={styles.message}>「{book.title}」 {result.page_number}ページ・{iteration}回目</Text>
+            <Text style={styles.message}>{reviewAnalysisLabel(result)}</Text>
+            <ActionButton label="本の詳細へ" onPress={() => onNavigate({ name: 'book-detail', bookId })} />
+            <ActionButton label="別のページに記録する" secondary onPress={choosePage} />
           </View>
         )}
-        <BottomNavigation activeRoute="bookmark" onNavigate={onNavigate} />
+        {(!busy || completed) && <BottomNavigation activeRoute="bookmark" onNavigate={onNavigate} />}
       </View>
     </SafeAreaView>
   );
@@ -44,8 +230,8 @@ export function BookmarkScreen({ onNavigate }: BookmarkScreenProps) {
 const styles = StyleSheet.create({
   safeArea: { backgroundColor: '#F7F4FF', flex: 1 },
   screen: { backgroundColor: '#F7F4FF', flex: 1 },
-  successState: { alignItems: 'center', left: 0, position: 'absolute', right: 0, top: 270 },
-  successTitle: { color: colors.text, fontSize: 20, fontWeight: '700', marginTop: 14 },
-  resetButton: { backgroundColor: colors.accent, borderRadius: 12, marginTop: 20, paddingHorizontal: 22, paddingVertical: 12 },
-  resetButtonText: { color: colors.background, fontSize: 14, fontWeight: '700' },
+  messageState: { padding: 24, gap: 16 },
+  message: { color: colors.text, fontSize: 14, lineHeight: 22 },
+  successState: { gap: 16, left: 24, position: 'absolute', right: 24, top: 160 },
+  successTitle: { color: colors.text, fontSize: 20, fontWeight: '700' },
 });

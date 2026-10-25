@@ -118,6 +118,17 @@ class ReviewService:
         self.reviews = reviews
         self.analyzer = analyzer
 
+    def list(
+        self,
+        user_id: int,
+        book_id: int,
+        iteration_number: int | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[Review]:
+        self.books.get(user_id, book_id)
+        return self.reviews.list(user_id, book_id, iteration_number, limit, offset)
+
     def get(
         self,
         user_id: int,
