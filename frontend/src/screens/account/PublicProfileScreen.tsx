@@ -40,7 +40,7 @@ export function PublicProfileScreen({ onNavigate, onBack }: { onNavigate: Naviga
       setState({ status: 'ready', savedName: profile.public_display_name });
     }).catch((reason: unknown) => {
       if (active) {
-        setState({ status: 'error', message: reason instanceof Error ? reason.message : '公開プロフィールの取得に失敗しました。' });
+        setState({ status: 'error', message: reason instanceof Error ? reason.message : '名前の取得に失敗しました。' });
       }
     });
     return () => { active = false; };
@@ -50,7 +50,7 @@ export function PublicProfileScreen({ onNavigate, onBack }: { onNavigate: Naviga
     if (locked.current || state.status !== 'ready') return;
     const normalized = name.trim();
     if (Array.from(normalized).length < 1 || Array.from(normalized).length > 100) {
-      setError('公開用表示名は前後の空白を除いて1〜100文字で入力してください。');
+      setError('名前は前後の空白を除いて1〜100文字で入力してください。');
       setMessage(null);
       return;
     }
@@ -63,10 +63,10 @@ export function PublicProfileScreen({ onNavigate, onBack }: { onNavigate: Naviga
       if (!mounted.current) return;
       setState({ status: 'ready', savedName: profile.public_display_name });
       setName(profile.public_display_name ?? '');
-      setMessage('公開用表示名を保存しました。');
+      setMessage('名前を保存しました。');
     } catch (reason) {
       if (mounted.current) {
-        setError(reason instanceof Error ? reason.message : '公開用表示名の保存に失敗しました。');
+        setError(reason instanceof Error ? reason.message : '名前の保存に失敗しました。');
       }
     } finally {
       locked.current = false;
@@ -78,15 +78,15 @@ export function PublicProfileScreen({ onNavigate, onBack }: { onNavigate: Naviga
     <ScreenFrame
       activeRoute="account"
       onNavigate={onNavigate}
-      title="公開プロフィール"
+      title="名前"
       showNavigation={!busy}
       headerLeading={<BackButton disabled={busy} onPress={onBack ?? (() => onNavigate('account-settings'))} />}
     >
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.description}>他の読者への表示に使う名前です。登録時のユーザー名とは別に設定し、登録名やメールアドレスは自動で使いません。</Text>
-          <Text style={styles.description}>公開した感想には、この表示名が表示されます。表示名が未設定の場合、公開感想の一覧には掲載されません。</Text>
-          {state.status === 'loading' && <Text style={styles.description}>公開プロフィールを読み込んでいます…</Text>}
+          <Text style={styles.description}>アカウントと公開した感想に使う名前です。他の読者にも表示されます。本名でなくても構いません。</Text>
+          <Text style={styles.description}>未設定の場合、以前の登録名は自動公開しません。ここで名前を保存するまで、公開感想の一覧には掲載されません。</Text>
+          {state.status === 'loading' && <Text style={styles.description}>名前を読み込んでいます…</Text>}
           {state.status === 'error' && (
             <>
               <Text accessibilityRole="alert" style={styles.error}>{state.message}</Text>
@@ -100,16 +100,16 @@ export function PublicProfileScreen({ onNavigate, onBack }: { onNavigate: Naviga
                   <Ionicons accessible={false} name="book-outline" size={32} color={colors.navAccent} />
                 </View>
                 <View style={styles.previewCopy}>
-                  <Text style={styles.previewLabel}>公開プロフィールの表示イメージ</Text>
-                  <Text style={styles.displayName}>{state.savedName ?? '表示名は未設定'}</Text>
+                  <Text style={styles.previewLabel}>他の読者への表示</Text>
+                  <Text style={styles.displayName}>{state.savedName ?? '名前は未設定'}</Text>
                 </View>
               </View>
-              <Text style={styles.description}>{state.savedName === null ? '公開用表示名は未設定です。' : `保存済みの表示名：${state.savedName}`}</Text>
+              <Text style={styles.description}>{state.savedName === null ? '名前は未設定です。' : `保存済みの名前：${state.savedName}`}</Text>
               <View style={styles.field}>
-                <FieldLabel>公開用表示名</FieldLabel>
+                <FieldLabel>名前</FieldLabel>
                 <ShadowInput
-                  accessibilityLabel="公開用表示名"
-                  placeholder="公開用表示名を入力"
+                  accessibilityLabel="名前（他の読者にも表示）"
+                  placeholder="名前を入力"
                   value={name}
                   editable={!busy}
                   autoCapitalize="none"
@@ -121,7 +121,7 @@ export function PublicProfileScreen({ onNavigate, onBack }: { onNavigate: Naviga
               </View>
               {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
               {message && <Text accessibilityRole="alert" style={styles.description}>{message}</Text>}
-              <ActionButton disabled={busy} label={busy ? '保存中…' : error ? '再度保存する' : '表示名を保存する'} onPress={() => { void save(); }} />
+              <ActionButton disabled={busy} label={busy ? '保存中…' : error ? '再度保存する' : '名前を保存する'} onPress={() => { void save(); }} />
             </>
           )}
         </ScrollView>
