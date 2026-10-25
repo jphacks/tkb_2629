@@ -91,6 +91,31 @@ async function ready(h, name = null) {
   return h.render();
 }
 
+test('default book avatar accompanies only the saved public name, never the unsaved draft', async () => {
+  const h = harness();
+  let tree = await ready(h);
+  const avatar = nodes(tree).find((node) => node.props?.accessibilityLabel === '本のデフォルトアイコン');
+  assert.ok(avatar);
+  assert.equal(avatar.props.accessibilityRole, 'image');
+  assert.equal(avatar.props.style.width, 64);
+  assert.equal(avatar.props.style.height, 64);
+  assert.equal(avatar.props.style.borderRadius, 32);
+  assert.equal(avatar.props.children.props.name, 'book-outline');
+  assert.match(text(tree), /表示名は未設定/);
+  input(tree).props.onChangeText('Draft reader');
+  tree = h.render();
+  assert.match(text(tree), /表示名は未設定/);
+  assert.doesNotMatch(text(tree), /Draft reader/);
+  button(tree, '表示名を保存する').props.onPress();
+  h.requests.at(-1).resolve({ public_display_name: 'Draft reader' });
+  await flush();
+  tree = h.render();
+  const name = nodes(tree).find((node) => node.props?.style?.fontSize === 20);
+  assert.equal(name.props.children, 'Draft reader');
+  assert.equal(name.props.numberOfLines, undefined);
+  assert.equal(nodes(tree).filter((node) => node.props?.accessibilityLabel === '本のデフォルトアイコン').length, 1);
+});
+
 test('settings opens dedicated public profile screen', () => {
   let target;
   const { AccountSettingsScreen } = load('src/screens/account/AccountSettingsScreen.tsx', {
