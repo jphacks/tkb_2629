@@ -81,10 +81,12 @@ def configure_reading_contexts(app: FastAPI) -> None:
 def build_public_review_service(
     library: Annotated[LibraryService, Depends(get_library_service)],
     profiles: Annotated[ProfileService, Depends(get_profile_service)],
+    analysis: Annotated[AnalysisService, Depends(build_analysis_service)],
 ) -> PublicReviewService:
     readings = LibraryReadingGateway(library)
     return PublicReviewService(
         lambda: SqlReviewUnitOfWork(database.SessionLocal, lambda db: readings),
         readings,
         IdentityPublicAuthorGateway(profiles),
+        JevAnalysisGateway(analysis),
     )

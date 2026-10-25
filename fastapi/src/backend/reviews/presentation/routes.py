@@ -15,6 +15,8 @@ from .schemas import (
     PagePopularityPoint,
     PagePopularityResponse,
     PageReviewResponse,
+    PublicReviewDistributionPoint,
+    PublicReviewDistributionResponse,
     PublicReviewResponse,
     PublicReviewsResponse,
     ReviewSave,
@@ -40,13 +42,35 @@ def list_public_reviews(
     page: int | None = Query(default=None, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    page_start: int | None = Query(default=None, ge=1),
+    page_end: int | None = Query(default=None, ge=1),
 ) -> PublicReviewsResponse:
     response.headers["Cache-Control"] = "no-store"
-    items = service.list(google_books_id, page, limit, offset)
+    items = service.list(
+        google_books_id, page, limit, offset, page_start=page_start, page_end=page_end
+    )
     return PublicReviewsResponse(
         items=[PublicReviewResponse.model_validate(item) for item in items],
         limit=limit,
         offset=offset,
+    )
+
+
+@router.get(
+    "/catalog/books/{google_books_id}/reviews/distribution",
+    response_model=PublicReviewDistributionResponse,
+)
+def public_review_distribution(
+    google_books_id: Annotated[str, Path(min_length=1, max_length=256, pattern=r"^\S+$")],
+    service: Annotated[PublicReviewService, Depends(get_public_review_service)],
+    user_id: CurrentUserId,
+    response: Response,
+) -> PublicReviewDistributionResponse:
+    response.headers["Cache-Control"] = "no-store"
+    items = service.distribution(google_books_id)
+    return PublicReviewDistributionResponse(
+        items=[PublicReviewDistributionPoint.model_validate(item) for item in items],
+        total_count=sum(item.review_count for item in items),
     )
 
 

@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from ..application.results import PagePopularity
+from ..application.results import PagePopularity, PublicReviewCount
 from ..domain.entities import PageReview as ReviewEntity
 from ..domain.values import ReviewText
 from .models import PageReview
@@ -31,7 +31,14 @@ class SqlReviewRepository:
         self.db = db
 
     def list_public(
-        self, reading_ids: Sequence[int], page: int | None, limit: int, offset: int
+        self,
+        reading_ids: Sequence[int],
+        page: int | None,
+        limit: int,
+        offset: int,
+        *,
+        page_start: int | None = None,
+        page_end: int | None = None,
     ) -> list[ReviewEntity]:
         ids = list(dict.fromkeys(reading_ids))
         candidates: list[ReviewEntity] = []
@@ -42,6 +49,10 @@ class SqlReviewRepository:
             )
             if page is not None:
                 statement = statement.where(PageReview.page_number == page)
+            if page_start is not None:
+                statement = statement.where(PageReview.page_number >= page_start)
+            if page_end is not None:
+                statement = statement.where(PageReview.page_number <= page_end)
             rows = self.db.scalars(
                 statement.order_by(PageReview.updated_at.desc(), PageReview.id.desc()).limit(
                     offset + limit
@@ -50,6 +61,22 @@ class SqlReviewRepository:
             candidates.extend(review_entity(row) for row in rows)
         candidates.sort(key=lambda row: (row.updated_at, row.id), reverse=True)
         return candidates[offset : offset + limit]
+
+    def public_distribution(self, reading_ids: Sequence[int]) -> list[PublicReviewCount]:
+        ids = list(dict.fromkeys(reading_ids))
+        counts: dict[int, int] = {}
+        for start in range(0, len(ids), 1000):
+            rows = self.db.execute(
+                select(PageReview.page_number, func.count(PageReview.id))
+                .where(
+                    PageReview.user_book_id.in_(ids[start : start + 1000]),
+                    PageReview.visibility == "public",
+                )
+                .group_by(PageReview.page_number)
+            )
+            for page, count in rows:
+                counts[page] = counts.get(page, 0) + count
+        return [PublicReviewCount(page, count) for page, count in sorted(counts.items())]
 
     def get(self, review_id: int, *, lock: bool = False) -> ReviewEntity | None:
         statement = select(PageReview).where(PageReview.id == review_id)

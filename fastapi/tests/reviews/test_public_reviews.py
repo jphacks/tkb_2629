@@ -8,6 +8,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from backend.analysis.infrastructure.models import EmotionAnalysis
+from backend.analysis.infrastructure.repository import SqlAnalysisRepository
 from backend.composition import schema as schema_registry  # noqa: F401
 from backend.identity.application.errors import PersistenceUnavailable
 from backend.identity.application.profiles import ProfileService
@@ -22,7 +24,11 @@ from backend.library.infrastructure.repository import SqlBookRepository
 from backend.library.infrastructure.unit_of_work import SqlLibraryUnitOfWork
 from backend.library.presentation.dependencies import get_library_service
 from backend.main import create_app
-from backend.reviews.application.ports import PublicAuthorGateway, PublicReadingGateway
+from backend.reviews.application.ports import (
+    AnalysisGateway,
+    PublicAuthorGateway,
+    PublicReadingGateway,
+)
 from backend.reviews.application.public_reviews import PublicReviewService
 from backend.reviews.domain.errors import InvalidInput
 from backend.reviews.infrastructure.models import PageReview
@@ -151,6 +157,9 @@ def test_unowned_book_lists_only_named_public_reviews_across_all_iterations(cont
         "contains_spoilers",
         "created_at",
         "updated_at",
+        "color_code",
+        "analysis_status",
+        "source",
     }
     assert "Private name" not in response.text
     assert "@example.test" not in response.text
@@ -281,7 +290,9 @@ def test_profile_name_batching_does_not_fallback_to_registration_names(context):
 def test_service_validates_direct_calls_before_io():
     readings = create_autospec(PublicReadingGateway, instance=True)
     authors = create_autospec(PublicAuthorGateway, instance=True)
-    service = PublicReviewService(lambda: None, readings, authors)
+    service = PublicReviewService(
+        lambda: None, readings, authors, create_autospec(AnalysisGateway, instance=True)
+    )
     for args in [
         ("",),
         ("bad id",),
@@ -293,3 +304,239 @@ def test_service_validates_direct_calls_before_io():
             service.list(*args)
     readings.catalog_readings.assert_not_called()
     authors.display_names.assert_not_called()
+
+
+def test_distribution_counts_all_named_public_reviews_without_text_or_colors(context):
+    response = context.client.get(PATH + "/distribution")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json() == {
+        "items": [
+            {"page_number": 3, "review_count": 2},
+            {"page_number": 5, "review_count": 1},
+        ],
+        "total_count": 3,
+    }
+    assert "Review " not in response.text
+    assert "Reader" not in response.text
+    assert "color" not in response.text
+    context.catalog.get.assert_not_called()
+    context.catalog.search.assert_not_called()
+
+
+def test_distribution_is_not_limited_to_first_twenty_reviews(context):
+    with context.sessions() as db:
+        db.add_all(
+            PageReview(
+                user_book_id=4,
+                page_number=page,
+                review_text="Public",
+                visibility="public",
+                contains_spoilers=True,
+                created_at=NOW,
+                updated_at=NOW,
+            )
+            for page in range(10, 40)
+        )
+        db.commit()
+    assert len(context.client.get(PATH).json()["items"]) == 20
+    distribution = context.client.get(PATH + "/distribution").json()
+    assert distribution["total_count"] == 33
+    assert sum(item["review_count"] for item in distribution["items"]) == 33
+    assert distribution["items"][-1] == {"page_number": 39, "review_count": 1}
+
+
+def test_distribution_reflects_visibility_and_name_changes(context):
+    with context.sessions() as db:
+        db.execute(sa.update(PageReview).where(PageReview.id == 2).values(visibility="private"))
+        db.execute(sa.update(User).where(User.id == 3).values(public_display_name=None))
+        db.commit()
+    assert context.client.get(PATH + "/distribution").json() == {
+        "items": [{"page_number": 3, "review_count": 1}],
+        "total_count": 1,
+    }
+    with context.sessions() as db:
+        db.execute(sa.update(PageReview).where(PageReview.id == 1).values(visibility="private"))
+        db.commit()
+    assert context.client.get(PATH + "/distribution").json() == {"items": [], "total_count": 0}
+
+
+def test_unknown_distribution_is_empty_and_authentication_is_required(context):
+    response = context.client.get("/catalog/books/unknown/reviews/distribution")
+    assert response.status_code == 200
+    assert response.json() == {"items": [], "total_count": 0}
+    context.catalog.get.assert_not_called()
+
+    def unauthenticated():
+        raise AuthenticationRequired("Authentication required")
+
+    context.app.dependency_overrides[get_current_user_id] = unauthenticated
+    for path in (PATH + "/distribution", "/catalog/books/unknown/reviews/distribution"):
+        assert context.client.get(path).status_code == 401
+
+
+@pytest.mark.parametrize("volume", ["%20", "bad%20id", "x" * 257])
+def test_distribution_validates_volume(context, volume):
+    assert context.client.get(f"/catalog/books/{volume}/reviews/distribution").status_code == 422
+
+
+def test_distribution_aggregates_chunks_and_deduplicates_readings(context):
+    with context.sessions() as db:
+        ids = [2, *range(100, 1100), 4, 1, 2]
+        counts = SqlReviewRepository(db).public_distribution(ids)
+        assert [(point.page_number, point.review_count) for point in counts] == [(3, 2), (5, 1)]
+        assert SqlReviewRepository(db).public_distribution([]) == []
+
+
+def test_inclusive_range_and_pagination_do_not_include_private_reviews(context):
+    for start, end, expected in [(3, 3, [2, 1]), (3, 5, [5, 2, 1]), (4, 5, [5]), (6, 9, [])]:
+        response = context.client.get(f"{PATH}?page_start={start}&page_end={end}")
+        assert response.status_code == 200
+        assert [row["id"] for row in response.json()["items"]] == expected
+    payload = context.client.get(f"{PATH}?page_start=3&page_end=5&limit=1&offset=1").json()
+    assert [row["id"] for row in payload["items"]] == [2]
+    assert payload["offset"] == 1
+    with context.sessions() as db:
+        ids = [2, *range(100, 1100), 4, 1]
+        rows = SqlReviewRepository(db).list_public(ids, None, 1, 1, page_start=3, page_end=5)
+        assert [row.id for row in rows] == [2]
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "page_start=0&page_end=5",
+        "page_start=1&page_end=0",
+        "page_start=5&page_end=3",
+        "page_start=3",
+        "page_end=5",
+        "page=3&page_start=3&page_end=5",
+        "page_start=x&page_end=5",
+    ],
+)
+def test_invalid_range_rejected_even_for_unknown_books(context, query):
+    for path in (PATH, "/catalog/books/unknown/reviews"):
+        assert context.client.get(f"{path}?{query}").status_code == 422
+
+
+def test_range_service_validation_happens_before_io():
+    readings = create_autospec(PublicReadingGateway, instance=True)
+    authors = create_autospec(PublicAuthorGateway, instance=True)
+    analyses = create_autospec(AnalysisGateway, instance=True)
+    service = PublicReviewService(lambda: None, readings, authors, analyses)
+    for kwargs in [
+        {"page_start": 1},
+        {"page_end": 2},
+        {"page_start": 3, "page_end": 2},
+        {"page_start": 0, "page_end": 2},
+        {"page": 1, "page_start": 1, "page_end": 2},
+    ]:
+        with pytest.raises(InvalidInput):
+            service.list("volume", **kwargs)
+    with pytest.raises(InvalidInput):
+        service.distribution("bad id")
+    readings.catalog_readings.assert_not_called()
+    analyses.previews.assert_not_called()
+
+
+def test_public_colors_use_only_current_completed_analysis_and_never_analyze(context, monkeypatch):
+    with context.sessions() as db:
+        db.execute(
+            sa.update(PageReview)
+            .where(PageReview.id.in_([1, 2, 5]))
+            .values(analysis_status="completed", analysis_revision=2)
+        )
+        db.add_all(
+            [
+                EmotionAnalysis(review_id=1, review_revision=2, color_code="#123456", source="jev"),
+                EmotionAnalysis(
+                    review_id=2, review_revision=2, color_code="#ABCDEF", source="mock"
+                ),
+                EmotionAnalysis(review_id=5, review_revision=1, color_code="#FF0000", source="jev"),
+            ]
+        )
+        db.commit()
+
+    from backend.analysis.infrastructure.jev import JevEmotionAnalyzer, MockEmotionAnalyzer
+
+    def must_not_analyze(*args, **kwargs):
+        pytest.fail("Public reads must not call the analyzer")
+
+    monkeypatch.setattr(JevEmotionAnalyzer, "analyze", must_not_analyze)
+    monkeypatch.setattr(MockEmotionAnalyzer, "analyze", must_not_analyze)
+    rows = {row["id"]: row for row in context.client.get(PATH).json()["items"]}
+    assert (rows[1]["color_code"], rows[1]["source"], rows[1]["analysis_status"]) == (
+        "#123456",
+        "jev",
+        "completed",
+    )
+    assert (rows[2]["color_code"], rows[2]["source"]) == ("#ABCDEF", "mock")
+    assert (rows[5]["color_code"], rows[5]["source"]) == ("#808080", None)
+    assert "emotion_scores" not in rows[1]
+    with context.sessions() as db:
+        db.execute(
+            sa.update(PageReview).where(PageReview.id == 1).values(analysis_status="pending")
+        )
+        db.execute(sa.update(PageReview).where(PageReview.id == 2).values(analysis_status="failed"))
+        db.commit()
+    rows = {row["id"]: row for row in context.client.get(PATH).json()["items"]}
+    for review_id, status in [(1, "pending"), (2, "failed")]:
+        assert rows[review_id]["analysis_status"] == status
+        assert rows[review_id]["color_code"] == "#808080"
+        assert rows[review_id]["source"] is None
+
+
+def test_only_eligible_page_analysis_is_loaded_and_distribution_never_loads_colors(
+    context, monkeypatch
+):
+    with context.sessions() as db:
+        db.execute(sa.update(PageReview).values(analysis_status="completed"))
+        db.commit()
+    calls = []
+    original = SqlAnalysisRepository.get_many
+
+    def record(self, references):
+        calls.append(list(references))
+        return original(self, references)
+
+    monkeypatch.setattr(SqlAnalysisRepository, "get_many", record)
+    assert context.client.get(f"{PATH}?page_start=3&page_end=3&limit=1").status_code == 200
+    assert calls == [[(2, 1)]]
+    calls.clear()
+    assert context.client.get(PATH + "/distribution").status_code == 200
+    assert calls == []
+
+
+def test_analysis_failure_is_503_but_does_not_break_counts(context, monkeypatch):
+    with context.sessions() as db:
+        db.execute(
+            sa.update(PageReview).where(PageReview.id == 1).values(analysis_status="completed")
+        )
+        db.commit()
+
+    def unavailable(*args, **kwargs):
+        raise sa.exc.OperationalError("test query", {}, RuntimeError("test outage"))
+
+    monkeypatch.setattr(SqlAnalysisRepository, "get_many", unavailable)
+    response = context.client.get(PATH)
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Analysis results are unavailable"
+    assert context.client.get(PATH + "/distribution").json()["total_count"] == 3
+
+
+@pytest.mark.parametrize(
+    "repository,method",
+    [
+        (SqlBookRepository, "find_catalog"),
+        (SqlProfileRepository, "public_display_names"),
+        (SqlReviewRepository, "public_distribution"),
+    ],
+)
+def test_distribution_database_failure_is_not_empty_success(
+    context, monkeypatch, repository, method
+):
+    def unavailable(*args, **kwargs):
+        raise sa.exc.OperationalError("test query", {}, RuntimeError("test outage"))
+
+    monkeypatch.setattr(repository, method, unavailable)
+    assert context.client.get(PATH + "/distribution").status_code == 503

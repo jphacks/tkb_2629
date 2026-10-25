@@ -30,6 +30,21 @@ class PublicReviewResponse(BaseModel):
     contains_spoilers: bool
     created_at: datetime
     updated_at: datetime
+    color_code: str
+    analysis_status: str
+    source: str | None
+
+
+class PublicReviewDistributionPoint(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    page_number: int
+    review_count: int
+
+
+class PublicReviewDistributionResponse(BaseModel):
+    items: list[PublicReviewDistributionPoint]
+    total_count: int
 
 
 class PublicReviewsResponse(BaseModel):
