@@ -29,13 +29,21 @@ const chart = load('src/components/organisms/EmotionAnalysisCard.tsx', {
 });
 const text = (tree) => nodes(tree).filter((node) => node.type === 'Text').map((node) => node.props.children).join('\n');
 
-test('one octagon overlays different raw score shapes with solid and dashed outlines', () => {
+test('one octagon overlays raw scores using each average emotion color and solid or dotted outlines', () => {
   const tree = chart.EmotionAnalysisCard({ summary: {
-    mine: summary(), others: { ...summary(), emotion_scores: { ...scores, joy: 1 } },
+    mine: summary(), others: { ...summary(), color_code: '#D9A431', emotion_scores: { ...scores, joy: 1 } },
   } });
   const polygons = nodes(tree).filter((node) => node.type === 'Polygon');
   assert.equal(polygons.length, 6);
-  assert.equal(polygons[4].props.strokeDasharray, '6 4');
+  assert.equal(polygons[4].props.strokeDasharray, '1 5');
+  assert.equal(polygons[4].props.strokeLinecap, 'round');
+  assert.equal(polygons[4].props.stroke, '#D9A431');
+  assert.equal(polygons[4].props.fill, '#D9A431');
+  assert.equal(polygons[5].props.stroke, '#7950A5');
+  assert.equal(polygons[5].props.fill, '#7950A5');
+  const legends = nodes(tree).filter((node) => Array.isArray(node.props?.style) && node.props.style[1]?.borderColor);
+  assert.deepEqual(legends.map((node) => node.props.style[1].borderColor), ['#7950A5', '#D9A431']);
+  assert.equal(legends[1].props.style[0].borderStyle, 'dotted');
   assert.equal(polygons[5].props.strokeDasharray, undefined);
   assert.notEqual(polygons[4].props.points, polygons[5].props.points);
   assert.equal(polygons[5].props.points.split(' ')[0], '160,91');

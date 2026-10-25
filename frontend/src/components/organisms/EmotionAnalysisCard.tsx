@@ -40,8 +40,8 @@ export function EmotionAnalysisCard({ summary }: { summary: EmotionComparison })
     <GlassSurface style={styles.card}>
       <Text style={styles.heading}>感情の分析</Text>
       <View style={styles.legend}>
-        <View style={styles.legendItem}><View style={styles.mineLine} /><Text style={styles.legendLabel}>自分</Text></View>
-        <View style={styles.legendItem}><View style={styles.othersLine} /><Text style={styles.legendLabel}>みんな</Text></View>
+        <View style={styles.legendItem}><View style={[styles.mineLine, { borderColor: summary.mine.color_code }]} /><Text style={styles.legendLabel}>自分</Text></View>
+        <View style={styles.legendItem}><View style={[styles.othersLine, { borderColor: summary.others.color_code }]} /><Text style={styles.legendLabel}>みんな</Text></View>
       </View>
       <Svg accessible accessibilityLabel={mine.map((emotion, index) =>
         `${emotion.label}：自分 ${summary.mine.review_count ? `${Math.round(emotion.value * 100)}%` : '未記録'}、みんな ${summary.others.review_count ? `${Math.round(others[index]!.value * 100)}%` : '未記録'}`
@@ -63,8 +63,8 @@ export function EmotionAnalysisCard({ summary }: { summary: EmotionComparison })
           const point = getPoint(index, 1);
           return <Line key={emotion.label} stroke="#E9E7F0" strokeWidth="1" x1={center.x} x2={point.x} y1={center.y} y2={point.y} />;
         })}
-        {summary.others.review_count > 0 && <Polygon points={createScorePoints(others)} stroke="#237F89" strokeWidth={2} strokeDasharray="6 4" fill="#237F89" fillOpacity={0.08} />}
-        {summary.mine.review_count > 0 && <Polygon points={createScorePoints(mine)} stroke="#7950A5" strokeWidth={2.5} fill="#7950A5" fillOpacity={0.16} />}
+        {summary.others.review_count > 0 && <Polygon points={createScorePoints(others)} stroke={summary.others.color_code} strokeWidth={2} strokeDasharray="1 5" strokeLinecap="round" fill={summary.others.color_code} fillOpacity={0.08} />}
+        {summary.mine.review_count > 0 && <Polygon points={createScorePoints(mine)} stroke={summary.mine.color_code} strokeWidth={2.5} fill={summary.mine.color_code} fillOpacity={0.16} />}
         {mine.map((emotion, index) => {
           const labelPoint = getPoint(index, 1.22);
           return <SvgText key={emotion.label} fill={emotion.color} fontSize="12" fontWeight="600" textAnchor="middle" x={labelPoint.x} y={labelPoint.y}>{emotion.label}</SvgText>;
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
   description: { color: colors.placeholder, fontSize: 12, marginTop: 5 },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginTop: 12 },
   legendItem: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-  mineLine: { width: 24, borderTopWidth: 3, borderColor: '#7950A5' },
-  othersLine: { width: 24, borderTopWidth: 2, borderColor: '#237F89', borderStyle: 'dashed' },
+  mineLine: { width: 24, borderTopWidth: 3 },
+  othersLine: { width: 24, borderTopWidth: 2, borderStyle: 'dotted' },
   legendLabel: { color: '#666666', fontSize: 12 },
 });
