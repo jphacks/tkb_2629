@@ -18,7 +18,7 @@ export function BookCover({ title = '本のタイトル', author = '著者名', 
 
 const styles = StyleSheet.create({
   cover: { backgroundColor: '#E7B7F2', borderRadius: 4, height: 95, overflow: 'hidden', width: 66 },
-  large: { height: 182, width: 126 },
+  large: { height: 140, width: 94 },
   grid: { height: 140, width: 94 },
   coverTitle: { color: '#5D3B6F', fontSize: 9, fontWeight: '700', margin: 8 },
   author: { color: '#6E4F7D', fontSize: 6, marginHorizontal: 8 },
