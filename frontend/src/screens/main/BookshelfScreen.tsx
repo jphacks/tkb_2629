@@ -62,10 +62,10 @@ export function BookshelfScreen({ onNavigate }: { onNavigate: (route: ScreenKey)
 const styles = StyleSheet.create({
   content: { padding: 24, paddingBottom: 110 },
   filters: { flexDirection: 'row', gap: 10, marginBottom: 18, marginTop: 8 },
-  activeFilter: { backgroundColor: '#FF7171', borderRadius: 16, color: '#FFFFFF', fontSize: 13, fontWeight: '700', overflow: 'hidden', paddingHorizontal: 16, paddingVertical: 8 },
-  filter: { backgroundColor: '#FFF0F0', borderRadius: 16, color: '#777777', fontSize: 13, overflow: 'hidden', paddingHorizontal: 16, paddingVertical: 8 },
+  activeFilter: { backgroundColor: colors.accent, borderRadius: 16, color: colors.background, fontSize: 13, fontWeight: '700', overflow: 'hidden', paddingHorizontal: 16, paddingVertical: 8 },
+  filter: { backgroundColor: '#FFF0F0', borderRadius: 16, color: colors.textSecondary, fontSize: 13, overflow: 'hidden', paddingHorizontal: 16, paddingVertical: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 26, marginBottom: 30 },
   book: { alignItems: 'center', width: '31%' },
   bookTitle: { color: colors.text, fontSize: 14, fontWeight: '700', marginTop: 10, textAlign: 'center', width: '100%' },
-  message: { color: '#777777', fontSize: 14, marginBottom: 18 },
+  message: { color: colors.textSecondary, fontSize: 14, marginBottom: 18 },
 });

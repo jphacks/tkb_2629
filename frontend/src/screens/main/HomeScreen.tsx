@@ -14,7 +14,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => v
         <View style={styles.content}>
           <BookStack count={totalReadBooks} />
         </View>
-        <FloatingActionButton onPress={() => onNavigate('bookmark')} />
+        <FloatingActionButton onPress={() => onNavigate('bookmark-book-select')} />
       </View>
     </ScreenFrame>
   );

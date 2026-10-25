@@ -1,3 +1,4 @@
+import { colors } from "../../theme/colors";
 import { StyleSheet, Text, View } from 'react-native';
 
 import { GlassSurface } from '../atoms/GlassSurface';
@@ -7,7 +8,7 @@ type ReadingProgressProps = {
   totalPages: number;
 };
 
-export function ReadingProgress({ color = '#C17AED', currentPage, totalPages }: ReadingProgressProps) {
+export function ReadingProgress({ color = colors.navAccent, currentPage, totalPages }: ReadingProgressProps) {
   const percentage = totalPages > 0 ? Math.round((currentPage / totalPages) * 100) : 0;
 
   return (
@@ -22,8 +23,8 @@ export function ReadingProgress({ color = '#C17AED', currentPage, totalPages }: 
 }
 
 const styles = StyleSheet.create({
-  progress: { color: '#464646', fontSize: 14, marginTop: 4 },
+  progress: { color: colors.text, fontSize: 14, marginTop: 4 },
   track: { borderRadius: 6, height: 9, marginTop: 9, overflow: 'hidden', padding: 1 },
-  fill: { backgroundColor: '#C17AED', borderRadius: 4, height: '100%' },
-  percent: { color: '#C17AED', fontSize: 12, marginTop: 6 },
+  fill: { backgroundColor: colors.navAccent, borderRadius: 4, height: '100%' },
+  percent: { color: colors.navAccent, fontSize: 12, marginTop: 6 },
 });

@@ -1,5 +1,5 @@
 <svg width="454" height="170" viewBox="0 0 454 170" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M443 24H401.501V146H443V170H30C13.4315 170 4.02687e-07 156.569 0 140V30C0 13.4315 13.4315 6.08021e-07 30 0H443V24Z" fill="#64A56D"/>
+<path d="M443 24H401.501V146H443V170H30C13.4315 170 4.02687e-07 156.569 0 140V30C0 13.4315 13.4315 6.08021e-07 30 0H443V24Z" fill="currentColor"/>
 <rect x="43" y="24" width="400" height="121" rx="20" fill="#D9D9D9"/>
 <path d="M43 40.5H443" stroke-width="5" stroke="#C0C0C0"/>
 <path d="M43 54.5H443" stroke-width="5" stroke="#C0C0C0"/>
@@ -8,6 +8,6 @@
 <path d="M43 96.5H443" stroke-width="5" stroke="#C0C0C0"/>
 <path d="M43 110.5H443" stroke-width="5" stroke="#C0C0C0"/>
 <path d="M43 124.5H443" stroke-width="5" stroke="#C0C0C0"/>
-<circle cx="442" cy="12" r="12" fill="#64A56D"/>
-<circle cx="442" cy="158" r="12" fill="#64A56D"/>
+<circle cx="442" cy="12" r="12" fill="currentColor"/>
+<circle cx="442" cy="158" r="12" fill="currentColor"/>
 </svg>

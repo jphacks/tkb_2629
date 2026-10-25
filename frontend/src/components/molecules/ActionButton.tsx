@@ -14,18 +14,18 @@ export function ActionButton({ label, onPress, secondary = false }: ActionButton
             <LinearGradient id="actionButtonGradient" x1="0" x2="1" y1="0" y2="1">
               <Stop offset="0" stopColor="#FF8C8C" />
               <Stop offset="0.45" stopColor="#DE7ECD" />
-              <Stop offset="1" stopColor="#C17AED" />
+              <Stop offset="1" stopColor={colors.navAccent} />
             </LinearGradient>
             <LinearGradient id="actionGlassHighlight" x1="0" x2="0" y1="0" y2="1">
-              <Stop offset="0" stopColor="#FFFFFF" stopOpacity="0.42" />
-              <Stop offset="0.24" stopColor="#FFFFFF" stopOpacity="0.14" />
-              <Stop offset="0.55" stopColor="#FFFFFF" stopOpacity="0" />
-              <Stop offset="1" stopColor="#FFFFFF" stopOpacity="0.08" />
+              <Stop offset="0" stopColor={colors.background} stopOpacity="0.42" />
+              <Stop offset="0.24" stopColor={colors.background} stopOpacity="0.14" />
+              <Stop offset="0.55" stopColor={colors.background} stopOpacity="0" />
+              <Stop offset="1" stopColor={colors.background} stopOpacity="0.08" />
             </LinearGradient>
           </Defs>
           <Rect fill="url(#actionButtonGradient)" height="100" rx="12" width="100" />
           <Rect fill="url(#actionGlassHighlight)" height="100" rx="12" width="100" />
-          <Rect fill="none" height="99" rx="12" stroke="#FFFFFF" strokeOpacity="0.36" strokeWidth="1" width="99" x="0.5" y="0.5" />
+          <Rect fill="none" height="99" rx="12" stroke={colors.background} strokeOpacity="0.36" strokeWidth="1" width="99" x="0.5" y="0.5" />
         </Svg>
       )}
       <Text style={[styles.text, secondary && styles.secondaryText]}>{label}</Text>
@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
   gradientUpperMiddle: { backgroundColor: '#F384C9' },
   gradientMiddle: { backgroundColor: '#DE7ECD' },
   gradientLowerMiddle: { backgroundColor: '#D078D0' },
-  gradientBottom: { backgroundColor: '#C17AED' },
+  gradientBottom: { backgroundColor: colors.navAccent },
   text: { color: colors.background, fontSize: 16, fontWeight: '700' },
   secondaryText: { color: colors.accent },
 });

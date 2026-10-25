@@ -13,4 +13,5 @@ export type ScreenKey =
   | 'add-book'
   | 'account-settings'
   | 'reading-complete'
-  | 'bookmark';
+  | 'bookmark'
+  | 'bookmark-book-select';

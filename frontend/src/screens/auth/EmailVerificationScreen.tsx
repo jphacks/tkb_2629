@@ -1,3 +1,4 @@
+import { colors } from "../../theme/colors";
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -26,14 +27,14 @@ export function EmailVerificationScreen({ onNavigate }: { onNavigate: (route: Sc
 
 const styles = StyleSheet.create({
   content: { padding: 24 },
-  topText: { color: '#9CA3AF', fontSize: 14 },
-  icon: { color: '#C17AED', fontSize: 58, marginTop: 12, textAlign: 'center' },
-  title: { color: '#464646', fontSize: 25, fontWeight: '700', marginTop: 20, textAlign: 'center' },
+  topText: { color: colors.placeholder, fontSize: 14 },
+  icon: { color: colors.navAccent, fontSize: 58, marginTop: 12, textAlign: 'center' },
+  title: { color: colors.text, fontSize: 25, fontWeight: '700', marginTop: 20, textAlign: 'center' },
   message: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 14, marginTop: 24, padding: 20 },
-  body: { color: '#464646', fontSize: 14, lineHeight: 22, textAlign: 'center' },
-  email: { color: '#C17AED', fontSize: 16, fontWeight: '700', marginTop: 10, textAlign: 'center' },
-  label: { color: '#464646', fontSize: 14, fontWeight: '600', marginTop: 24 },
-  input: { borderColor: '#E5DCE8', borderRadius: 12, borderWidth: 1, color: '#464646', fontSize: 24, height: 60, letterSpacing: 12, marginTop: 8, textAlign: 'center' },
-  help: { color: '#9CA3AF', fontSize: 13, marginTop: 24, textAlign: 'center' },
-  link: { color: '#C17AED', fontSize: 13, marginTop: 8, textAlign: 'center' },
+  body: { color: colors.text, fontSize: 14, lineHeight: 22, textAlign: 'center' },
+  email: { color: colors.navAccent, fontSize: 16, fontWeight: '700', marginTop: 10, textAlign: 'center' },
+  label: { color: colors.text, fontSize: 14, fontWeight: '600', marginTop: 24 },
+  input: { borderColor: '#E5DCE8', borderRadius: 12, borderWidth: 1, color: colors.text, fontSize: 24, height: 60, letterSpacing: 12, marginTop: 8, textAlign: 'center' },
+  help: { color: colors.placeholder, fontSize: 13, marginTop: 24, textAlign: 'center' },
+  link: { color: colors.navAccent, fontSize: 13, marginTop: 8, textAlign: 'center' },
 });

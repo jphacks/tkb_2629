@@ -1,3 +1,4 @@
+import { colors } from "../../theme/colors";
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { GlassSurface } from '../atoms/GlassSurface';
@@ -14,7 +15,7 @@ type SegmentedTabsProps = {
   value: string;
 };
 
-export function SegmentedTabs({ activeColor = '#FF7171', onChange, options, tintColor = '#FFF4F4', value }: SegmentedTabsProps) {
+export function SegmentedTabs({ activeColor = colors.accent, onChange, options, tintColor = '#FFF4F4', value }: SegmentedTabsProps) {
   return (
     <GlassSurface intensity={18} style={[styles.container, { borderColor: tintColor }]}>
       {options.map((option) => {
@@ -39,7 +40,7 @@ export function SegmentedTabs({ activeColor = '#FF7171', onChange, options, tint
 const styles = StyleSheet.create({
   container: { borderRadius: 10, flexDirection: 'row', padding: 3 },
   tab: { alignItems: 'center', borderRadius: 8, flex: 1, justifyContent: 'center', minHeight: 36, paddingHorizontal: 8 },
-  activeTab: { backgroundColor: 'rgba(255, 255, 255, 0.58)', borderColor: 'rgba(255, 255, 255, 0.82)', borderWidth: 1, elevation: 1, shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 3, shadowOffset: { height: 1, width: 0 } },
+  activeTab: { backgroundColor: 'rgba(255, 255, 255, 0.58)', borderColor: 'rgba(255, 255, 255, 0.82)', borderWidth: 1, elevation: 1, shadowColor: colors.black, shadowOpacity: 0.08, shadowRadius: 3, shadowOffset: { height: 1, width: 0 } },
   label: { color: '#A1A1AA', fontSize: 12, fontWeight: '600' },
-  activeLabel: { color: '#FF7171' },
+  activeLabel: { color: colors.accent },
 });

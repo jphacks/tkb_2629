@@ -1,3 +1,4 @@
+import { colors } from "../../theme/colors";
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BookmarkCallout } from './BookmarkCallout';
@@ -5,7 +6,7 @@ import type { Bookmark } from '../../types/bookmark';
 
 type BookmarkTimelineProps = { accentColor?: string; bookmarks: Bookmark[]; selectedBookmark?: Bookmark; onSelect: (id: string) => void; tintColor?: string };
 
-export function BookmarkTimeline({ accentColor = '#FF7171', bookmarks, selectedBookmark, onSelect, tintColor = '#FFD6D6' }: BookmarkTimelineProps) {
+export function BookmarkTimeline({ accentColor = colors.accent, bookmarks, selectedBookmark, onSelect, tintColor = '#FFD6D6' }: BookmarkTimelineProps) {
   return (
     <>
       <View style={styles.timeline}>
@@ -27,8 +28,8 @@ const styles = StyleSheet.create({
   timeline: { height: 180, marginTop: 14, position: 'relative' },
   line: { backgroundColor: '#FFD6D6', height: 3, left: 0, position: 'absolute', right: 0, top: 110 },
   marker: { alignItems: 'center', position: 'absolute', top: 100, transform: [{ translateX: -18 }], width: 36, zIndex: 2 },
-  dot: { backgroundColor: '#FF7171', borderColor: '#FFFFFF', borderRadius: 10, borderWidth: 3, height: 20, width: 20 },
-  selectedDot: { borderColor: '#464646', borderWidth: 4 },
-  page: { color: '#9CA3AF', fontSize: 10, marginTop: 5 },
+  dot: { backgroundColor: colors.accent, borderColor: colors.background, borderRadius: 10, borderWidth: 3, height: 20, width: 20 },
+  selectedDot: { borderColor: colors.text, borderWidth: 4 },
+  page: { color: colors.placeholder, fontSize: 10, marginTop: 5 },
   labels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: -2 },
 });

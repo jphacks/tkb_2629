@@ -20,7 +20,7 @@ export function BottomNavItem({ label, icon, active = false, onPress }: BottomNa
 }
 
 const styles = StyleSheet.create({
-  item: { alignItems: 'center', flex: 1, gap: 4, justifyContent: 'center', paddingTop: 4 },
+  item: { alignItems: 'center', flex: 1, gap: 4, justifyContent: 'center', paddingTop: 4 ,marginBottom: 24},
   label: { color: colors.navAccent, fontSize: 10, fontWeight: '500' },
   activeLabel: { fontWeight: '800' },
 });

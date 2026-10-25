@@ -1,3 +1,4 @@
+import { colors } from "../../theme/colors";
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -31,11 +32,11 @@ export function AccountRegisterScreen({ onNavigate }: { onNavigate: (route: Scre
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 24, paddingBottom: 110 },
-  title: { color: '#464646', fontSize: 26, fontWeight: '700', marginTop: 12 },
-  description: { color: '#9CA3AF', fontSize: 14, marginTop: 8 },
+  content: { padding: 24, paddingBottom: 110 ,marginTop: 56 },
+  title: { color: colors.text, fontSize: 26, fontWeight: '700', marginTop: 12 },
+  description: { color: colors.placeholder, fontSize: 14, marginTop: 8 },
   form: { gap: 8, marginTop: 24 },
-  label: { color: '#464646', fontSize: 14, fontWeight: '600', marginTop: 8 },
+  label: { color: colors.text, fontSize: 14, fontWeight: '600', marginTop: 8 },
   input: { height: 54, width: '100%' },
-  note: { color: '#9CA3AF', fontSize: 12, lineHeight: 18, marginTop: 10 },
+  note: { color: colors.placeholder, fontSize: 12, lineHeight: 18, marginTop: 10 },
 });
