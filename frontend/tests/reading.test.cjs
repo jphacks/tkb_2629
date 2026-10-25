@@ -119,7 +119,7 @@ test('only reading books are listed; card opens detail and its button opens the 
   cards(tree)[0].props.onBookmark();
   assert.deepEqual({ ...h.target }, { name: 'bookmark', bookId: 4, iteration: 2 });
   button(tree, '本を追加').props.onPress();
-  assert.equal(h.target, 'add-book');
+  assert.equal(h.target, 'search');
 });
 
 test('all pages are loaded so reading books beyond the first 100 are included', async () => {
@@ -142,7 +142,7 @@ test('no reading books guides to adding a book', async () => {
   const tree = h.render();
   assert.ok(text(tree).includes('読書中の本はありません'));
   button(tree, '本を追加する').props.onPress();
-  assert.equal(h.target, 'add-book');
+  assert.equal(h.target, 'search');
 });
 
 test('failure shows the error and retries from the first page', async () => {

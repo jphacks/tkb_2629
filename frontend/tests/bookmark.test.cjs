@@ -148,9 +148,9 @@ function screenHarness() {
       }
     },
     get target() { return target; },
-    mount(id = 7, iteration = 2, initialPage) {
+    mount(id = 7, iteration = 2, initialPage, onBack) {
       const element = BookmarkScreen({
-        bookId: id, iteration, initialPage, onNavigate: (value) => { target = value; },
+        bookId: id, iteration, initialPage, onNavigate: (value) => { target = value; }, onBack,
       });
       component = element.type;
       props = element.props;
@@ -176,6 +176,25 @@ async function openBook(h, id = 7) {
   await flush();
   return find(h.render(), 'BookmarkCard');
 }
+
+test('bookmark header arrow returns to its caller, or the reading list when no caller is supplied', async () => {
+  const h = screenHarness();
+  let backs = 0;
+  let tree = h.mount(7, 2, undefined, () => { backs += 1; });
+  assert.equal(tree.props.headerLeading.type, 'BackButton');
+  tree.props.headerLeading.props.onPress();
+  assert.equal(backs, 1);
+  h.requests[0].resolve(book(7));
+  await flush();
+  tree = h.render();
+  tree.props.headerLeading.props.onPress();
+  assert.equal(backs, 2);
+  assert.equal(h.target, undefined);
+  const fallback = screenHarness();
+  tree = fallback.mount();
+  tree.props.headerLeading.props.onPress();
+  assert.equal(fallback.target, 'reading');
+});
 
 async function openPage(h, existing = null, page = '42') {
   let card = find(h.render(), 'BookmarkCard');
@@ -221,9 +240,9 @@ test('no selected book links to the reading list and never loads or saves', () =
 });
 
 test('app keeps bookmark target and iteration together and also allows the book selection entry', () => {
-  let route = { name: 'bookmark', bookId: 12, iteration: 3, page: 42 };
+  let routes = [{ name: 'bookmark', bookId: 12, iteration: 3, page: 42 }];
   const { default: App } = load('App.tsx', {
-    react: { useState: () => [route, (next) => { route = next; }] },
+    react: { useState: () => [routes, (next) => { routes = typeof next === 'function' ? next(routes) : next; }] },
     'react/jsx-runtime': { jsx: (type, props) => ({ type, props }) },
   });
   let tree = App();
@@ -239,6 +258,40 @@ test('app keeps bookmark target and iteration together and also allows the book 
   tree = App();
   assert.equal(tree.type, 'BookDetailScreen');
   assert.equal(tree.props.bookId, 12);
+});
+
+test('back follows the actual entry: reading -> detail -> bookmark, direct reading, and direct home', () => {
+  let routes = [{ name: 'reading' }];
+  const { default: App } = load('App.tsx', {
+    react: { useState: () => [routes, (next) => { routes = typeof next === 'function' ? next(routes) : next; }] },
+    'react/jsx-runtime': { jsx: (type, props) => ({ type, props }) },
+  });
+  let tree = App();
+  tree.props.onNavigate({ name: 'book-detail', bookId: 7 });
+  tree = App();
+  tree.props.onNavigate({ name: 'bookmark', bookId: 7, iteration: 2 });
+  tree = App();
+  assert.equal(tree.type, 'BookmarkScreen');
+  tree.props.onBack();
+  tree = App();
+  assert.equal(tree.type, 'BookDetailScreen');
+  assert.equal(tree.props.bookId, 7);
+  tree.props.onBack();
+  tree = App();
+  assert.equal(tree.type, 'ReadingScreen');
+  tree.props.onNavigate({ name: 'bookmark', bookId: 8, iteration: 1 });
+  tree = App();
+  tree.props.onBack();
+  tree = App();
+  assert.equal(tree.type, 'ReadingScreen');
+  tree.props.onNavigate('home');
+  tree = App();
+  tree.props.onNavigate({ name: 'bookmark', bookId: 8, iteration: 1 });
+  tree = App();
+  tree.props.onBack();
+  tree = App();
+  assert.equal(tree.type, 'HomeScreen');
+  assert.equal(routes.length, 1);
 });
 
 test('create: wait for successful save before animation, use returned color, preserve IDs and block duplicates', async () => {

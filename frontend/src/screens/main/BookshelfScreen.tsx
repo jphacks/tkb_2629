@@ -77,7 +77,7 @@ export function BookshelfScreen({ onNavigate }: { onNavigate: Navigate }) {
         <Pressable
           accessibilityLabel="本を追加"
           accessibilityRole="button"
-          onPress={() => onNavigate('add-book')}
+          onPress={() => onNavigate('search')}
           style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
         >
           <Ionicons color={colors.text} name="add" size={22} />
