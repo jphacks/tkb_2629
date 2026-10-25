@@ -66,6 +66,11 @@ function detailHarness() {
   const pending = (kind, args) => new Promise((resolve, reject) => { requests.push({ kind, args, resolve, reject }); });
   const { BookDetailScreen } = compile('src/screens/books/BookDetailScreen.tsx', {
     react: {
+      useRef(initial) {
+        const index = cursor++;
+        if (!(index in state)) state[index] = { current: initial };
+        return state[index];
+      },
       useState(initial) {
         const index = cursor++;
         if (!(index in state)) state[index] = initial;
@@ -94,6 +99,7 @@ function detailHarness() {
     '../../lib/api': {
       ApiError,
       completeIteration: (...args) => pending('complete', args),
+      startIteration: (...args) => pending('start', args),
       getBook: (...args) => pending('book', args),
       getBookEmotions: () => new Promise(() => {}),
       getBookReviews: () => new Promise(() => {}),
@@ -120,9 +126,9 @@ function detailHarness() {
       await flush();
       return h.render();
     },
-    confirm() {
+    confirm(label = '読了にする') {
       const [, , actions] = dialogs.at(-1);
-      actions.find((action) => action.text === '読了にする').onPress();
+      actions.find((action) => action.text === label).onPress();
     },
   };
   return h;
@@ -148,7 +154,7 @@ test('reading book: confirming 読了にする completes the latest iteration an
   await flush();
   tree = h.render();
   assert.equal(button(tree, '読了にする'), undefined);
-  assert.ok(nodes(tree).some((node) => node.type === 'Text' && text(node) === '読了'));
+  assert.ok(nodes(tree).some((node) => node.type === 'Text' && text(node) === '2回目・読了'));
   assert.equal(nodes(tree).find((node) => node.type === 'FloatingActionButton'), undefined);
 });
 
@@ -191,4 +197,71 @@ test('completed books have no 読了にする button', async () => {
   const h = detailHarness();
   const tree = await h.open(book({ reading_status: 'completed', current_page: 200 }));
   assert.equal(button(tree, '読了にする'), undefined);
+});
+
+test('reread confirms, prevents duplicate submissions, then reloads the new reading iteration', async () => {
+  const h = detailHarness();
+  let tree = await h.open(book({ reading_status: 'completed', current_page: 200 }));
+  button(tree, 'もう一度読む').props.onPress();
+  assert.equal(h.count('start'), 0);
+  assert.ok(h.dialogs[0][1].includes('3回目'));
+  assert.ok(h.dialogs[0][1].includes('過去のしおりは残ります'));
+  h.confirm('もう一度読む');
+  h.confirm('もう一度読む');
+  assert.equal(h.count('start'), 1);
+  assert.deepEqual(h.last('start').args, [7]);
+  tree = h.render();
+  assert.equal(button(tree, '再読を開始しています…').props.onPress, undefined);
+  h.last('start').resolve({ iteration_number: 3, status: 'reading', current_page: 0 });
+  await flush();
+  h.render();
+  assert.equal(h.count('book'), 2);
+  h.last('book').resolve(book({ latest_iteration: 3, current_page: 0 }));
+  await flush();
+  tree = h.render();
+  assert.equal(button(tree, 'もう一度読む'), undefined);
+  const progress = nodes(tree).find((node) => node.type === 'ReadingProgress');
+  assert.equal(progress.props.currentPage, 0);
+  assert.ok(nodes(tree).some((node) => node.type === 'Text' && text(node) === '3回目・読書中'));
+});
+
+test('reread cancellation sends nothing, failures including conflicts are visible and retryable', async () => {
+  const h = detailHarness();
+  let tree = await h.open(book({ reading_status: 'completed' }));
+  button(tree, 'もう一度読む').props.onPress();
+  assert.equal(h.dialogs[0][2][0].style, 'cancel');
+  assert.equal(h.count('start'), 0);
+  for (const status of [500, 409]) {
+    h.confirm('もう一度読む');
+    h.last('start').reject(new h.ApiError(`Failed ${status}`, status));
+    await flush();
+    tree = h.render();
+    assert.ok(alerts(tree).includes(`Failed ${status}`));
+    assert.ok(button(tree, 'もう一度読む'));
+  }
+});
+
+test('reading books cannot start another iteration', async () => {
+  const h = detailHarness();
+  assert.equal(button(await h.open(book()), 'もう一度読む'), undefined);
+  assert.equal(h.count('start'), 0);
+});
+
+test('startIteration uses existing POST endpoint and propagates errors', async () => {
+  let response;
+  let request;
+  const api = compile('src/lib/api.ts', {}, {
+    __DEV__: false, process: { env: { EXPO_PUBLIC_API_URL: 'http://api' } },
+    fetch: async (url, init) => { request = [url, init.method]; return response; },
+  });
+  response = new Response('{"iteration_number":2,"status":"reading","current_page":0}', {
+    status: 201, headers: { 'content-type': 'application/json' },
+  });
+  const result = await api.startIteration(7);
+  assert.equal(result.iteration_number, 2);
+  assert.deepEqual(request, ['http://api/books/7/iterations', 'POST']);
+  response = new Response('{"detail":"Already reading"}', {
+    status: 409, headers: { 'content-type': 'application/json' },
+  });
+  await assert.rejects(api.startIteration(7), (error) => error.status === 409);
 });
