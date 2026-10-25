@@ -1,18 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Keyboard, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { getBook, getPageReview, reviewAnalysisLabel, savePageReview, type Book, type PageReview } from '../../lib/api';
 import { colors } from '../../theme/colors';
 import { ActionButton } from '../molecules/ActionButton';
+import { BackButton } from '../molecules/BackButton';
 import { BookmarkCard } from '../organisms/BookmarkCard';
 import { BookmarkRibbon } from '../organisms/BookmarkRibbon';
 import { ScreenFrame } from '../organisms/ScreenFrame';
 import type { Navigate } from '../../screens/types';
 
-type BookmarkScreenProps = { bookId?: number; iteration?: number; initialPage?: number; onNavigate: Navigate };
+type BookmarkScreenProps = { bookId?: number; iteration?: number; initialPage?: number; onNavigate: Navigate; onBack?: () => void };
 
-export function BookmarkScreen({ bookId, iteration, initialPage, onNavigate }: BookmarkScreenProps) {
+export function BookmarkScreen({ bookId, iteration, initialPage, onNavigate, onBack }: BookmarkScreenProps) {
   if (bookId === undefined || iteration === undefined) {
     return (
       <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title="しおりを追加">
@@ -23,7 +24,7 @@ export function BookmarkScreen({ bookId, iteration, initialPage, onNavigate }: B
       </ScreenFrame>
     );
   }
-  return <SelectedBookmarkScreen key={`${bookId}:${iteration}:${initialPage ?? ''}`} bookId={bookId} iteration={iteration} initialPage={initialPage} onNavigate={onNavigate} />;
+  return <SelectedBookmarkScreen key={`${bookId}:${iteration}:${initialPage ?? ''}`} bookId={bookId} iteration={iteration} initialPage={initialPage} onNavigate={onNavigate} onBack={onBack} />;
 }
 
 type BookState =
@@ -31,7 +32,7 @@ type BookState =
   | { status: 'error'; message: string }
   | { status: 'success'; book: Book };
 
-function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate }: BookmarkScreenProps & { bookId: number; iteration: number }) {
+function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, onBack }: BookmarkScreenProps & { bookId: number; iteration: number }) {
   const [bookState, setBookState] = useState<BookState>({ status: 'loading' });
   const [requestVersion, setRequestVersion] = useState(0);
   const [pageVersion, setPageVersion] = useState(0);
@@ -162,7 +163,9 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate }: 
 
   if (!book) {
     return (
-      <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title="しおりを追加">
+      <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title="しおりを追加"
+        headerLeading={<BackButton onPress={onBack ?? (() => onNavigate('reading'))} />}
+      >
         <View style={styles.messageState}>
           {bookState.status === 'loading' && <Text style={styles.message}>本を読み込んでいます…</Text>}
           {bookState.status === 'error' && (
@@ -178,16 +181,10 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate }: 
   }
 
   return (
-    <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title="しおりを追加" showNavigation={!busy || completed}>
+    <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title="しおりを追加" showNavigation={!busy || completed}
+      headerLeading={<BackButton onPress={onBack ?? (() => onNavigate('reading'))} disabled={busy && !completed} />}
+    >
       <View style={styles.content}>
-        <Pressable
-          accessibilityLabel="今読んでる本に戻る"
-          accessibilityRole="button"
-          onPress={() => onNavigate('reading')}
-          style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
-        >
-          <Ionicons color={colors.text} name="arrow-back" size={22} />
-        </Pressable>
         {!completed && (
           <>
             {canEdit && <BookmarkRibbon translateY={translateY} color={result?.color_code ?? existing?.color_code} />}
@@ -239,8 +236,6 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate }: 
 
 const styles = StyleSheet.create({
   content: { backgroundColor: colors.backgroundSoft, flex: 1, padding: 24, position: 'relative' },
-  backButton: { alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.72)', borderColor: 'rgba(255, 255, 255, 0.9)', borderRadius: 20, borderWidth: 1, height: 40, marginBottom: 16, width: 40, zIndex: 4 },
-  pressed: { opacity: 0.72, transform: [{ scale: 0.94 }] },
   messageState: { gap: 16, padding: 24 },
   readOnlyHeader: { marginHorizontal: 24, marginTop: 8, gap: 4 },
   message: { color: colors.text, fontSize: 14, lineHeight: 22 },

@@ -97,6 +97,7 @@ function detailHarness() {
       getBook: (...args) => pending('book', args),
       getBookEmotions: () => new Promise(() => {}),
       getBookReviews: () => new Promise(() => {}),
+      getIterations: () => new Promise(() => {}),
     },
   });
   const h = {

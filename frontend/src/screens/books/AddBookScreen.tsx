@@ -1,20 +1,25 @@
 import { colors } from "../../theme/colors";
 import { Ionicons } from '@expo/vector-icons';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { ActionButton } from '../../components/molecules/ActionButton';
 import { BookCover } from '../../components/molecules/BookCover';
 import { ShadowInput } from '../../components/atoms/ShadowInput';
-import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
+import { BookmarkScreen } from '../../components/templates/BookmarkScreen';
 import {
   importGoogleBook,
   searchGoogleBooks,
+  type Book,
   type GoogleBook,
 } from '../../lib/api';
-import type { Navigate, ScreenKey } from '../types';
+import { loadAllBooks } from '../../lib/readingBooks';
+import { shelfStatusLabel } from '../../lib/readingStatus';
+import type { Navigate, Route, ScreenKey } from '../types';
+import { BookPreviewScreen } from './BookPreviewScreen';
+import { BookDetailScreen } from './BookDetailScreen';
 
 type AddBookScreenProps = {
   onNavigate: Navigate;
@@ -33,9 +38,30 @@ export function AddBookScreen({
   const [results, setResults] = useState<GoogleBook[]>([]);
   const [searching, setSearching] = useState(false);
   const [importingId, setImportingId] = useState<string | null>(null);
-  const [importedIds, setImportedIds] = useState<string[]>([]);
+  const [ownedBooks, setOwnedBooks] = useState<Record<string, Book>>({});
   const [message, setMessage] = useState<string | null>(null);
+  const [preview, setPreview] = useState<GoogleBook | null>(null);
+  const [detailBookId, setDetailBookId] = useState<number | null>(null);
+  const [bookmark, setBookmark] = useState<Extract<Route, { name: 'bookmark' }> | null>(null);
   const searchRequestId = useRef(0);
+
+  // Shelf status on results is supplementary, so a failure here only hides it.
+  useEffect(() => {
+    let active = true;
+    loadAllBooks(() => active)
+      .then((books) => {
+        if (!active || !books) return;
+        const owned: Record<string, Book> = {};
+        for (const book of books) {
+          if (book.google_books_id) owned[book.google_books_id] = book;
+        }
+        setOwnedBooks((current) => ({ ...owned, ...current }));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function search() {
     const normalizedQuery = query.trim();
@@ -70,12 +96,14 @@ export function AddBookScreen({
   }
 
   async function addBook(book: GoogleBook) {
+    if (importingId !== null || ownedBooks[book.google_books_id]) return;
     setImportingId(book.google_books_id);
     setMessage(null);
     try {
-      await importGoogleBook(book.google_books_id);
-      setImportedIds((current) => [...current, book.google_books_id]);
+      const imported = await importGoogleBook(book.google_books_id);
+      setOwnedBooks((current) => ({ ...current, [book.google_books_id]: imported }));
       setMessage(`「${book.title}」を本棚に追加しました。`);
+      setDetailBookId(imported.id);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '';
       setMessage(
@@ -86,6 +114,54 @@ export function AddBookScreen({
     } finally {
       setImportingId(null);
     }
+  }
+
+  const navigate: Navigate = (target) => {
+    if (typeof target !== 'string' && target.name === 'book-detail') {
+      setBookmark(null);
+      setDetailBookId(target.bookId);
+    } else if (typeof target !== 'string' && target.name === 'bookmark' && target.bookId !== undefined) {
+      setBookmark(target);
+    } else {
+      onNavigate(target);
+    }
+  };
+
+  if (bookmark) {
+    return (
+      <BookmarkScreen
+        bookId={bookmark.bookId}
+        iteration={bookmark.iteration}
+        initialPage={bookmark.page}
+        onNavigate={navigate}
+        onBack={() => setBookmark(null)}
+      />
+    );
+  }
+
+  if (detailBookId !== null) {
+    return (
+      <BookDetailScreen
+        bookId={detailBookId}
+        onNavigate={navigate}
+        onBack={() => setDetailBookId(null)}
+      />
+    );
+  }
+
+  if (preview) {
+    return (
+      <BookPreviewScreen
+        book={preview}
+        owned={ownedBooks[preview.google_books_id]}
+        adding={importingId !== null}
+        message={message}
+        activeRoute={activeRoute}
+        onNavigate={navigate}
+        onBack={() => setPreview(null)}
+        onAdd={() => { void addBook(preview); }}
+      />
+    );
   }
 
   return (
@@ -129,33 +205,56 @@ export function AddBookScreen({
         {results.length > 0 && (
           <Text style={styles.resultCount}>検索結果 {results.length}件</Text>
         )}
-        {results.map((book) => (
-          <Pressable
-            disabled={importingId !== null || importedIds.includes(book.google_books_id)}
-            key={book.google_books_id}
-            onPress={() => addBook(book)}
-            style={[
-              styles.result,
-              importedIds.includes(book.google_books_id) && styles.importedResult,
-            ]}
-          >
-            <View style={styles.book}>
-              <BookCover title={book.title} author={book.author ?? '著者不明'} />
-              <View style={styles.bookDetails}>
-                <Text style={styles.title}>{book.title}</Text>
-                <Text style={styles.body}>{book.author ?? '著者不明'}</Text>
-                <Text style={styles.body}>{book.total_pages}ページ</Text>
-                <Text style={styles.tap}>
-                  {importedIds.includes(book.google_books_id)
-                    ? '追加済み'
-                    : importingId === book.google_books_id
-                      ? '追加中…'
-                      : 'タップして本棚に追加'}
-                </Text>
+        {results.map((book) => {
+          const owned = ownedBooks[book.google_books_id];
+          return (
+            <View
+              accessibilityLabel={`${book.title}の検索結果`}
+              key={book.google_books_id}
+              style={styles.result}
+            >
+              <View style={styles.book}>
+                <BookCover title={book.title} author={book.author ?? '著者不明'} />
+                <View style={styles.bookDetails}>
+                  <Text style={styles.title}>{book.title}</Text>
+                  <Text style={styles.body}>{book.author ?? '著者不明'}</Text>
+                  <Text style={styles.body}>{book.total_pages}ページ</Text>
+                  {owned && <Text style={styles.status}>{shelfStatusLabel(owned)}</Text>}
+                  <View style={styles.actions}>
+                      <Pressable
+                        accessibilityLabel={`${book.title}の詳細を見る`}
+                        accessibilityRole="button"
+                        onPress={() => {
+                          if (owned) {
+                            setDetailBookId(owned.id);
+                          } else {
+                            setMessage(null);
+                            setPreview(book);
+                          }
+                        }}
+                        style={({ pressed }) => [styles.detailButton, pressed && styles.searchButtonPressed]}
+                      >
+                        <Text style={styles.detailLabel}>詳細を見る</Text>
+                      </Pressable>
+                      <Pressable
+                        accessibilityLabel={`${book.title}を追加する`}
+                        accessibilityRole="button"
+                        disabled={importingId !== null || owned !== undefined}
+                        onPress={() => {
+                          void addBook(book);
+                        }}
+                        style={({ pressed }) => [styles.detailButton, owned && styles.addedButton, pressed && styles.searchButtonPressed]}
+                      >
+                        <Text style={[styles.detailLabel, owned && styles.addedLabel]}>
+                          {owned ? '追加済み' : importingId === book.google_books_id ? '追加中…' : 'タップして本棚に追加'}
+                        </Text>
+                      </Pressable>
+                  </View>
+                </View>
               </View>
             </View>
-          </Pressable>
-        ))}
+          );
+        })}
         {message?.includes('追加しました') && (
           <ActionButton label="本棚へ戻る" onPress={() => onNavigate('bookshelf')} />
         )}
@@ -183,10 +282,15 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     shadowOffset: { height: 1, width: 0 },
   },
-  importedResult: { opacity: 0.55 },
+
   book: { alignItems: 'center', flexDirection: 'row', gap: 18 },
   bookDetails: { flex: 1 },
   title: { color: colors.text, fontSize: 16, fontWeight: '700' },
   body: { color: colors.placeholder, fontSize: 13, marginTop: 5 },
-  tap: { color: colors.navAccent, fontSize: 13, fontWeight: '700', marginTop: 9 },
+  status: { color: colors.textSecondary, fontSize: 13, fontWeight: '600', marginTop: 9 },
+  actions: { gap: 16, marginTop: 16 },
+  detailButton: { alignItems: 'center', justifyContent: 'center', borderColor: colors.navAccent, borderRadius: 14, borderWidth: 1, minHeight: 48, paddingHorizontal: 12, paddingVertical: 10 },
+  detailLabel: { color: colors.navAccent, fontSize: 13, fontWeight: '700' },
+  addedButton: { backgroundColor: colors.navAccent },
+  addedLabel: { color: colors.background },
 });

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '../../components/molecules/ActionButton';
+import { BackButton } from '../../components/molecules/BackButton';
 import { BookCover } from '../../components/molecules/BookCover';
 import { FloatingActionButton } from '../../components/molecules/FloatingActionButton';
 import { ReadingProgress } from '../../components/molecules/ReadingProgress';
@@ -11,12 +12,14 @@ import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { EmotionAnalysisCard, getEmotionTint } from '../../components/organisms/EmotionAnalysisCard';
 import { BookmarkListCard } from '../../components/organisms/BookmarkListCard';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import { ApiError, completeIteration, getBook, getBookEmotions, getBookReviews, type Book, type BookEmotions, type PageReview } from '../../lib/api';
+import { ApiError, completeIteration, getBook, getBookEmotions, getBookReviews, getIterations, type Book, type BookEmotions, type PageReview, type ReadingIteration } from '../../lib/api';
+import { formatDate, iterationLabel } from '../../lib/readingStatus';
 import type { Navigate } from '../types';
 
 type BookDetailScreenProps = {
   bookId: number;
   onNavigate: Navigate;
+  onBack?: () => void;
 };
 
 type BookDetailState =
@@ -24,7 +27,7 @@ type BookDetailState =
   | { bookId: number; status: 'success'; book: Book }
   | { bookId: number; status: 'error'; message: string };
 
-export function BookDetailScreen({ bookId, onNavigate }: BookDetailScreenProps) {
+export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScreenProps) {
   const [state, setState] = useState<BookDetailState>({ bookId, status: 'loading' });
   const [requestVersion, setRequestVersion] = useState(0);
   const [reviews, setReviews] = useState<PageReview[] | null>(null);
@@ -34,6 +37,9 @@ export function BookDetailScreen({ bookId, onNavigate }: BookDetailScreenProps) 
   const [emotionError, setEmotionError] = useState<string | null>(null);
   const [completing, setCompleting] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
+  const [iterations, setIterations] = useState<ReadingIteration[] | null>(null);
+  const [iterationError, setIterationError] = useState<string | null>(null);
+  const [iterationVersion, setIterationVersion] = useState(0);
 
   useEffect(() => {
     setCompleting(false);
@@ -87,6 +93,18 @@ export function BookDetailScreen({ bookId, onNavigate }: BookDetailScreenProps) 
     });
     return () => { active = false; };
   }, [book, bookId, reviewVersion]);
+  useEffect(() => {
+    let active = true;
+    setIterations(null);
+    setIterationError(null);
+    if (!book) return;
+    getIterations(bookId).then((items) => {
+      if (active) setIterations(items);
+    }).catch((reason: unknown) => {
+      if (active) setIterationError(reason instanceof Error ? reason.message : '読書の記録の取得に失敗しました。');
+    });
+    return () => { active = false; };
+  }, [book, bookId, iterationVersion]);
   const emotionColor = emotions?.color_code ?? '#8C8C8C';
   const emotionTint = getEmotionTint(emotionColor);
   const isReading = book?.reading_status === 'reading';
@@ -121,7 +139,9 @@ export function BookDetailScreen({ bookId, onNavigate }: BookDetailScreenProps) 
   }
 
   return (
-    <ScreenFrame activeRoute="bookshelf" onNavigate={onNavigate} title="本の詳細">
+    <ScreenFrame activeRoute="bookshelf" onNavigate={onNavigate} title="本の詳細"
+      headerLeading={onBack && <BackButton onPress={onBack} />}
+    >
       <ScrollView contentContainerStyle={styles.content}>
         {(state.bookId !== bookId || state.status === 'loading') && (
           <Text style={styles.message}>本の詳細を読み込んでいます…</Text>
@@ -159,6 +179,25 @@ export function BookDetailScreen({ bookId, onNavigate }: BookDetailScreenProps) 
                   />
                 </View>
                 {completeError && <Text accessibilityRole="alert" style={styles.message}>{completeError}</Text>}
+              </GlassSurface>
+            )}
+            {iterationError && (
+              <View style={styles.error}>
+                <Text accessibilityRole="alert" style={styles.message}>{iterationError}</Text>
+                <ActionButton label="読書の記録を再試行" onPress={() => setIterationVersion((version) => version + 1)} />
+              </View>
+            )}
+            {iterations && iterations.length > 0 && (
+              <GlassSurface style={styles.card}>
+                <Text style={styles.historyTitle}>読書の記録</Text>
+                {formatDate(iterations[0]?.started_at) && (
+                  <Text style={styles.historyRow}>{formatDate(iterations[0]?.started_at)} 本棚に追加</Text>
+                )}
+                {iterations.map((iteration) => (
+                  <Text key={iteration.iteration_number} style={styles.historyRow}>
+                    {iteration.iteration_number}回目　{iterationLabel(iteration)}
+                  </Text>
+                ))}
               </GlassSurface>
             )}
             {!reviews && !reviewError && <Text style={styles.message}>しおりを読み込んでいます…</Text>}
@@ -211,5 +250,7 @@ const styles = StyleSheet.create({
   message: { color: colors.placeholder, fontSize: 14, marginTop: 16 },
   error: { gap: 16 },
   completeAction: { marginTop: 16 },
+  historyTitle: { color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 6 },
+  historyRow: { color: colors.textSecondary, fontSize: 13, marginTop: 6 },
   card: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, elevation: 2, marginTop: 16, padding: 18, shadowColor: colors.black, shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } },
 });

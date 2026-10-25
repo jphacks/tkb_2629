@@ -80,6 +80,14 @@ const tab = (tree, label) => nodes(tree).find((node) =>
   node.props?.accessibilityRole === 'tab' && node.props.children.props.children === label);
 const retry = (tree) => nodes(tree).find((node) => node.props?.label === '再試行');
 
+test('shelf plus opens the same search screen as the bottom tab', () => {
+  const h = harness();
+  const tree = h.render();
+  assert.equal(tree.props.headerAction.props.accessibilityLabel, '本を追加');
+  tree.props.headerAction.props.onPress();
+  assert.equal(h.target, 'search');
+});
+
 test('tabs filter by reading status, restore all books, and preserve detail targets', async () => {
   const h = harness();
   h.render();

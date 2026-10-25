@@ -46,7 +46,7 @@ export function ReadingScreen({ onNavigate }: { onNavigate: Navigate }) {
         <Pressable
           accessibilityLabel="本を追加"
           accessibilityRole="button"
-          onPress={() => onNavigate('add-book')}
+          onPress={() => onNavigate('search')}
           style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
         >
           <Ionicons color={colors.navAccent} name="add" size={24} />
@@ -67,7 +67,7 @@ export function ReadingScreen({ onNavigate }: { onNavigate: Navigate }) {
         {state.status === 'success' && state.books.length === 0 && (
           <View style={styles.notice}>
             <Text style={styles.message}>読書中の本はありません。本を追加すると、しおりを挟めます。</Text>
-            <ActionButton label="本を追加する" onPress={() => onNavigate('add-book')} />
+            <ActionButton label="本を追加する" onPress={() => onNavigate('search')} />
           </View>
         )}
         {state.status === 'success' && (
