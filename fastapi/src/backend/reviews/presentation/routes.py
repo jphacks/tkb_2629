@@ -15,6 +15,7 @@ from .schemas import (
     PagePopularityResponse,
     PageReviewResponse,
     ReviewSave,
+    ReviewSpoilersUpdate,
     ReviewVisibilityUpdate,
 )
 
@@ -102,4 +103,20 @@ def update_review_visibility(
     iteration: int | None = Query(default=None, ge=1),
 ) -> ReviewVisibilityUpdate:
     service.set_visibility(user_id, book_id, page_number, request.visibility, iteration)
+    return request
+
+
+@router.patch(
+    "/books/{book_id}/pages/{page_number}/review/spoilers",
+    response_model=ReviewSpoilersUpdate,
+)
+def update_review_spoilers(
+    book_id: int,
+    page_number: PageNumber,
+    request: ReviewSpoilersUpdate,
+    service: ReviewServiceDependency,
+    user_id: CurrentUserId,
+    iteration: int | None = Query(default=None, ge=1),
+) -> ReviewSpoilersUpdate:
+    service.set_spoilers(user_id, book_id, page_number, request.contains_spoilers, iteration)
     return request

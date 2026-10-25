@@ -19,6 +19,7 @@ class ReviewView:
     analysis_status: str = "pending"
     source: str | None = None
     visibility: ReviewVisibility = "private"
+    contains_spoilers: bool = True
 
 
 @dataclass(frozen=True)

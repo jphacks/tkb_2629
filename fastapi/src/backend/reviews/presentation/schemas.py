@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
 from ..domain.values import ReviewVisibility
 
@@ -11,6 +11,12 @@ class ReviewVisibilityUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     visibility: ReviewVisibility
+
+
+class ReviewSpoilersUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    contains_spoilers: StrictBool
 
 
 class PagePopularityPoint(BaseModel):
@@ -54,3 +60,4 @@ class PageReviewResponse(BaseModel):
     analysis_status: str
     source: str | None
     visibility: ReviewVisibility = "private"
+    contains_spoilers: bool = True

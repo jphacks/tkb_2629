@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -11,6 +12,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    true,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -43,6 +45,9 @@ class PageReview(Base):
     review_text: Mapped[str] = mapped_column(Text, nullable=False)
     visibility: Mapped[ReviewVisibility] = mapped_column(
         String(7), nullable=False, default="private", server_default="private"
+    )
+    contains_spoilers: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=true()
     )
     analysis_revision: Mapped[int] = mapped_column(
         Integer, nullable=False, default=1, server_default="1"

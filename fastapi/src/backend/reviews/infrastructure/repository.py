@@ -22,6 +22,7 @@ def review_entity(row: PageReview) -> ReviewEntity:
         row.created_at,
         row.updated_at,
         row.visibility,
+        row.contains_spoilers,
     )
 
 
@@ -61,6 +62,7 @@ class SqlReviewRepository:
             page_number=review.page_number,
             review_text=review.text.value,
             visibility=review.visibility,
+            contains_spoilers=review.contains_spoilers,
             analysis_revision=review.revision,
             analysis_status=review.analysis_status,
             created_at=review.created_at,
@@ -120,3 +122,10 @@ class SqlReviewRepository:
             for page, count in rows:
                 counts[page] = counts.get(page, 0) + count
         return [PagePopularity(page, count) for page, count in sorted(counts.items())]
+
+    def save_spoilers(self, review: ReviewEntity) -> None:
+        self.db.execute(
+            update(PageReview)
+            .where(PageReview.id == review.id)
+            .values(contains_spoilers=review.contains_spoilers, updated_at=review.updated_at)
+        )
