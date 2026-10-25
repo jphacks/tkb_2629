@@ -21,6 +21,7 @@ __all__ = [
 
 
 class LibraryAccess(Protocol):
+    def catalog_reading_keys(self, google_books_id: str) -> list[ReadingKey]: ...
     def resolve_reading(
         self, user_id: int, book_id: int, iteration: int | None
     ) -> ReadingReference: ...

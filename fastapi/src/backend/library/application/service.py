@@ -150,3 +150,13 @@ class LibraryService:
                 ReadingKey(item.id, item.user_id, item.iteration_number)
                 for item in unit.readings.for_book(book_id, latest_only=latest_only)
             ]
+
+    def catalog_reading_keys(self, google_books_id: str) -> list[ReadingKey]:
+        with self.units() as unit:
+            book = unit.books.find_catalog(google_books_id)
+            if book is None:
+                return []
+            return [
+                ReadingKey(item.id, item.user_id, item.iteration_number)
+                for item in unit.readings.for_book(book.id, latest_only=False)
+            ]

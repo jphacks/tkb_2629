@@ -11,15 +11,19 @@ from sqlalchemy.orm import Session
 from backend.analysis.application.service import AnalysisService
 from backend.analysis.infrastructure.jev import JevEmotionAnalyzer, MockEmotionAnalyzer
 from backend.analysis.infrastructure.unit_of_work import SqlAnalysisUnitOfWork
+from backend.identity.application.profiles import ProfileService
+from backend.identity.presentation.dependencies import get_profile_service
 from backend.integration.reviews_analysis import JevAnalysisGateway
+from backend.integration.reviews_identity import IdentityPublicAuthorGateway
 from backend.integration.reviews_library import LibraryReadingGateway
 from backend.library.application.service import LibraryService
 from backend.library.infrastructure.google_books import GoogleBooksCatalog
 from backend.library.infrastructure.unit_of_work import SqlLibraryUnitOfWork
 from backend.library.presentation.dependencies import get_library_service
+from backend.reviews.application.public_reviews import PublicReviewService
 from backend.reviews.application.service import ReviewService
 from backend.reviews.infrastructure.unit_of_work import SqlReviewUnitOfWork
-from backend.reviews.presentation.dependencies import get_review_service
+from backend.reviews.presentation.dependencies import get_public_review_service, get_review_service
 from backend.shared import database
 from backend.shared.clock import UtcClock
 
@@ -71,3 +75,16 @@ def build_review_service(
 def configure_reading_contexts(app: FastAPI) -> None:
     app.dependency_overrides[get_library_service] = build_library_service
     app.dependency_overrides[get_review_service] = build_review_service
+    app.dependency_overrides[get_public_review_service] = build_public_review_service
+
+
+def build_public_review_service(
+    library: Annotated[LibraryService, Depends(get_library_service)],
+    profiles: Annotated[ProfileService, Depends(get_profile_service)],
+) -> PublicReviewService:
+    readings = LibraryReadingGateway(library)
+    return PublicReviewService(
+        lambda: SqlReviewUnitOfWork(database.SessionLocal, lambda db: readings),
+        readings,
+        IdentityPublicAuthorGateway(profiles),
+    )

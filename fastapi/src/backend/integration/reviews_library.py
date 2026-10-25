@@ -25,6 +25,13 @@ class LibraryReadingGateway:
     def __init__(self, service: library.LibraryAccess):
         self.service = service
 
+    def catalog_readings(self, google_books_id: str) -> list[reviews.PublicReading]:
+        with translate_library_errors():
+            return [
+                reviews.PublicReading(key.id, key.user_id, key.iteration_number)
+                for key in self.service.catalog_reading_keys(google_books_id)
+            ]
+
     @staticmethod
     def _scope(reference: library.ReadingReference) -> reviews.ReadingScope:
         return reviews.ReadingScope(

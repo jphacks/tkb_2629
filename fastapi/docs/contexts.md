@@ -37,6 +37,7 @@ flowchart LR
 
 - `integration/reviews_library.py`: 読書回・所有確認・総ページ数・進捗を、感想側の `ReadingScope` に変換します。蔵書側の例外も感想側の型へ変換します。
 - `integration/reviews_analysis.py`: 分析要求と、色・source・集約結果を感想側のDTOへ変換します。分析の失敗を、本文保存済みのユースケースが扱える型へ変換します。
+- `integration/reviews_identity.py`: 登録名やメールを含まない公開用表示名の集合を、感想側の公開投稿者ポートへ変換します。
 - `integration/identity.py`: 公開された認証結果を共通HTTP認証ポートへ変換します。
 - `composition/identity.py` / `composition/reading.py`: 環境設定、具象アダプター、Unit of Work、FastAPIの依存注入を組み立てます。
 - `composition/schema.py`: 全ORMモデルを登録します。コンテキスト自身に他のモデルをimportさせません。
@@ -68,6 +69,10 @@ flowchart LR
 ページ別集計は各ユーザーの最新読書回、感情平均は既存仕様どおり全読書回の現在の感想改訂が対象です。
 多数の参照IDは1,000件ずつSQLへ渡し、パラメーター数上限を避けます。
 集計は複数の公開APIを順に読むため、同時更新中にはコンテキスト間で結果が一時的にずれる可能性があります。
+
+公開感想一覧も横断JOINを使いません。蔵書がGoogle Books IDに対応する全読書回のキーを提供し、
+認証認可が対象投稿者の設定済み公開用表示名を提供します。感想は対象読書回の `public` 本文だけを、
+ページ条件・更新日時順・ページングで返します。詳細は [公開感想一覧API](public-reviews.md) を参照してください。
 
 ## DBとAPIの互換性
 

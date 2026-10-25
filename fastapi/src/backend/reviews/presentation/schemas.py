@@ -19,6 +19,25 @@ class ReviewSpoilersUpdate(BaseModel):
     contains_spoilers: StrictBool
 
 
+class PublicReviewResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    public_display_name: str
+    page_number: int
+    iteration_number: int
+    review_text: str
+    contains_spoilers: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class PublicReviewsResponse(BaseModel):
+    items: list[PublicReviewResponse]
+    limit: int
+    offset: int
+
+
 class PagePopularityPoint(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

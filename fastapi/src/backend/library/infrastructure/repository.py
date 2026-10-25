@@ -33,6 +33,10 @@ class SqlBookRepository:
     def __init__(self, db: Session):
         self.db = db
 
+    def find_catalog(self, google_books_id: str) -> StoredBook | None:
+        row = self.db.scalar(select(Book).where(Book.google_books_id == google_books_id))
+        return stored_book(row) if row is not None else None
+
     def get(self, book_id: int, *, lock: bool = False) -> StoredBook:
         statement = select(Book).where(Book.id == book_id)
         if lock:

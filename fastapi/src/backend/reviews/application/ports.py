@@ -6,9 +6,17 @@ from types import TracebackType
 from typing import Protocol, Self
 
 from ..domain.entities import PageReview
-from .results import AnalysisPreview, EmotionSummary, PagePopularity, ReadingScope
+from .results import AnalysisPreview, EmotionSummary, PagePopularity, PublicReading, ReadingScope
 
 AnalysisKey = tuple[int, int]
+
+
+class PublicReadingGateway(Protocol):
+    def catalog_readings(self, google_books_id: str) -> list[PublicReading]: ...
+
+
+class PublicAuthorGateway(Protocol):
+    def display_names(self, user_ids: Sequence[int]) -> dict[int, str]: ...
 
 
 class ReadingGateway(Protocol):
@@ -24,6 +32,9 @@ class AnalysisGateway(Protocol):
 
 
 class ReviewRepository(Protocol):
+    def list_public(
+        self, reading_ids: Sequence[int], page: int | None, limit: int, offset: int
+    ) -> list[PageReview]: ...
     def get(self, review_id: int, *, lock: bool = False) -> PageReview | None: ...
     def find(self, reading_id: int, page: int, *, lock: bool = False) -> PageReview | None: ...
     def list(self, reading_id: int, limit: int, offset: int) -> list[PageReview]: ...
