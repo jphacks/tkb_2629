@@ -161,8 +161,11 @@ test('the card shows real book fields and separates detail and bookmark actions'
   assert.ok(text(tree).includes('Book 3'));
   assert.ok(text(tree).includes('著者不明'));
   assert.doesNotMatch(text(tree), /しおりを追加/);
-  const icon = nodes(tree).find((node) => node.type === 'SvgUri');
-  assert.equal(icon.props.uri, 'bookmark-icon');
+  const icon = nodes(tree).find((node) => node.type === 'BookmarkAddIcon');
+  assert.equal(icon.props.width, 26);
+  assert.equal(icon.props.height, 28);
+  assert.equal(tree.props.style.padding, 14);
+  assert.equal(nodes(tree).find((node) => node.type === 'View').props.style.flex, 1);
   const iconButton = button(tree, 'Book 3にしおりを追加');
   assert.equal(iconButton.props.accessibilityRole, 'button');
   const style = iconButton.props.style({ pressed: false })[0];
@@ -190,7 +193,7 @@ test('reading progress places the bookmark action beside the completion label an
   const actionSpace = heading.props.children[1];
   assert.equal(actionSpace.props.children, action);
   assert.equal(actionSpace.props.style.flex, 1);
-  assert.equal(actionSpace.props.style.alignItems, 'center');
+  assert.equal(actionSpace.props.style.alignItems, 'flex-end');
   assert.equal(actionSpace.props.style.minWidth, 44);
   assert.match(text(heading), /読了/);
   assert.equal(track.type, 'GlassSurface');
