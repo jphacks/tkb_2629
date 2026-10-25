@@ -1,41 +1,40 @@
 import { colors } from "../../theme/colors";
-import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import type { Book } from '../../lib/api';
 import { GlassSurface } from '../atoms/GlassSurface';
 import { BookCover } from './BookCover';
 import { ReadingProgress } from './ReadingProgress';
 
-export type ReadingBook = {
-  author: string;
-  currentPage: number;
-  id: number;
-  title: string;
-  totalPages: number;
-};
-
-export const readingBooks: ReadingBook[] = [
-  { author: '著者名 ・ 出版社', currentPage: 42, id: 1, title: '星の旅', totalPages: 180 },
-  { author: '著者名 ・ 出版社', currentPage: 96, id: 2, title: '海辺の手紙', totalPages: 240 },
-  { author: '著者名 ・ 出版社', currentPage: 28, id: 3, title: '夜の図書館', totalPages: 156 },
-];
-
 type ReadingBookCardProps = {
-  book: ReadingBook;
+  book: Book;
+  onBookmark: () => void;
   onPress: () => void;
 };
 
-export function ReadingBookCard({ book, onPress }: ReadingBookCardProps) {
+export function ReadingBookCard({ book, onBookmark, onPress }: ReadingBookCardProps) {
+  const author = book.author ?? '著者不明';
   return (
     <GlassSurface
-      accessibilityLabel={`${book.title}の読書カード`}
+      accessibilityLabel={`${book.title}の詳細を開く`}
       onPress={onPress}
       style={styles.book}
     >
-      <BookCover title={book.title} />
+      <BookCover title={book.title} author={author} />
       <View style={styles.copy}>
         <Text numberOfLines={1} style={styles.title}>{book.title}</Text>
-        <Text numberOfLines={1} style={styles.author}>{book.author}</Text>
-        <ReadingProgress currentPage={book.currentPage} totalPages={book.totalPages} />
+        <Text numberOfLines={1} style={styles.author}>{author}</Text>
+        <ReadingProgress currentPage={book.current_page} totalPages={book.total_pages} />
+        <Pressable
+          accessibilityLabel={`${book.title}にしおりを挟む`}
+          accessibilityRole="button"
+          onPress={onBookmark}
+          style={({ pressed }) => [styles.bookmarkButton, pressed && styles.pressed]}
+        >
+          <Ionicons color={colors.navAccent} name="bookmark-outline" size={16} />
+          <Text style={styles.bookmarkLabel}>しおりを挟む</Text>
+        </Pressable>
       </View>
     </GlassSurface>
   );
@@ -46,4 +45,7 @@ const styles = StyleSheet.create({
   copy: { flex: 1 },
   title: { color: colors.text, fontSize: 16, fontWeight: '700' },
   author: { color: colors.placeholder, fontSize: 11, marginTop: 6 },
+  bookmarkButton: { alignItems: 'center', alignSelf: 'flex-start', backgroundColor: 'rgba(255, 255, 255, 0.72)', borderColor: 'rgba(255, 255, 255, 0.9)', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 6, marginTop: 10, paddingHorizontal: 12, paddingVertical: 6 },
+  bookmarkLabel: { color: colors.navAccent, fontSize: 13, fontWeight: '700' },
+  pressed: { opacity: 0.72, transform: [{ scale: 0.96 }] },
 });
