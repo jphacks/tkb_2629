@@ -36,20 +36,22 @@ PostgreSQLの既存ボリュームがある場合、`POSTGRES_DB` を変更し�
 
 ## コード構成
 
-依存の方向は `presentation → application → domain` です。
-`infrastructure` は application のRepository抽象クラスを実装し、
-`presentation/dependencies.py` でユースケースへ注入します。
+構成と境界の詳細は [コンテキスト設計](docs/contexts.md) を参照してください。
 
-- `src/backend/domain/`: フレームワークに依存しないエンティティ、値オブジェクト、業務例外、感情分析インターフェース。ページ範囲・書籍情報・感想本文のルールを保持します。
-- `src/backend/application/`: ユーザー管理・本棚・感想保存のユースケースとRepository抽象クラス。
-- `src/backend/infrastructure/`: SQLAlchemyモデル、DB接続、Repository実装、Jev・モック感情分析。
-- `src/backend/presentation/`: FastAPIルート、入出力スキーマ、認証コンテキストの取得、依存の組み立て。
-- `src/backend/main.py`: アプリケーション生成、業務例外のHTTP変換。
-- `src/backend/infrastructure/migrations/`: AlembicのDBマイグレーション。既存テーブル定義は維持しています。
+- `src/backend/identity/`: 認証認可・プロフィール・本人操作の認可。
+- `src/backend/library/`: 書誌、Google Books、蔵書、読書回、読了、進捗。
+- `src/backend/reviews/`: 感想本文、改訂、解析状態、感想とページ別集計。
+- `src/backend/analysis/`: Jev/モック、感情モデル、色変換、分析履歴と感情集約。
+- `src/backend/composition/`: 環境設定・依存注入・全ORM登録のcomposition root。
+- `src/backend/integration/`: 各コンテキストの公開契約を変換するアダプター。
+- `src/backend/shared/`: DB接続、共通メタデータ、技術的なUnit of Work、HTTP認証境界。
+- `src/backend/infrastructure/migrations/`: 既存Alembic履歴。配置とテーブル定義は維持します。
 
-Repositoryはトランザクションを管理します。感想本文は分析前に確定し、
-分析結果は保存時のリビジョンが一致する場合だけ反映します。
-分析失敗時も本文を保持し、過去の分析結果を現在の結果として返しません。
+各コンテキストは `presentation → application → domain` の依存を持ち、
+infrastructureは自身のapplication/domainのポートを実装します。他コンテキストを直接importしません。
+ユースケースがUnit of Work経由でトランザクションを制御し、Repositoryはcommitしません。
+感想本文と進捗は同時に確定し、DBトランザクションを閉じてからJev分析を呼び出します。
+現在の改訂番号と一致する結果のみ表示し、分析失敗時も本文を保持します。
 
 `Book` のレスポンスは書籍情報のみ、`Review` は `color_code` を直接返します。
 読書進捗の更新APIは削除しました。
@@ -87,47 +89,38 @@ Redis障害時はAPIから取得し、キャッシュ障害をログに記録し
 Docker ComposeではRedisも起動し、APIの接続先を `redis://redis:6379/0` に設定します。
 APIキーはバックエンドだけで使用します。
 ユーザーのメール重複などDB制約との競合は409で返します。
-読書APIの認証は、信頼できるミドルウェアが設定する `request.state.user_id` を前提とします。
-ログイン処理や当該ミドルウェアはまだ実装されていません。
+読書APIはBearer JWTを検証し、認証認可コンテキストから既存の `user_id` を取得します。
+登録・ログイン・メール確認・パスワード再設定は `/auth` にあります。
 感情分析は `TYPESAFE_API_KEY` が設定されている場合にJevを使い、8感情の強度から色を生成します。
 未設定の場合はモックを使い、`#8C8C8C` を返します。
 感情ベクトル・投影座標・モデル情報はDBに保存し、APIは `color_code` を返します。
 
-## テスト・静的チェック
+## 静的チェック
 
 ```bash
-uv run pytest
-uv run ruff check .
-uv run ruff format --check .
+python3 scripts/check_context_dependencies.py
+uv run ruff check src/backend scripts
 ```
 
-テストはSQLiteを使用し、PostgreSQLや開発サーバーの起動は不要です。
-
-## Java / Kotlinから読む場合
-
-- `ABC` と `@abstractmethod` は抽象クラス・抽象メソッドです。Repositoryと分析器の実装は明示的に継承します。
-- `@dataclass` はフィールドからコンストラクターや等価比較などを生成する仕組みです。`frozen=True` の結果クラスはJavaのrecordやKotlinのデータクラスに近い用途です。
-- 保存結果は `ReviewTextSaveResult`・`ReviewSaveResult` にまとめ、フィールド名で参照します。
-- 値オブジェクトは通常のコンストラクターで入力を検証・正規化し、読み取り専用の `@property` で値を公開します。`@dataclass(init=False)` は自動コンストラクターを使わず、等価比較などの生成だけを利用する指定です。
-- `Book | None` はnullを許容する型です。Kotlinの `Book?` に相当します。
-- `Annotated` と `Depends` はFastAPIの型に付ける注入設定です。依存の組み立ては `presentation/dependencies.py` にあります。
-- DB依存の `yield` はFastAPIのライフサイクル規約です。セッションを渡し、リクエスト終了後に `finally` で閉じます。
+今回は動作テストを実行していません。旧構成向けのテストは新ポート・サービスへの追従が必要です。
+詳しくは [tests/README.md](tests/README.md) を参照してください。
+`Protocol` はインターフェースの形を定義し、`Unit of Work` はユースケース単位のトランザクションを表します。
+`composition/` が実装を組み立て、`presentation/dependencies.py` は注入先のスロットのみを定義します。
 
 感想本文は前後の空白を除去した後、1〜140文字に制限します。
 
 ## 感情解析結果とDBスキーマ
 
-`ReviewService.save()` は正規化した本文を `EmotionAnalyzer.analyze()` に渡し、
-戻り値の `EmotionResult` を `analysis_result` に受け取ります。
-Jev実装は外部APIの8感情スコアを0〜1に正規化し、ドメインの
-`EmotionResult.from_vector()` が投影座標と色を計算します。
-Repositoryの `complete()` はその結果を `emotion_analyses` に保存します。
+`reviews.application.ReviewService` は保存済み本文と改訂番号を自身の `AnalysisGateway` に渡します。
+`integration/reviews_analysis.py` がAI分析コンテキストの公開APIへ変換します。
+Jevの8スコアを0〜1に正規化し、AIドメインの `EmotionResult.from_vector()` が投影座標と色を計算します。
+分析結果はAI側のUnit of Workで `emotion_analyses` に保存し、感想側は自身の解析状態のみ更新します。
 
 `src/backend/infrastructure/migrations/` はDBスキーマの履歴であり、リクエストごとに実行する解析処理ではありません。
 0002はvalence/arousalとパレット版、0003は8感情、0004は投影座標を追加します。
 現在の8感情解析ではvalence/arousalは未使用のためNULLになります。
 APIを使う前に `uv run alembic upgrade head`（Dockerでは上記のexecコマンド）で
-0008まで適用してください。0007は既存の読書記録を1回目として扱い、同じ本の再読履歴、
+0009まで適用してください。0007は既存の読書記録を1回目として扱い、同じ本の再読履歴、
 読了状態、最新の読書回だけを使うページ別集計を追加します。アプリ起動時の `create_all()` は行いません。
 既存DBでAlembic履歴がない場合は、冒頭のスキーマ確認・バックアップ手順に従ってください。
 
@@ -139,27 +132,17 @@ DBマイグレーションはinfrastructure層に配置しています。
 
 エンドポイントごとの処理・レスポンス・未実装機能は [docs/endpoints.md](docs/endpoints.md) を参照してください。
 
-## 開発時の認証スキップ
+## 認証認可コンテキスト
 
-認証なしでDB保存を確認する場合は、先に `POST /users` でユーザーを作成し、
-返されたIDを `.env` の `DEV_USER_ID` に設定します。
-
-```dotenv
-APP_ENV=development
-AUTH_DISABLED=true
-DEV_USER_ID=1
-```
-
-Dockerでは設定変更後に `docker compose up -d --force-recreate api` で環境変数を反映します。
-ローカル実行ではこれらを環境変数として渡してください（この認証処理は `.env` を直接読みません）。
-この状態では `/books` などの読書APIが固定ユーザーの本棚を操作します。
-指定ユーザーを自動作成する処理はありません。
-
-`.env.example` はローカルUIをすぐ確認できるよう、開発環境限定のバイパスを有効にしています。
-`DEV_USER_ID` のユーザーは自動作成されないため、先に `POST /users` で作成してください。
-`AUTH_DISABLED` は未設定または `false` なら通常の認証処理です。
-`true` の場合でも `APP_ENV=development` と正の整数の `DEV_USER_ID` が必要で、
-設定不正の場合は503を返して処理を止めます。本番環境では `AUTH_DISABLED=false` にしてください。
+実装と設定は [docs/authentication.md](docs/authentication.md) を参照してください。
+`src/backend/identity/` に domain / application / infrastructure / presentation を分離しています。
+`composition/identity.py` で依存を組み立て、`integration/identity.py` で共通HTTP認証ポートに接続します。
+ドメイン層は標準ライブラリのみ、アプリケーション層はdomainと同層のみに依存します。
+既存の読書コンテキストへは、検証済みの整数 `user_id` のみを渡します。
+開発用認証バイパス（`AUTH_DISABLED` / `DEV_USER_ID`）は廃止しました。
+`POST /users` は廃止し、ユーザー登録は `POST /auth/register` を使用します。
+開発時は `APP_ENV=development` で [DB直接登録CLI](docs/authentication.md#開発用ユーザーをdbに直接作成) を使うと、
+SMTPなしで確認済みのユーザーを作成し、通常のログイン画面から利用できます。
 
 ## 感情スコアの保存形式
 

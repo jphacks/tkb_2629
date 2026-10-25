@@ -4,11 +4,10 @@
 本書のレスポンス例と進捗更新は旧設計を含みます。
 
 Base URLは `/` です。JSONを送受信し、時刻はUTCのISO 8601形式です。
-以下の新APIは、信頼済み認証ミドルウェアが `request.state.user_id` に既存
-`users.id` を設定することを前提にします。ユーザーIDをJSONやqueryで指定できません。
+読書APIはBearer JWTと有効なセッションから本人の既存 `users.id` を取得します。ユーザーIDをJSONやqueryで指定できません。
 認証情報がなければ `401`、他ユーザーの本は存在を隠すため `404` です。
 
-認証実装はまだありません。ミドルウェア接続前は新APIはすべて `401` を返します。既存 `/users` CRUDの認証は今回変更していません。
+登録・メール確認・ログインは `/auth`、本人のプロフィール管理は `/users` です。構成は [コンテキスト設計](../fastapi/docs/contexts.md) を参照してください。
 
 ## 共通エラー
 
@@ -18,7 +17,7 @@ FastAPIの入力検証エラーは `422 Unprocessable Entity` です。
 {"detail": "..."}
 ```
 
-DB接続設定がない場合は `503 Service Unavailable` です。DB接続自体の障害はサーバーエラーとなります。
+DB接続設定がない場合は `503 Service Unavailable` です。DB接続自体の障害も `503 Service Unavailable` として扱います。
 
 ## Google Books検索
 

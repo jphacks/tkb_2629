@@ -7,14 +7,14 @@ import type { Navigate } from '../types';
 
 export function AccountRegisterCompleteScreen({ onNavigate }: { onNavigate: Navigate }) {
   return (
-    <ScreenFrame activeRoute="account" onNavigate={onNavigate}>
+    <ScreenFrame showNavigation={false} activeRoute="account" onNavigate={onNavigate}>
       <View style={styles.content}>
         <View style={styles.check}><Text style={styles.checkText}>✓</Text></View>
         <Text style={styles.title}>アカウント登録完了</Text>
-        <Text style={styles.description}>アカウントの登録が完了しました。</Text>
+        <Text style={styles.description}>メール確認が完了しました。ログインしてご利用ください。</Text>
         <Text style={styles.body}>しおりを使って、読書の記録をはじめましょう。あなたの読書体験を大切に保存できます。</Text>
-        <View style={styles.start}><Text style={styles.body}>まずは本を追加してみましょう。</Text><Text style={styles.body}>いつでも読書を再開できます。</Text></View>
-        <ActionButton label="はじめる" onPress={() => onNavigate('home')} />
+        <View style={styles.start}><Text style={styles.body}>ログイン後に本を追加できます。</Text><Text style={styles.body}>いつでも読書を再開できます。</Text></View>
+        <ActionButton label="ログインへ" onPress={() => onNavigate('login')} />
       </View>
     </ScreenFrame>
   );

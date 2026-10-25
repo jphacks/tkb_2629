@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { currentUser, logout } from '../../lib/auth';
 import { colors } from "../../theme/colors";
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 
@@ -7,17 +9,28 @@ import { ScreenFrame } from '../../components/organisms/ScreenFrame';
 import type { Navigate } from '../types';
 
 export function AccountSettingsScreen({ onNavigate }: { onNavigate: Navigate }) {
+  const user = currentUser();
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function handleLogout() {
+    if (busy) return;
+    setBusy(true); setError('');
+    try { await logout(); onNavigate('login'); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'ログアウトに失敗しました'); }
+    finally { setBusy(false); }
+  }
   return (
     <ScreenFrame activeRoute="account" onNavigate={onNavigate} title="アカウント設定">
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.notice}>設定の変更は準備中です。表示している値はサンプルで、変更・保存はできません。</Text>
+        <Text style={styles.notice}>ユーザー名・メールアドレスの変更は準備中です。</Text>
         <Text style={styles.section}>アカウント情報</Text>
         <GlassSurface style={styles.group}>
-          <SettingsRow label="メールアドレス" value="user@example.com" />
-          <SettingsRow label="ユーザー名" value="読書ユーザー" />
-          <SettingsRow label="パスワード" />
+          <SettingsRow label="メールアドレス" value={user?.email} />
+          <SettingsRow label="ユーザー名" value={user?.name} />
+          <SettingsRow label="パスワード" value="再設定メールを送る" onPress={() => onNavigate('forgot-password')} />
         </GlassSurface>
         <Text style={styles.section}>読書の設定</Text>
+        <Text style={styles.note}>読書設定はサンプルです。変更・保存はできません。</Text>
         <GlassSurface style={styles.group}>
           <SettingsRow label="読書目標" value="月3冊" />
           <View style={styles.reminder}>
@@ -33,7 +46,11 @@ export function AccountSettingsScreen({ onNavigate }: { onNavigate: Navigate }) 
           <SettingsRow label="ヘルプ・よくある質問" />
           <SettingsRow label="お問い合わせ" />
         </GlassSurface>
-        <Text accessibilityState={{ disabled: true }} style={styles.logout}>↪　ログアウト（準備中）</Text>
+        {error ? <Text accessibilityRole="alert" style={styles.logout}>{error}</Text> : null}
+        <Text accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy}
+          onPress={() => { void handleLogout(); }} style={styles.logout}>
+          {busy ? '処理中…' : '↪　ログアウト'}
+        </Text>
       </ScrollView>
     </ScreenFrame>
   );
@@ -47,5 +64,5 @@ const styles = StyleSheet.create({
   note: { color: colors.placeholder, fontSize: 12, marginTop: 8 },
   reminder: { alignItems: 'center', borderBottomColor: '#F0EAF2', borderBottomWidth: 1, flexDirection: 'row', height: 62, justifyContent: 'space-between', paddingHorizontal: 16 },
   reminderLabel: { color: colors.placeholder, fontSize: 15 },
-  logout: { color: colors.placeholder, fontSize: 15, fontWeight: '700', marginTop: 28, textAlign: 'center' },
+  logout: { color: colors.accent, fontSize: 15, fontWeight: '700', marginTop: 28, textAlign: 'center' },
 });

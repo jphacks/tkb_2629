@@ -1,40 +1,15 @@
-import { colors } from "../../theme/colors";
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
-
-import { ActionButton } from '../../components/molecules/ActionButton';
-import { GlassSurface } from '../../components/atoms/GlassSurface';
-import { ScreenFrame } from '../../components/organisms/ScreenFrame';
+import { AuthForm } from './AuthForm';
+import { authPost } from '../../lib/auth';
 import type { Navigate } from '../types';
-
 export function EmailVerificationScreen({ onNavigate }: { onNavigate: Navigate }) {
-  const [code, setCode] = useState('');
-  return (
-    <ScreenFrame activeRoute="account" onNavigate={onNavigate}>
-      <View style={styles.content}>
-        <Text style={styles.topText}>アカウント登録</Text>
-        <Text style={styles.icon}>✉</Text>
-        <Text style={styles.title}>メールアドレスを認証</Text>
-        <GlassSurface style={styles.message}><Text style={styles.body}>入力したメールアドレスに認証コードを送信しました。</Text><Text style={styles.email}>example@email.com</Text></GlassSurface>
-        <Text style={styles.label}>認証コードを入力</Text>
-        <TextInput autoFocus keyboardType="number-pad" maxLength={6} onChangeText={setCode} placeholder="6桁のコード" style={styles.input} value={code} />
-        <ActionButton label="認証する" onPress={() => onNavigate('register-complete')} />
-        <Text style={styles.help}>コードが届きませんか？</Text><Text style={styles.link}>認証コードを再送信</Text>
-      </View>
-    </ScreenFrame>
-  );
+  const [resend, setResend] = useState(false);
+  return <AuthForm key={String(resend)} title={resend ? '確認メールを再送信' : 'メールアドレスを確認'}
+    description="メールに記載された確認トークンを貼り付けてください。有効期限は30分です。"
+    fields={resend ? [{ key: 'email', label: '登録したメールアドレス', email: true }] : [{ key: 'token', label: '確認トークン' }]}
+    submitLabel={resend ? '再送信' : 'メールを確認'} submit={async values => {
+      if (resend) return (await authPost('resend-verification', { email: values.email.trim() })).message;
+      await authPost('verify-email', { token: values.token.trim() }); onNavigate('register-complete');
+    }} links={[{ label: resend ? '確認トークンを入力' : 'メールが届かない・再送する', onPress: () => setResend(!resend) },
+      { label: 'ログインへ', onPress: () => onNavigate('login') }]} />;
 }
-
-const styles = StyleSheet.create({
-  content: { padding: 24 },
-  topText: { color: colors.placeholder, fontSize: 14 },
-  icon: { color: colors.navAccent, fontSize: 58, marginTop: 12, textAlign: 'center' },
-  title: { color: colors.text, fontSize: 25, fontWeight: '700', marginTop: 20, textAlign: 'center' },
-  message: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 14, marginTop: 24, padding: 20 },
-  body: { color: colors.text, fontSize: 14, lineHeight: 22, textAlign: 'center' },
-  email: { color: colors.navAccent, fontSize: 16, fontWeight: '700', marginTop: 10, textAlign: 'center' },
-  label: { color: colors.text, fontSize: 14, fontWeight: '600', marginTop: 24 },
-  input: { borderColor: '#E5DCE8', borderRadius: 12, borderWidth: 1, color: colors.text, fontSize: 24, height: 60, letterSpacing: 12, marginTop: 8, textAlign: 'center' },
-  help: { color: colors.placeholder, fontSize: 13, marginTop: 24, textAlign: 'center' },
-  link: { color: colors.navAccent, fontSize: 13, marginTop: 8, textAlign: 'center' },
-});

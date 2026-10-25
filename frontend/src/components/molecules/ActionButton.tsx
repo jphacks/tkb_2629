@@ -3,11 +3,11 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { colors } from '../../theme/colors';
 
-type ActionButtonProps = { label: string; onPress?: () => void; secondary?: boolean };
+type ActionButtonProps = { label: string; onPress?: () => void; secondary?: boolean; disabled?: boolean };
 
-export function ActionButton({ label, onPress, secondary = false }: ActionButtonProps) {
+export function ActionButton({ label, onPress, secondary = false, disabled = false }: ActionButtonProps) {
   return (
-    <Pressable onPress={onPress} style={[styles.button, secondary && styles.secondary]}>
+    <Pressable disabled={disabled} accessibilityRole="button" accessibilityState={{ disabled }} onPress={onPress} style={[styles.button, secondary && styles.secondary, disabled && { opacity: 0.5 }]}>
       {!secondary && (
         <Svg height="100%" pointerEvents="none" preserveAspectRatio="none" style={styles.gradient} viewBox="0 0 100 100" width="100%">
           <Defs>

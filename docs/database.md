@@ -2,16 +2,15 @@
 
 ## 採用するスキーマ
 
-本番DBはPostgreSQLです。モデルは `fastapi/src/backend/models.py`、初期
-マイグレーションは `fastapi/migrations/versions/0001_reading_records.py` にあります。
+本番DBはPostgreSQLです。モデルは `fastapi/src/backend/{identity,library,reviews,analysis}/infrastructure/models.py` に分かれ、
+`composition/schema.py` が共通メタデータへ登録します。初期マイグレーションは
+`fastapi/src/backend/infrastructure/migrations/versions/0001_reading_records.py` にあります。
 既存の `users` テーブルは変更せず、読書記録から外部キーで参照します。
 
 ### `users`（既存）
 
-既存モデルの `users.id`（整数）をユーザー識別子として使います。既存の
-ユーザーCRUDはありますが、ログインやトークン検証はまだありません。読書APIは
-将来の信頼済み認証ミドルウェアが設定する `request.state.user_id` を使い、
-リクエスト本文からユーザーIDを受け付けません。
+既存モデルの `users.id`（整数）をユーザー識別子として使います。認証認可コンテキストがユーザー・認証情報を所有します。読書APIはBearer JWTとセッションを検証して本人のIDを取得し、
+リクエスト本文からユーザーIDを受け付けません。認証用テーブルは [認証設定](../fastapi/docs/authentication.md) を参照してください。
 
 ### `books`
 
@@ -28,8 +27,7 @@
 書誌を再取得し、Google Books IDが一致する既存行を再利用します。
 これにより、利用者が入力したタイトルの表記揺れによる重複を防ぎます。
 Google Books由来のタイトル・著者・ページ数・ISBN・表紙URLはDBへ保存せず、
-表示とページ範囲検証の都度Google Books APIから取得します。レスポンスにキャッシュ
-許可期間がないため、現在はサーバーキャッシュを行いません。
+表示とページ範囲検証の都度Google Books APIから取得します。書誌は蔵書コンテキストのRedisアダプターで30日間キャッシュし、期限切れ時に再取得します。
 既存の `POST /books` は手動登録との後方互換性のため維持します。
 
 ### `user_books`

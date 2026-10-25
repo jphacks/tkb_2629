@@ -1,27 +1,30 @@
 # 現在のエンドポイントと内部処理
 
-実装元は `src/backend/presentation/routes.py`。書籍情報の外部取得は `/fetch` に集約し、本棚の登録・参照はDBだけで処理します。感想保存時のJev分析は対象外です。
+HTTPは各コンテキストのpresentationに配置します。蔵書・書誌は `library`、感想・ページ別集計・感情集約は `reviews`、ユーザー管理は `identity` が担当します。
+書誌の解決は蔵書のGoogle Books/Redisアダプター、感情分析と結果保存はAI分析コンテキストが担当します。詳細は [コンテキスト設計](contexts.md) を参照してください。
 
 ## 共通の処理
 
 - presentationが入力を検証し、applicationのServiceを呼び、infrastructureのRepositoryがDBを操作します。
-- DBセッションはリクエスト単位で作成・終了し、書き込みのcommitはRepositoryが行います。
+- DBセッションはUnit of Work単位で作成・終了し、ユースケースがcommitを制御します。Repositoryは自身のテーブルのみ操作します。
 - `DATABASE_URL` 未設定のDB利用APIは503を返します。スキーマは事前に `uv run alembic upgrade head` で適用します。
 - 業務例外は、対象なし404、DB制約・登録内容の競合409、入力不正422へ変換します。
-- `/books` 配下は `request.state.user_id` に認証済みユーザーIDが必要です。認証ミドルウェア・ログインAPIは未実装です。未設定は401です。DB依存の解決が先に失敗すると503になる場合があります。
-- `/users` 配下には現在、認証・操作権限のチェックがありません。
+- `/books` 配下はBearer JWTと有効なDBセッションが必要です。未認証は401です。DBや署名鍵の設定がない場合は503です。
+- `/users` 配下も認証必須で、本人の参照・操作だけを許可します。
+- `/auth` の登録・ログイン・メール確認・パスワード再設定は [認証APIと設定](authentication.md) を参照してください。
 
 ## ユーザー
 
 | メソッド・パス | 内部処理 | 正常レスポンス |
 | --- | --- | --- |
-| `POST /users` | name・emailの長さを検証し、usersへ追加・commit・再取得。email重複は409。 | 200、id・name・email |
-| `GET /users` | usersを全件取得。ページング・明示的な並び順指定はありません。 | 200、ユーザー配列 |
-| `GET /users/{user_id}` | 主キーでユーザー取得。存在しなければ404。 | 200、ユーザー情報 |
-| `PUT /users/{user_id}` | name・emailの両方が必要。長さ検証後、対象を取得し両方を更新・commit。対象なし404、email重複409。 | 200、更新後のユーザー情報 |
-| `DELETE /users/{user_id}` | 対象ユーザーを取得し削除・commit。DBの外部キーCASCADEにより本棚・感想・解析履歴も削除。共有のbooks本体は残ります。対象なし404。 | 204、本文なし |
+| `POST /auth/register` | 認証認可コンテキストで登録し、確認メールを送信。 | 201、メッセージ |
+| `GET /users` | 本人1件のみ取得。 | 200、ユーザー配列 |
+| `GET /users/{user_id}` | 本人のみ取得。他人のIDは403、存在しなければ404。 | 200、ユーザー情報 |
+| `PUT /users/{user_id}` | 本人のみ。name・emailが必要。メール変更は禁止（422）し、名前のみ更新。対象なし404。 | 200、更新後のユーザー情報 |
+| `DELETE /users/{user_id}` | 本人のみ取得し削除・commit。DBの外部キーCASCADEにより本棚・感想・解析履歴も削除。共有のbooks本体は残ります。対象なし404。 | 204、本文なし |
 
-nameは100文字以内、emailは255文字以内です。メール形式の検証、空文字の禁止、前後の空白除去は現在行っていません。
+登録時はnameをtrimして1〜100文字、emailは形式検証・小文字化して255文字以内です。
+プロフィール更新でもnameをtrimして1〜100文字、emailは255文字以内で、メール変更はできません。
 CASCADEの説明は外部キーが有効なDB（標準構成のPostgreSQL）を前提とします。
 
 ## 本棚
@@ -60,11 +63,11 @@ jev（実AI）・mock（仮結果）などを返し、それ以外はnullです�
 
 PUTの詳細:
 
-1. 新規ならrevision=1、更新ならrevisionを加算し、analysis_status=pendingで本文をcommitします。
-2. 同じページへの新規保存が競合した場合は、既存行を取得して更新に切り替えます。
+1. 蔵書の公開契約経由で読書回をロックし、進捗と、新規ならrevision=1・更新ならrevisionを加算したpendingの本文を同時にcommitします。
+2. 同じ読書回への保存は蔵書側の行ロックで直列化し、感想の既存行の有無を確認して新規作成・更新を選びます。
 3. `TYPESAFE_API_KEY` 設定時はJev APIへ8感情の強さを問い合わせ、0〜1へ正規化します。
 4. domainで投影座標・coherence・intensity・色を計算し、EmotionResultを返します。キー未設定時は全感情0のモックで色は `#8C8C8C` です。
-5. 保存時のrevisionが現在のrevisionと一致した場合だけ、状態をcompletedにし、解析情報をemotion_analysesへ保存・commitします。古い解析結果は破棄します。
+5. AI分析側でreview_idとrevisionをキーに解析履歴を保存します。その後、感想側で保存時revisionが現在のrevisionと一致する場合だけ状態をcompletedにします。古い改訂の履歴は表示せず、履歴として保持します。
 6. 解析または結果保存が失敗した場合はログを出し、対象revisionをfailedにします。先に保存した本文は保持します。失敗状態の記録自体にDB障害が起きた場合まで成功が保証されるわけではありません。
 7. 最新の感想を取得して返します。同時更新がある場合、別リクエストが更新した最新本文を返す場合があります。
 
@@ -83,8 +86,7 @@ PUTの詳細:
 再利用します。本棚表示やページ範囲検証ではGoogle Books IDから情報を再取得します。
 同じユーザーが同じ書誌を再度追加した場合は409です。
 検索は認証・DB接続を必要としません。登録には読書APIと同じ認証が必要です。
-キャッシュ許可期間を示すレスポンスヘッダーがないため、現在はサーバーキャッシュを
-行わず、必要な都度Google Books APIへ問い合わせます。
+書誌と検索で得た候補は蔵書側のRedisに30日間キャッシュします。参照時にTTLは延長せず、期限切れ・未登録時にGoogle Booksから再取得します。
 
 - `GET /docs`: FastAPIのSwagger UI。
 - `GET /redoc`: ReDocのAPIドキュメント。

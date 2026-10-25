@@ -1,11 +1,14 @@
-# Serviceのモックとテスト
+# 既存テストについて
 
-- `conftest.py`: 3つのServiceの `create_autospec(..., instance=True, spec_set=True)` モックと、FastAPIの依存を差し替えるclient fixture。
-- `test_service_routes.py`: ServiceをモックにしたHTTP入出力・引数・ステータス・入力検証・認証・例外変換のテスト。現在のURL `/books` を使用。
-- `test_services.py`: 実物のServiceにRepository・Analyzerのモックを注入する単体テスト。所有確認、入力検証、本文保存と解析の順序、revisionの受け渡し、失敗時の処理を確認。
+このディレクトリのテストは、コンテキスト分離前の `backend.application` / `backend.domain` / `backend.presentation` 等と旧サービスを対象にしています。
+現在のコンテキストは `identity` / `library` / `reviews` / `analysis` です。
+今回テストコードの書き換え・実行は行っていません。実行する際はimport、fixture、依存注入先、
+モックするポートとUnit of Workを新構成へ追従させる必要があります。
 
-DB接続・外部API通信は行いません。モックはテストごとに作成されます。
+ソースの静的依存は、動作テストと独立した次のコマンドで確認できます。
 
 ```bash
-uv run pytest tests/test_services.py tests/test_service_routes.py
+python3 scripts/check_context_dependencies.py
 ```
+
+新しい境界と保存・分析の順序は [コンテキスト設計](../docs/contexts.md) を参照してください。

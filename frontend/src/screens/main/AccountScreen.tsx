@@ -1,3 +1,4 @@
+import { currentUser } from '../../lib/auth';
 import { colors } from "../../theme/colors";
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -7,10 +8,11 @@ import { ScreenFrame } from '../../components/organisms/ScreenFrame';
 import type { Navigate } from '../types';
 
 export function AccountScreen({ onNavigate }: { onNavigate: Navigate }) {
+  const user = currentUser();
   return (
     <ScreenFrame activeRoute="account" onNavigate={onNavigate} title="アカウント">
       <ScrollView contentContainerStyle={styles.content}>
-        <GlassSurface style={styles.profile}><View style={styles.avatar}><Text style={styles.initial}>A</Text></View><View><Text style={styles.name}>読書ユーザー</Text><Text style={styles.email}>user@example.com</Text><Text style={styles.member}>しおりを利用中</Text></View></GlassSurface>
+        <GlassSurface style={styles.profile}><View style={styles.avatar}><Text style={styles.initial}>{user?.name.slice(0, 1)}</Text></View><View><Text style={styles.name}>{user?.name}</Text><Text style={styles.email}>{user?.email}</Text><Text style={styles.member}>しおりを利用中</Text></View></GlassSurface>
         <Text style={styles.section}>読書の概要</Text><GlassSurface style={styles.stats}><Stat value="12" label="読んだ本" /><Stat value="3" label="読書中" /><Stat value="86" label="読んだページ" /></GlassSurface>
         <Text style={styles.section}>アカウントメニュー</Text><GlassSurface style={styles.menu}><SettingsRow icon="♙" label="プロフィールを編集" /><SettingsRow icon="⚙" label="アカウント設定" onPress={() => onNavigate('account-settings')} /></GlassSurface>
       </ScrollView>

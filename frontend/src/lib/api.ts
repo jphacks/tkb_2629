@@ -1,3 +1,4 @@
+import { authenticatedFetch } from './auth';
 import type { User } from '../types/user';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
@@ -47,7 +48,7 @@ export type BookEmotions = {
 };
 
 export async function getBookEmotions(bookId: number): Promise<BookEmotions> {
-  const response = await fetch(`${API_URL}/books/${bookId}/emotions`);
+  const response = await authenticatedFetch(`${API_URL}/books/${bookId}/emotions`);
   return parseResponse<BookEmotions>(response, '感情分析の取得に失敗しました');
 }
 
@@ -101,13 +102,13 @@ async function parseResponse<T>(response: Response, message: string): Promise<T>
 }
 
 export async function getUsers(): Promise<User[]> {
-  const response = await fetch(`${API_URL}/users`);
+  const response = await authenticatedFetch(`${API_URL}/users`);
   return parseResponse<User[]>(response, 'ユーザー一覧の取得に失敗しました');
 }
 
 export async function searchGoogleBooks(query: string): Promise<GoogleBook[]> {
   const params = new URLSearchParams({ query, limit: '10' });
-  const response = await fetch(`${API_URL}/fetch?${params.toString()}`);
+  const response = await authenticatedFetch(`${API_URL}/fetch?${params.toString()}`);
   const payload = await parseResponse<{ items: GoogleBook[] }>(
     response,
     '書籍検索に失敗しました',
@@ -116,7 +117,7 @@ export async function searchGoogleBooks(query: string): Promise<GoogleBook[]> {
 }
 
 export async function importGoogleBook(googleBooksId: string): Promise<Book> {
-  const response = await fetch(`${API_URL}/books/import`, {
+  const response = await authenticatedFetch(`${API_URL}/books/import`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ google_books_id: googleBooksId }),
@@ -125,7 +126,7 @@ export async function importGoogleBook(googleBooksId: string): Promise<Book> {
 }
 
 export async function getBooks(offset = 0): Promise<Book[]> {
-  const response = await fetch(`${API_URL}/books?limit=100&offset=${offset}`);
+  const response = await authenticatedFetch(`${API_URL}/books?limit=100&offset=${offset}`);
   const payload = await parseResponse<{ items: Book[] }>(
     response,
     '本棚の取得に失敗しました',
@@ -134,12 +135,12 @@ export async function getBooks(offset = 0): Promise<Book[]> {
 }
 
 export async function getBook(bookId: number): Promise<Book> {
-  const response = await fetch(`${API_URL}/books/${bookId}`);
+  const response = await authenticatedFetch(`${API_URL}/books/${bookId}`);
   return parseResponse<Book>(response, '本の詳細の取得に失敗しました');
 }
 
 export async function completeIteration(bookId: number, iteration: number): Promise<void> {
-  const response = await fetch(`${API_URL}/books/${bookId}/iterations/${iteration}/complete`, { method: 'POST' });
+  const response = await authenticatedFetch(`${API_URL}/books/${bookId}/iterations/${iteration}/complete`, { method: 'POST' });
   await parseResponse<unknown>(response, '読了の記録に失敗しました');
 }
 
@@ -157,12 +158,12 @@ export type ReadingIteration = {
 };
 
 export async function getIterations(bookId: number): Promise<ReadingIteration[]> {
-  const response = await fetch(`${API_URL}/books/${bookId}/iterations`);
+  const response = await authenticatedFetch(`${API_URL}/books/${bookId}/iterations`);
   return parseResponse<ReadingIteration[]>(response, '読書の記録の取得に失敗しました');
 }
 
 export async function getPageReview(bookId: number, page: number, iteration: number): Promise<PageReview | null> {
-  const response = await fetch(`${API_URL}/books/${bookId}/pages/${page}/review?iteration=${iteration}`);
+  const response = await authenticatedFetch(`${API_URL}/books/${bookId}/pages/${page}/review?iteration=${iteration}`);
   try {
     return await parseResponse<PageReview>(response, 'しおりの取得に失敗しました');
   } catch (error) {
@@ -179,7 +180,7 @@ export async function savePageReview(
   iteration: number,
   text: string,
 ): Promise<PageReview> {
-  const response = await fetch(`${API_URL}/books/${bookId}/pages/${page}/review?iteration=${iteration}`, {
+  const response = await authenticatedFetch(`${API_URL}/books/${bookId}/pages/${page}/review?iteration=${iteration}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ review_text: text.trim() }),
@@ -191,7 +192,7 @@ export async function getBookReviews(bookId: number, iteration: number): Promise
   const items: PageReview[] = [];
   let offset = 0;
   while (true) {
-    const response = await fetch(`${API_URL}/books/${bookId}/reviews?iteration=${iteration}&limit=100&offset=${offset}`);
+    const response = await authenticatedFetch(`${API_URL}/books/${bookId}/reviews?iteration=${iteration}&limit=100&offset=${offset}`);
     const page = await parseResponse<PageReview[]>(response, 'しおり一覧の取得に失敗しました');
     items.push(...page);
     if (page.length < 100) return items;

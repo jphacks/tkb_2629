@@ -1,6 +1,7 @@
 export type ScreenKey =
   | 'register'
   | 'login'
+  | 'forgot-password'
   | 'verify-email'
   | 'register-complete'
   | 'home'
