@@ -185,3 +185,33 @@ def test_catalog_book_metadata_is_resolved_from_google_books(db, catalog_book):
     assert resolved.total_pages == catalog_book.total_pages
     assert resolved.isbn_13 == catalog_book.isbn_13
     catalog.get.assert_called_once_with(catalog_book.google_books_id)
+
+
+def test_jev_scores_are_saved_as_integer_percentages(db, catalog_book):
+    from types import SimpleNamespace
+
+    from backend.domain.emotions import BASIC_EMOTION_NAMES
+    from backend.infrastructure.emotions import JevClient, JevEmotionAnalyzer
+    from backend.infrastructure.models import EmotionAnalysis
+
+    raw_scores = [0, 0.5, 1, 1.5, 2, 2.5, 3, 4]
+    client = create_autospec(JevClient)
+    client.__enter__.return_value = client
+    client.system_one.return_value = SimpleNamespace(
+        model="jev-test",
+        scores={
+            name: SimpleNamespace(score=value, confidence=0.9)
+            for name, value in zip(BASIC_EMOTION_NAMES, raw_scores, strict=True)
+        },
+    )
+    result = JevEmotionAnalyzer(client_factory=lambda **kwargs: client).analyze("感動した")
+    book = SqlReadingRepository(db).add_catalog_book(1, catalog_book)
+    repository = SqlReviewRepository(db)
+    saved = repository.save_text(1, book.id, 1, "感動した", 1)
+    repository.complete(saved.review_id, saved.revision, result)
+    db.expire_all()
+    analysis = db.scalar(select(EmotionAnalysis))
+    expected = [0, 13, 25, 38, 50, 63, 75, 100]
+    assert [getattr(analysis, name) for name in BASIC_EMOTION_NAMES] == expected
+    assert all(type(getattr(analysis, name)) is int for name in BASIC_EMOTION_NAMES)
+    assert analysis.color_code == result.color_code

@@ -159,30 +159,30 @@ class EmotionAnalysis(Base):
             "arousal IS NULL OR (arousal >= -1 AND arousal <= 1)",
             name="ck_emotion_analyses_arousal",
         ),
-        CheckConstraint("joy IS NULL OR (joy >= 0 AND joy <= 1)", name="ck_emotion_analyses_joy"),
+        CheckConstraint("joy IS NULL OR (joy >= 0 AND joy <= 100)", name="ck_emotion_analyses_joy"),
         CheckConstraint(
-            "trust IS NULL OR (trust >= 0 AND trust <= 1)", name="ck_emotion_analyses_trust"
+            "trust IS NULL OR (trust >= 0 AND trust <= 100)", name="ck_emotion_analyses_trust"
         ),
         CheckConstraint(
-            "fear IS NULL OR (fear >= 0 AND fear <= 1)", name="ck_emotion_analyses_fear"
+            "fear IS NULL OR (fear >= 0 AND fear <= 100)", name="ck_emotion_analyses_fear"
         ),
         CheckConstraint(
-            "surprise IS NULL OR (surprise >= 0 AND surprise <= 1)",
+            "surprise IS NULL OR (surprise >= 0 AND surprise <= 100)",
             name="ck_emotion_analyses_surprise",
         ),
         CheckConstraint(
-            "sadness IS NULL OR (sadness >= 0 AND sadness <= 1)",
+            "sadness IS NULL OR (sadness >= 0 AND sadness <= 100)",
             name="ck_emotion_analyses_sadness",
         ),
         CheckConstraint(
-            "disgust IS NULL OR (disgust >= 0 AND disgust <= 1)",
+            "disgust IS NULL OR (disgust >= 0 AND disgust <= 100)",
             name="ck_emotion_analyses_disgust",
         ),
         CheckConstraint(
-            "anger IS NULL OR (anger >= 0 AND anger <= 1)", name="ck_emotion_analyses_anger"
+            "anger IS NULL OR (anger >= 0 AND anger <= 100)", name="ck_emotion_analyses_anger"
         ),
         CheckConstraint(
-            "anticipation IS NULL OR (anticipation >= 0 AND anticipation <= 1)",
+            "anticipation IS NULL OR (anticipation >= 0 AND anticipation <= 100)",
             name="ck_emotion_analyses_anticipation",
         ),
         CheckConstraint(
@@ -216,14 +216,14 @@ class EmotionAnalysis(Base):
     valence: Mapped[float | None] = mapped_column(Float)
     arousal: Mapped[float | None] = mapped_column(Float)
     palette_version: Mapped[str | None] = mapped_column(String(32))
-    joy: Mapped[float | None] = mapped_column(Float)
-    trust: Mapped[float | None] = mapped_column(Float)
-    fear: Mapped[float | None] = mapped_column(Float)
-    surprise: Mapped[float | None] = mapped_column(Float)
-    sadness: Mapped[float | None] = mapped_column(Float)
-    disgust: Mapped[float | None] = mapped_column(Float)
-    anger: Mapped[float | None] = mapped_column(Float)
-    anticipation: Mapped[float | None] = mapped_column(Float)
+    joy: Mapped[int | None] = mapped_column(Integer)
+    trust: Mapped[int | None] = mapped_column(Integer)
+    fear: Mapped[int | None] = mapped_column(Integer)
+    surprise: Mapped[int | None] = mapped_column(Integer)
+    sadness: Mapped[int | None] = mapped_column(Integer)
+    disgust: Mapped[int | None] = mapped_column(Integer)
+    anger: Mapped[int | None] = mapped_column(Integer)
+    anticipation: Mapped[int | None] = mapped_column(Integer)
     projection_x: Mapped[float | None] = mapped_column(Float)
     projection_y: Mapped[float | None] = mapped_column(Float)
     coherence: Mapped[float | None] = mapped_column(Float)

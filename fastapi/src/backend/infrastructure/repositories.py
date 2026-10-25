@@ -507,7 +507,7 @@ class SqlReviewRepository(ReviewRepository):
             valence=result.valence,
             arousal=result.arousal,
             palette_version=result.palette_version,
-            **(result.emotion_vector.as_dict() if result.emotion_vector else {}),
+            **(result.emotion_vector.as_percentages() if result.emotion_vector else {}),
             **(
                 {
                     "projection_x": result.emotion_projection.x,
