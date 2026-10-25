@@ -71,6 +71,8 @@ function harness(file = 'src/components/organisms/PublicReviewList.tsx', extra =
       getBook: (...args) => request('book', args),
       getPublicReviews: (...args) => request('reviews', args),
       getPublicReviewDistribution: (...args) => request('distribution', args),
+      getReviewReactions: (...args) => request('reactions', args),
+      setReviewReaction: (...args) => request('react', args),
       reviewAnalysisLabel: load('src/lib/api.ts').reviewAnalysisLabel,
       getBookReviews: async () => [], getBookEmotions: async () => ({}), getIterations: async () => [],
     },
@@ -85,7 +87,7 @@ function harness(file = 'src/components/organisms/PublicReviewList.tsx', extra =
     get target() { return target; }, get backs() { return backs; },
     render(withBack = true, props = {}) {
       cursor = 0; scheduled = [];
-      const Screen = module.PublicReviewList ?? module.BookDetailScreen ?? module.CommunityBookmarks ?? module.BookmarkListCard;
+      const Screen = module.PublicReviewList ?? module.BookDetailScreen ?? module.CommunityBookmarks ?? module.BookmarkListCard ?? module.ReviewReactionBar;
       const tree = Screen({ bookId: 1, onNavigate: (value) => { target = value; }, onBack: withBack ? () => { backs++; } : undefined, ...props });
       scheduled.forEach((effect) => effect());
       return tree;
@@ -128,15 +130,18 @@ test('renders safe text and public identity; hidden text is absent until individ
   assert.doesNotMatch(text(tree), /本文と色は非表示/);
   assert.ok(nodes(tree).some((node) => node.type === 'Text' && node.props.children === 'ネタバレあり' && node.props.style.fontWeight === '700'));
   assert.equal(nodes(tree).filter((node) => node.props?.accessibilityLabel === '感想の色').length, 1);
+  assert.deepEqual(nodes(tree).filter((node) => node.type === 'ReviewReactionBar').map((node) => node.props.reviewId), [1]);
   assert.equal(nodes(tree).filter((node) => node.props?.accessibilityLabel === '本のデフォルトアイコン').length, 3);
   assert.match(text(tree), /Public reader/);
   button(tree, 'この感想を表示する').props.onPress();
   tree = h.render();
   assert.match(text(tree), /Body 2/);
+  assert.deepEqual(nodes(tree).filter((node) => node.type === 'ReviewReactionBar').map((node) => node.props.reviewId), [1, 2]);
   assert.equal(nodes(tree).filter((node) => node.props?.accessibilityLabel === '感想の色').length, 2);
   assert.doesNotMatch(text(tree), /Body 3/);
   button(tree, 'この感想を隠す').props.onPress();
   assert.doesNotMatch(text(h.render()), /Body 2/);
+  assert.deepEqual(nodes(h.render()).filter((node) => node.type === 'ReviewReactionBar').map((node) => node.props.reviewId), [1]);
 });
 
 test('initial loading, failures, retry, empty list and manual books', async () => {
@@ -533,17 +538,20 @@ test('distribution API authenticates and validates shape, ordering and exact tot
     h.requests[1].resolve(page([review(1, { contains_spoilers: true }), review(2)])); await flush();
     let tree = h.render(true, props);
     assert.doesNotMatch(text(tree), /Body 1|Body 2/);
+    assert.equal(nodes(tree).filter((node) => node.type === 'ReviewReactionBar').length, 0);
     assert.equal(nodes(tree).filter((node) => node.props?.accessibilityLabel === '本のデフォルトアイコン').length, 1);
     assert.equal(button(tree, '最新の情報に更新'), undefined);
     nodes(tree).find((node) => node.props?.accessibilityLabel === 'このページ範囲の感想一覧を開く').props.onPress();
     tree = h.render(true, props);
     assert.ok(nodes(tree).find((node) => node.type === 'ScrollView'));
     assert.match(text(tree), /Body 2/);
+    assert.deepEqual(nodes(tree).filter((node) => node.type === 'ReviewReactionBar').map((node) => node.props.reviewId), [2]);
     button(tree, 'この感想を表示する').props.onPress();
     assert.match(text(h.render(true, props)), /Body 1/);
     button(h.render(true, props), '閉じる').props.onPress();
     tree = h.render(true, props);
     assert.doesNotMatch(text(tree), /Body 1|Body 2/);
+    assert.equal(nodes(tree).filter((node) => node.type === 'ReviewReactionBar').length, 0);
   });
 
   test('exact page search validates input, preserves selection on refresh and supports initial same-page target', async () => {
@@ -569,7 +577,7 @@ test('distribution API authenticates and validates shape, ordering and exact tot
       node.props?.style?.borderRadius === 14 && nodes(node).includes(input) && button(node, '感想を読む')
     );
     assert.ok(group);
-    assert.ok(nodes(group).some((node) => node.type === 'Text' && node.props.children === 'の'));
+    assert.ok(nodes(group).some((node) => node.type === 'Text' && node.props.children === 'ページの'));
     assert.ok(nodes(tree).some((node) => node.type === 'Text' && node.props.style?.fontSize === 20 && node.props.children === 10));
     assert.equal(button(tree, 'しおりを更新'), undefined);
     const other = harness('src/components/organisms/CommunityBookmarks.tsx');
@@ -578,6 +586,167 @@ test('distribution API authenticates and validates shape, ordering and exact tot
     assert.equal(nodes(other.render(true, { initialPage: 42 })).find((node) => node.type === 'PublicReviewList').props.range.start, 42);
   });
 
+const reactionProps = { googleBooksId: 'volume', reviewId: 1 };
+const summary = (my_reaction = null, counts = {}) => ({
+    review_id: 1, counts: { empathy: 0, insight: 0, curious: 0, ...counts }, my_reaction,
+});
+const reactionButtons = (tree) => nodes(tree).filter((node) => node.props?.accessibilityLabel?.includes('、'));
+const pressReaction = (tree, index = 0) => reactionButtons(tree)[index].props.onPress();
+const retryReactions = (tree) => nodes(tree).find((node) =>
+    node.type === 'Pressable' && text(node).includes('リアクションを再読み込み')).props.onPress();
+function reactionHarness() {
+    const h = harness('src/components/molecules/ReviewReactionBar.tsx');
+    return { ...h, render: (props = reactionProps) => h.render(true, props) };
+}
+
+test('reactions load real counts, use cute icons and expose accessible selected states', async () => {
+    const h = reactionHarness();
+    let tree = h.render();
+    assert.ok(reactionButtons(tree).every((node) => node.props.disabled));
+    assert.match(text(tree), /読み込み中/);
+    assert.doesNotMatch(text(tree), /\b0\b/);
+    assert.deepEqual(h.requests[0].args, ['volume', 1]);
+    h.requests[0].resolve(summary('insight', { empathy: 3, insight: 2, curious: 1 }));
+    await flush();
+    tree = h.render();
+    assert.deepEqual(reactionButtons(tree).map((node) => node.props.accessibilityLabel),
+      ['共感した、3件', 'なるほど、2件', '気になる、1件']);
+    assert.deepEqual(reactionButtons(tree).map((node) => node.props.accessibilityState.selected), [false, true, false]);
+    assert.deepEqual(nodes(tree).filter((node) => node.props?.name).map((node) => node.props.name),
+      ['heart-outline', 'bulb', 'eye-outline']);
+    assert.ok(reactionButtons(tree).every((node) => node.props.style[0].minHeight >= 44));
+});
+
+test('reactions add, switch and cancel only after server success and prevent duplicate taps', async () => {
+    const h = reactionHarness();
+    h.render(); h.requests[0].resolve(summary()); await flush();
+    let tree = h.render();
+    pressReaction(tree); pressReaction(tree, 1);
+    assert.equal(h.requests.length, 2);
+    assert.deepEqual(h.requests[1].args, ['volume', 1, 'empathy']);
+    tree = h.render();
+    assert.ok(reactionButtons(tree).every((node) => node.props.disabled));
+    assert.ok(reactionButtons(tree).every((node) => !node.props.accessibilityState.selected));
+    assert.match(text(tree), /送信中/);
+    h.requests[1].resolve(summary('empathy', { empathy: 1 })); await flush();
+    tree = h.render();
+    assert.equal(reactionButtons(tree)[0].props.accessibilityState.selected, true);
+    pressReaction(tree, 2);
+    assert.deepEqual(h.requests[2].args, ['volume', 1, 'curious']);
+    h.requests[2].resolve(summary('curious', { curious: 1 })); await flush();
+    tree = h.render(); pressReaction(tree, 2);
+    assert.deepEqual(h.requests[3].args, ['volume', 1, null]);
+    h.requests[3].resolve(summary()); await flush();
+    assert.ok(reactionButtons(h.render()).every((node) => !node.props.accessibilityState.selected));
+});
+
+test('reaction fetch failures are explicit, retryable and do not invent zero counts', async () => {
+    const h = reactionHarness();
+    h.render(); h.requests[0].reject(new Error('503 unavailable')); await flush();
+    let tree = h.render();
+    assert.match(text(tree), /503 unavailable/);
+    assert.ok(nodes(tree).some((node) => node.props?.accessibilityRole === 'alert'));
+    assert.ok(reactionButtons(tree).every((node) => node.props.disabled));
+    assert.ok(reactionButtons(tree).every((node) => node.props.accessibilityLabel.includes('件数読み込み前')));
+    retryReactions(tree); h.render();
+    h.requests[1].resolve(summary()); await flush();
+    assert.equal(reactionButtons(h.render())[0].props.accessibilityLabel, '共感した、0件');
+});
+
+test('failed updates preserve confirmed state and require reconciliation before new operations', async () => {
+    const h = reactionHarness();
+    h.render(); h.requests[0].resolve(summary('empathy', { empathy: 2 })); await flush();
+    pressReaction(h.render(), 1);
+    h.requests[1].reject(new Error('更新を確認できません')); await flush();
+    let tree = h.render();
+    assert.match(text(tree), /更新を確認できません/);
+    assert.equal(reactionButtons(tree)[0].props.accessibilityLabel, '共感した、2件');
+    assert.equal(reactionButtons(tree)[0].props.accessibilityState.selected, true);
+    assert.ok(reactionButtons(tree).every((node) => node.props.disabled));
+    pressReaction(tree, 2);
+    assert.equal(h.requests.length, 2);
+    retryReactions(tree); h.render();
+    // The write might have reached the server even if its response was lost.
+    h.requests[2].resolve(summary('insight', { empathy: 1, insight: 1 })); await flush();
+    tree = h.render();
+    assert.equal(reactionButtons(tree)[1].props.accessibilityState.selected, true);
+    assert.ok(reactionButtons(tree).every((node) => !node.props.disabled));
+});
+
+test('changing review or unmounting ignores late reaction reads and writes', async () => {
+    const h = reactionHarness();
+    h.render();
+    const other = { googleBooksId: 'other-volume', reviewId: 2 };
+    h.render(other);
+    h.requests[0].resolve(summary('empathy', { empathy: 10 })); await flush();
+    assert.ok(reactionButtons(h.render(other)).every((node) => node.props.disabled));
+    h.requests[1].resolve({ ...summary(), review_id: 2 }); await flush();
+    pressReaction(h.render(other));
+    assert.deepEqual(h.requests[2].args, ['other-volume', 2, 'empathy']);
+    h.render();
+    h.requests[2].resolve({ ...summary('empathy', { empathy: 1 }), review_id: 2 }); await flush();
+    assert.ok(reactionButtons(h.render()).every((node) => node.props.disabled));
+    h.unmount();
+    h.requests[3].resolve(summary('curious', { curious: 3 })); await flush();
+    assert.ok(reactionButtons(h.render()).every((node) => node.props.disabled));
+});
+
+test('reaction API encodes IDs, authenticates and uses idempotent PUT/DELETE contracts', async () => {
+    const calls = [];
+    let payload = summary();
+    const api = load('src/lib/api.ts', {
+      './auth': { authenticatedFetch: async (...args) => {
+        calls.push(args);
+        return new Response(JSON.stringify(payload), { headers: { 'content-type': 'application/json' } });
+      } },
+    });
+    await api.getReviewReactions('volume/id', 1);
+    assert.match(calls[0][0], /catalog\/books\/volume%2Fid\/reviews\/1\/reactions$/);
+    payload = summary('empathy', { empathy: 1 });
+    await api.setReviewReaction('volume/id', 1, 'empathy');
+    assert.match(calls[1][0], /\/1\/reaction$/);
+    assert.equal(calls[1][1].method, 'PUT');
+    assert.deepEqual(JSON.parse(calls[1][1].body), { kind: 'empathy' });
+    assert.equal(calls[1][1].headers['Content-Type'], 'application/json');
+    payload = summary();
+    await api.setReviewReaction('volume/id', 1, null);
+    assert.equal(calls[2][1].method, 'DELETE');
+    assert.equal(calls[2][1].body, undefined);
+});
+
+test('reaction API rejects malformed counts, mismatched results and HTTP/network/non-JSON errors', async () => {
+    let payload = summary(), status = 200, contentType = 'application/json', failure;
+    const api = load('src/lib/api.ts', {
+      './auth': { authenticatedFetch: async () => {
+        if (failure) throw failure;
+        return new Response(JSON.stringify(payload), { status, headers: { 'content-type': contentType } });
+      } },
+    });
+    for (const invalid of [
+      null, {}, { ...summary(), review_id: 2 }, { ...summary(), counts: null },
+      { ...summary(), counts: { empathy: 0, insight: 0 } },
+      summary(null, { empathy: -1 }), summary(null, { insight: '1' }),
+      summary(null, { curious: 1.5 }), summary(null, { empathy: Number.MAX_SAFE_INTEGER + 1 }),
+      summary('unknown'), summary('empathy'), { ...summary(), my_reaction: undefined },
+    ]) {
+      payload = invalid;
+      await assert.rejects(api.getReviewReactions('volume', 1), /取得結果を確認できません/);
+    }
+    payload = summary();
+    await assert.rejects(api.setReviewReaction('volume', 1, 'empathy'), /取得結果を確認できません/);
+    payload = summary('empathy', { empathy: 1 });
+    await assert.rejects(api.setReviewReaction('volume', 1, null), /取得結果を確認できません/);
+    for (const code of [401, 404, 422, 503]) {
+      status = code; payload = { detail: 'Failure' };
+      await assert.rejects(api.getReviewReactions('volume', 1), (error) => error.status === code);
+      await assert.rejects(api.setReviewReaction('volume', 1, 'curious'), (error) => error.status === code);
+      await assert.rejects(api.setReviewReaction('volume', 1, null), (error) => error.status === code);
+    }
+    status = 200; contentType = 'text/html';
+    await assert.rejects(api.getReviewReactions('volume', 1), /JSONではない/);
+    failure = new Error('Network offline');
+    await assert.rejects(api.setReviewReaction('volume', 1, null), /Network offline/);
+});
   test('own bookmark same-page action switches community tab with exact page instead of opening editor', () => {
     const h = harness('src/components/organisms/BookmarkListCard.tsx', {
       '../../lib/api': { reviewAnalysisLabel: () => '感想の色' },
@@ -585,7 +754,22 @@ test('distribution API authenticates and validates shape, ordering and exact tot
     let opened = false;
     const props = { reviews: [review(1)], currentPage: 10, onOpen() { opened = true; },
       community: (page) => ({ type: 'Community', props: { page } }) };
-    nodes(h.render(true, props)).find((node) => node.props?.accessibilityLabel === '10ページのみんなのしおりを見る').props.onPress();
+    const tree = h.render(true, props);
+    const communityButton = nodes(tree).find((node) => node.props?.accessibilityLabel === '10ページのみんなの感想を読む');
+    assert.ok(nodes(communityButton).some((node) => node.props?.name === 'chatbubbles-outline'));
+    assert.equal(nodes(communityButton).filter((node) => node.type === 'Text').length, 0);
+    assert.equal(communityButton.props.style.width, 44);
+    assert.equal(communityButton.props.style.height, 44);
+    const row = nodes(tree).find((node) => node.type === 'View' &&
+      [node.props.children].flat().includes(communityButton));
+    assert.equal(row.props.style.flexDirection, 'row');
+    assert.equal(row.props.style.alignItems, 'center');
+    const ownReview = [row.props.children].flat().find((node) =>
+      node.props?.accessibilityLabel === '10ページの感想を開く');
+    assert.ok(ownReview);
+    assert.equal(ownReview.props.style.flex, 1);
+    assert.doesNotMatch(text(tree), /同じページのみんなのしおりを見る/);
+    communityButton.props.onPress();
     assert.equal(nodes(h.render(true, props)).find((node) => node.type === 'Community').props.page, 10);
     assert.equal(opened, false);
   });

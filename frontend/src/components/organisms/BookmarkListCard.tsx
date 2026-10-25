@@ -1,5 +1,6 @@
 import { colors } from "../../theme/colors";
 import { useState, type ReactNode } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SegmentedTabs } from '../molecules/SegmentedTabs';
@@ -72,7 +73,7 @@ export function BookmarkListCard({
             }
           }} tintColor={tintColor} />
           {visibleBookmarks.map((bookmark) => (
-            <View key={bookmark.id}>
+            <View key={bookmark.id} style={styles.reviewRow}>
             <Pressable accessibilityRole="button" accessibilityLabel={`${bookmark.page}ページの感想を開く`} onPress={() => onOpen(bookmark.page)} style={styles.review}>
               <View style={[styles.swatch, { backgroundColor: bookmark.color }]} />
               <View style={styles.reviewText}>
@@ -81,8 +82,8 @@ export function BookmarkListCard({
                 <Text style={styles.count}>{bookmark.analysisLabel}</Text>
               </View>
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel={`${bookmark.page}ページのみんなのしおりを見る`} style={styles.samePage} onPress={() => { setCommunityPage(bookmark.page); setView('others'); }}>
-              <Text style={styles.heading}>同じページのみんなのしおりを見る ›</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={`${bookmark.page}ページのみんなの感想を読む`} style={styles.samePage} onPress={() => { setCommunityPage(bookmark.page); setView('others'); }}>
+              <Ionicons accessible={false} name="chatbubbles-outline" size={24} color={colors.navAccent} />
             </Pressable>
             </View>
           ))}
@@ -110,8 +111,9 @@ const styles = StyleSheet.create({
   header: { gap: 14 },
   heading: { color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 4 },
   count: { color: colors.placeholder, fontSize: 12 },
-  review: { flexDirection: 'row', gap: 12, marginTop: 18 },
-  samePage: { minHeight: 48, justifyContent: 'center', marginTop: 8 },
+  reviewRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18 },
+  review: { flex: 1, flexDirection: 'row', gap: 12 },
+  samePage: { width: 44, height: 44, marginRight: 8, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F0EAF2' },
   swatch: { width: 14, minHeight: 48, borderBottomLeftRadius: 7, borderBottomRightRadius: 7 },
   reviewText: { flex: 1, gap: 6 },
   pagination: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 18 },

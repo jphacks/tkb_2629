@@ -4,6 +4,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { ActionButton } from '../../components/molecules/ActionButton';
+import { ReviewReactionBar } from '../../components/molecules/ReviewReactionBar';
 import { getBook, getPublicReviews, reviewAnalysisLabel, type Book, type PublicReview, type ReviewPageRange } from '../../lib/api';
 import { colors } from '../../theme/colors';
 
@@ -130,6 +131,7 @@ export function PublicReviewList({ bookId, range, compact = false }: {
               <Text style={styles.description}>{reviewAnalysisLabel(review)}</Text>
             </View>
             <Text numberOfLines={preview ? 3 : undefined} style={styles.body}>{review.review_text}</Text>
+            {!preview && state.book.google_books_id && <ReviewReactionBar googleBooksId={state.book.google_books_id} reviewId={review.id} />}
             {!preview && reason !== null && <ActionButton label="この感想を隠す" secondary onPress={() => setRevealed((current) => current.filter((id) => id !== review.id))} />}
           </>
         )}
