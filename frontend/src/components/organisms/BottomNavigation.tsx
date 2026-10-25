@@ -38,11 +38,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    bottom: 0,
     flexDirection: 'row',
-    height: 80,
+    height: 100,
     justifyContent: 'space-around',
-    position: 'absolute',
     shadowColor: '#000000',
     shadowOffset: { height: -4, width: 0 },
     shadowOpacity: 0.12,
@@ -50,4 +48,5 @@ const styles = StyleSheet.create({
     width: '100%',
     zIndex: 3,
   },
+
 });

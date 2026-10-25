@@ -11,6 +11,7 @@ import { BookDetailScreen } from './src/screens/books/BookDetailScreen';
 import { BookEditScreen } from './src/screens/books/BookEditScreen';
 import { BookshelfScreen } from './src/screens/main/BookshelfScreen';
 import { HomeScreen } from './src/screens/main/HomeScreen';
+import { BookmarkBookSelectScreen } from './src/screens/main/BookmarkBookSelectScreen';
 import { ReadingScreen } from './src/screens/main/ReadingScreen';
 import { SearchScreen } from './src/screens/main/SearchScreen';
 import { AccountScreen } from './src/screens/main/AccountScreen';
@@ -36,5 +37,6 @@ export default function App() {
     case 'account-settings': return <AccountSettingsScreen onNavigate={setScreen} />;
     case 'reading-complete': return <ReadingCompleteScreen onNavigate={setScreen} />;
     case 'bookmark': return <BookmarkScreen onNavigate={setScreen} />;
+    case 'bookmark-book-select': return <BookmarkBookSelectScreen onNavigate={setScreen} />;
   }
 }
