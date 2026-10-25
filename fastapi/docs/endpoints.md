@@ -63,6 +63,16 @@ titleはtrim後1〜255文字、authorは省略可・trim後255文字以内、tot
 
 ## ページごとの感想
 
+### 感情比較
+
+`GET /books/{book_id}/emotions/comparison` は認証必須・本棚の所有確認ありで、
+`{mine: {review_count, emotion_scores, color_code}, others: {...}}` を返します。
+`mine` は本人の最新読書回の全しおり、`others` は同じ書誌の本人以外の公開しおり（全読書回）のみです。
+最新改訂が解析完了した実JEVの8感情値をしおり単位で算術平均し、同じ尺度で返します。
+自分の過去回・他人の非公開・未完了解析・仮解析は比較対象に含めません。
+対象なしは `review_count: 0, emotion_scores: {}`。本文・ユーザーIDは返しません。
+`Cache-Control: no-store`。既存 `/books/{book_id}/emotions` の契約は変更しません。
+
 | メソッド・パス | 内部処理 | 正常レスポンス |
 | --- | --- | --- |
 | `GET /books/{book_id}/pages/{page_number}/review` | 本棚の所有確認→ページ範囲検証→感想取得。`iteration`未指定時は最新回。解析がcompletedなら現在のrevisionに一致する解析履歴から色を取得。 | 200、感想情報 |

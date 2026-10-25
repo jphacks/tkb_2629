@@ -254,7 +254,7 @@ function detailHarness(iterationResult) {
     '../../lib/api': {
       ApiError: Error,
       getBook: async () => shelfBook({ latest_iteration: 2 }),
-      getBookEmotions: () => new Promise(() => {}),
+      getEmotionComparison: () => new Promise(() => {}),
       getBookReviews: () => new Promise(() => {}),
       getIterations: (id) => { requests.push(id); return iterationResult(requests.length); },
     },

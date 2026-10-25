@@ -101,6 +101,11 @@ class BookEmotionResponse(BaseModel):
     color_code: str
 
 
+class EmotionComparisonResponse(BaseModel):
+    mine: BookEmotionResponse
+    others: BookEmotionResponse
+
+
 class PageReviewResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

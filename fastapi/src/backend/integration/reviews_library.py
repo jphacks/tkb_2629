@@ -59,3 +59,11 @@ class LibraryReadingGateway:
     def reading_ids(self, book_id: int, *, latest_only: bool) -> list[int]:
         with translate_library_errors():
             return [key.id for key in self.service.reading_keys(book_id, latest_only=latest_only)]
+
+    def other_reading_ids(self, book_id: int, user_id: int) -> list[int]:
+        with translate_library_errors():
+            return [
+                key.id
+                for key in self.service.reading_keys(book_id, latest_only=False)
+                if key.user_id != user_id
+            ]

@@ -119,6 +119,17 @@ class ReviewService:
             references = unit.reviews.analysis_references(reading_ids)
         return self.analyses.summarize(references)
 
+    def compare_emotions(self, user_id: int, book_id: int) -> dict[str, EmotionSummary]:
+        scope = self.readings.resolve(user_id, book_id, None)
+        other_ids = self.readings.other_reading_ids(book_id, user_id)
+        with self.units() as unit:
+            mine = unit.reviews.analysis_references([scope.id])
+            others = unit.reviews.analysis_references(other_ids, public_only=True)
+        return {
+            "mine": self.analyses.summarize(mine),
+            "others": self.analyses.summarize(others),
+        }
+
     def set_visibility(
         self,
         user_id: int,

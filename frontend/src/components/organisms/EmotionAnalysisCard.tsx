@@ -1,8 +1,8 @@
 import { colors } from "../../theme/colors";
-import Svg, { Circle, Line, Polygon, Text as SvgText } from 'react-native-svg';
+import Svg, { Defs, Line, Polygon, RadialGradient, Rect, Stop, Text as SvgText } from 'react-native-svg';
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { BookEmotions } from '../../lib/api';
+import type { EmotionComparison } from '../../lib/api';
 import { GlassSurface } from '../atoms/GlassSurface';
 
 type Emotion = {
@@ -28,47 +28,50 @@ const center = { x: 160, y: 132 };
 const radius = 82;
 const chartLevels = [0.25, 0.5, 0.75, 1];
 
-export function EmotionAnalysisCard({ summary }: { summary: BookEmotions }) {
-  const emotions = emotionDefinitions.map((emotion, index) => ({
-    ...emotion,
-    value: summary.emotion_scores[emotionNames[index]!] ?? 0,
+export function EmotionAnalysisCard({ summary }: { summary: EmotionComparison }) {
+  const mine = emotionDefinitions.map((emotion, index) => ({
+    ...emotion, value: summary.mine.emotion_scores[emotionNames[index]!] ?? 0,
   }));
-  const totalBookmarks = summary.review_count;
-  const total = emotions.reduce((sum, emotion) => sum + emotion.value, 0);
-  const aggregatePoint = createAggregatePoint(emotions.map((emotion) => ({
-    ...emotion, value: total > 0 ? emotion.value / total : 0,
-  })));
-  const aggregateColor = summary.color_code;
+  const others = emotionDefinitions.map((emotion, index) => ({
+    ...emotion, value: summary.others.emotion_scores[emotionNames[index]!] ?? 0,
+  }));
 
   return (
     <GlassSurface style={styles.card}>
       <Text style={styles.heading}>感情の分析</Text>
-      <Text style={styles.description}>全{totalBookmarks}件のJEV解析済みしおりの平均</Text>
-      <Text style={styles.description}>全ユーザー・全読書回の感情値を集計</Text>
-      {totalBookmarks === 0 && <Text style={styles.description}>解析済みのしおりがないため、グレーで表示しています。</Text>}
-      <Svg height={280} viewBox="0 0 320 280" width="100%">
+      <View style={styles.legend}>
+        <View style={styles.legendItem}><View style={styles.mineLine} /><Text style={styles.legendLabel}>自分</Text></View>
+        <View style={styles.legendItem}><View style={styles.othersLine} /><Text style={styles.legendLabel}>みんな</Text></View>
+      </View>
+      <Svg accessible accessibilityLabel={mine.map((emotion, index) =>
+        `${emotion.label}：自分 ${summary.mine.review_count ? `${Math.round(emotion.value * 100)}%` : '未記録'}、みんな ${summary.others.review_count ? `${Math.round(others[index]!.value * 100)}%` : '未記録'}`
+      ).join('。')} height={280} viewBox="0 0 320 280" width="100%">
+        <Defs>
+          {emotionDefinitions.map((emotion, index) => {
+            const point = getPoint(index, 1);
+            return <RadialGradient key={emotion.label} id={`emotionGlow${index}`} cx={`${point.x / 320 * 100}%`} cy={`${point.y / 280 * 100}%`} r="48%">
+              <Stop offset="0" stopColor={emotion.color} stopOpacity="0.22" />
+              <Stop offset="1" stopColor={emotion.color} stopOpacity="0" />
+            </RadialGradient>;
+          })}
+        </Defs>
+        {emotionDefinitions.map((emotion, index) => <Rect key={emotion.label} width={320} height={280} fill={`url(#emotionGlow${index})`} />)}
         {chartLevels.map((level) => (
-          <Polygon key={level} fill="none" points={createPolygonPoints(emotions, level)} stroke="#E9E7F0" strokeWidth="1" />
+          <Polygon key={level} fill="none" points={createPolygonPoints(mine, level)} stroke="#CDC8DC" strokeWidth="1" />
         ))}
-        {emotions.map((emotion, index) => {
+        {mine.map((emotion, index) => {
           const point = getPoint(index, 1);
           return <Line key={emotion.label} stroke="#E9E7F0" strokeWidth="1" x1={center.x} x2={point.x} y1={center.y} y2={point.y} />;
         })}
-        <Circle cx={aggregatePoint.x} cy={aggregatePoint.y} fill={aggregateColor} r="8" stroke={colors.background} strokeWidth="3" />
-        {emotions.map((emotion, index) => {
+        {summary.others.review_count > 0 && <Polygon points={createScorePoints(others)} stroke="#237F89" strokeWidth={2} strokeDasharray="6 4" fill="#237F89" fillOpacity={0.08} />}
+        {summary.mine.review_count > 0 && <Polygon points={createScorePoints(mine)} stroke="#7950A5" strokeWidth={2.5} fill="#7950A5" fillOpacity={0.16} />}
+        {mine.map((emotion, index) => {
           const labelPoint = getPoint(index, 1.22);
           return <SvgText key={emotion.label} fill={emotion.color} fontSize="12" fontWeight="600" textAnchor="middle" x={labelPoint.x} y={labelPoint.y}>{emotion.label}</SvgText>;
         })}
       </Svg>
-      <View style={styles.legend}>
-        {emotions.map((emotion) => (
-          <View key={emotion.label} style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: emotion.color }]} />
-            <Text style={styles.legendLabel}>{emotion.label}</Text>
-            <Text style={styles.legendValue}>{Math.round(emotion.value * 100)}%</Text>
-          </View>
-        ))}
-      </View>
+      {summary.mine.review_count === 0 && <Text style={styles.description}>しおりを書くと、自分の感情も重なります。</Text>}
+      {summary.others.review_count === 0 && <Text style={styles.description}>みんなの感情は、公開しおりの解析後に表示されます。</Text>}
     </GlassSurface>
   );
 }
@@ -96,23 +99,20 @@ function createPolygonPoints(emotions: Emotion[], scale: number) {
   }).join(' ');
 }
 
-function createAggregatePoint(emotions: Emotion[]) {
-  return emotions.reduce((point, emotion, index) => {
-    const axisPoint = getPoint(index, 1);
-    return {
-      x: point.x + (axisPoint.x - center.x) * emotion.value,
-      y: point.y + (axisPoint.y - center.y) * emotion.value,
-    };
-  }, { x: center.x, y: center.y });
+function createScorePoints(emotions: Emotion[]) {
+  return emotions.map((emotion, index) => {
+    const point = getPoint(index, emotion.value);
+    return `${point.x},${point.y}`;
+  }).join(' ');
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, elevation: 2, marginTop: 16, padding: 18, shadowColor: colors.black, shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } },
+  card: { backgroundColor: '#F1ECF8', borderRadius: 16, elevation: 2, marginTop: 16, padding: 18, shadowColor: colors.black, shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } },
   heading: { color: colors.text, fontSize: 16, fontWeight: '700' },
   description: { color: colors.placeholder, fontSize: 12, marginTop: 5 },
-  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: -4 },
-  legendItem: { alignItems: 'center', flexDirection: 'row', minWidth: '45%' },
-  legendDot: { borderRadius: 5, height: 10, marginRight: 6, width: 10 },
+  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginTop: 12 },
+  legendItem: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+  mineLine: { width: 24, borderTopWidth: 3, borderColor: '#7950A5' },
+  othersLine: { width: 24, borderTopWidth: 2, borderColor: '#237F89', borderStyle: 'dashed' },
   legendLabel: { color: '#666666', fontSize: 12 },
-  legendValue: { color: '#A1A1AA', fontSize: 11, marginLeft: 'auto' },
 });
