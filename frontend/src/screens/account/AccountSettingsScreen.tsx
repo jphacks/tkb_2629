@@ -32,6 +32,17 @@ export function AccountSettingsScreen({ onNavigate }: { onNavigate: Navigate }) 
           <SettingsRow label="名前" value="設定・変更" onPress={() => onNavigate('public-profile')} />
           <SettingsRow label="パスワード" value="再設定メールを送る" onPress={() => onNavigate('forgot-password')} />
         </GlassSurface>
+        <Text style={styles.section}>読書の設定</Text>
+        <Text style={styles.notice}>以下は表示サンプルです。変更・保存はできません。</Text>
+        <GlassSurface style={styles.group}>
+          <SettingsRow label="読書目標" value="月3冊（例）" />
+          <SettingsRow label="読書リマインダー" value="毎日20:00（例）" />
+        </GlassSurface>
+        <Text style={styles.section}>サポート</Text>
+        <GlassSurface style={styles.group}>
+          <SettingsRow label="ヘルプ・よくある質問" />
+          <SettingsRow label="お問い合わせ" />
+        </GlassSurface>
         <Text style={styles.section}>ログアウト</Text>
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
         <ActionButton label={busy ? 'ログアウト中…' : 'ログアウト'} disabled={busy} secondary onPress={() => { void handleLogout(); }} />

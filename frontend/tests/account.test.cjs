@@ -208,7 +208,7 @@ test('account ignores late statistics and profile responses after leaving', asyn
   }
 });
 
-test('settings retain working account routes, hide samples and guard logout including rapid presses', async () => {
+test('settings retain working routes, mark dummy sections unavailable and guard rapid logout presses', async () => {
   const h = hooks(), requests = [], targets = [];
   const { AccountSettingsScreen } = load('src/screens/account/AccountSettingsScreen.tsx', {
     react: h.react, 'react/jsx-runtime': { jsx, jsxs: jsx }, 'react-native': native,
@@ -220,11 +220,28 @@ test('settings retain working account routes, hide samples and guard logout incl
   const render = () => h.render(() => AccountSettingsScreen({ onNavigate: (target) => targets.push(target) }));
   let tree = render();
   const rows = nodes(tree).filter((node) => node.type === 'SettingsRow');
-  assert.deepEqual(rows.map((row) => row.props.label), ['メールアドレス', '名前', 'パスワード']);
+  assert.deepEqual(rows.map((row) => row.props.label), [
+    'メールアドレス', '名前', 'パスワード', '読書目標', '読書リマインダー', 'ヘルプ・よくある質問', 'お問い合わせ',
+  ]);
   assert.equal(rows[0].props.value, 'one@example.test');
   rows[1].props.onPress(); rows[2].props.onPress();
   assert.deepEqual(targets, ['public-profile', 'forgot-password']);
-  assert.doesNotMatch(text(tree), /月3冊|20:00|サンプル|サポート|読書の設定/);
+  assert.match(text(tree), /表示サンプル/);
+  assert.match(text(tree), /変更・保存はできません/);
+  const { SettingsRow } = load('src/components/molecules/SettingsRow.tsx', {
+    'react/jsx-runtime': { jsx, jsxs: jsx }, 'react-native': { ...native, Pressable: 'Pressable' },
+    '../../theme/colors': { colors: {} },
+  });
+  for (const row of rows.slice(3)) {
+    const control = SettingsRow(row.props);
+    assert.equal(row.props.onPress, undefined);
+    assert.equal(control.props.disabled, true);
+    assert.equal(control.props.accessibilityState.disabled, true);
+    assert.match(control.props.accessibilityLabel, /準備中/);
+    assert.match(text(control), /準備中/);
+  }
+  assert.equal(rows[3].props.value, '月3冊（例）');
+  assert.equal(rows[4].props.value, '毎日20:00（例）');
   const logout = button(tree, 'ログアウト');
   logout.props.onPress(); logout.props.onPress();
   assert.equal(requests.length, 1);
