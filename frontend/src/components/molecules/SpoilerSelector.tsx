@@ -11,7 +11,7 @@ type SpoilerSelectorProps = {
   tintColor?: string;
 };
 
-export function SpoilerSelector({ accentColor = colors.accent, hasSpoiler, onChange, tintColor = '#FFF4F4' }: SpoilerSelectorProps) {
+export function SpoilerSelector({ accentColor = colors.navAccent, hasSpoiler, onChange, tintColor = colors.backgroundSoft }: SpoilerSelectorProps) {
   return (
     <View style={styles.field}>
       <FieldLabel color={accentColor}>ネタバレ設定</FieldLabel>

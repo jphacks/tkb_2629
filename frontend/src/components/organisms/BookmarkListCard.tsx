@@ -10,13 +10,13 @@ import { reviewAnalysisLabel, type PageReview } from '../../lib/api';
 import type { Bookmark } from '../../types/bookmark';
 
 export const myBookmarks: Bookmark[] = [
-  { id: 'mine-1', page: 42, position: 23, count: 1, title: '旅のはじまり', note: '主人公が星空を見上げる場面。', date: '6月12日', author: 'あなた' },
-  { id: 'mine-2', page: 96, position: 53, count: 1, title: '心に残った言葉', note: '「遠くても、見上げれば同じ空」が印象的。', date: '6月15日', author: 'あなた' },
-  { id: 'mine-3', page: 142, position: 79, count: 1, title: '次に読むところ', note: '大きな決断をする直前で一度休憩。', date: '6月18日', author: 'あなた' },
+  { id: 'mine-1', page: 42, position: 23, count: 1, title: '旅のはじまり', note: '主人公が星空を見上げる場面', date: '6月12日', author: 'あなた' },
+  { id: 'mine-2', page: 96, position: 53, count: 1, title: '心に残った言葉', note: '「遠くても、見上げれば同じ空」が印象的', date: '6月15日', author: 'あなた' },
+  { id: 'mine-3', page: 142, position: 79, count: 1, title: '次に読むところ', note: '大きな決断をする直前で一度休憩', date: '6月18日', author: 'あなた' },
 ];
 
 export function BookmarkListCard({
-  accentColor = colors.accent, tintColor = '#FFF4F4', reviews, currentPage, onOpen, community, ownFallback,
+  accentColor = colors.navAccent, tintColor = colors.backgroundSoft, reviews, currentPage, onOpen, community, ownFallback,
 }: {
   accentColor?: string; tintColor?: string; reviews: PageReview[];
   currentPage: number; onOpen: (page: number) => void;
@@ -52,19 +52,20 @@ export function BookmarkListCard({
           {view === 'mine' && !ownFallback && <Text style={styles.count}>{ownBookmarks.length}件のしおり</Text>}
         </View>
         <SegmentedTabs
-          activeColor={accentColor}
+          prominent
+          activeColor={colors.navAccent}
           options={[
             { label: '自分のしおり', value: 'mine' },
             { label: 'みんなのしおり', value: 'others' },
           ]}
           value={view}
-          tintColor={tintColor}
+          tintColor={colors.backgroundSoft}
           onChange={(value) => { if (value === 'mine' || value === 'others') { setCommunityPage(undefined); setView(value); } }}
         />
       </View>
       {view === 'mine' ? (
         ownFallback ?? <>
-          {ownBookmarks.length === 0 && <Text style={styles.count}>まだしおりがありません。</Text>}
+          {ownBookmarks.length === 0 && <Text style={styles.count}>{"まだしおりがありません"}</Text>}
           <BookmarkTimeline currentPage={currentPage} accentColor={accentColor} bookmarks={bookmarks} selectedBookmark={selectedBookmark} onSelect={(id) => {
             const bookmark = ownBookmarks.find((item) => item.id === id);
             if (bookmark) {
@@ -100,7 +101,7 @@ export function BookmarkListCard({
           )}
         </>
       ) : (
-        (typeof community === 'function' ? community(communityPage) : community) ?? <Text style={styles.count}>この本のみんなのしおりは表示できません。</Text>
+        (typeof community === 'function' ? community(communityPage) : community) ?? <Text style={styles.count}>{"この本のみんなのしおりは表示できません"}</Text>
       )}
     </GlassSurface>
   );

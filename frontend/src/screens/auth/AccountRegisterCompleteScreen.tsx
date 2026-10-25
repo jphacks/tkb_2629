@@ -11,9 +11,9 @@ export function AccountRegisterCompleteScreen({ onNavigate }: { onNavigate: Navi
       <View style={styles.content}>
         <View style={styles.check}><Text style={styles.checkText}>✓</Text></View>
         <Text style={styles.title}>アカウント登録完了</Text>
-        <Text style={styles.description}>メール確認が完了しました。ログインしてご利用ください。</Text>
-        <Text style={styles.body}>しおりを使って、読書の記録をはじめましょう。あなたの読書体験を大切に保存できます。</Text>
-        <View style={styles.start}><Text style={styles.body}>ログイン後に本を追加できます。</Text><Text style={styles.body}>いつでも読書を再開できます。</Text></View>
+        <Text style={styles.description}>{"メール確認が完了しました\nログインしてご利用ください"}</Text>
+        <Text style={styles.body}>{"しおりを使って、読書の記録をはじめましょう\nあなたの読書体験を大切に保存できます"}</Text>
+        <View style={styles.start}><Text style={styles.body}>{"ログイン後に本を追加できます"}</Text><Text style={styles.body}>{"いつでも読書を再開できます"}</Text></View>
         <ActionButton label="ログインへ" onPress={() => onNavigate('login')} />
       </View>
     </ScreenFrame>

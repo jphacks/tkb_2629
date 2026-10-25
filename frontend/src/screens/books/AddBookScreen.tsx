@@ -73,7 +73,7 @@ export function AddBookScreen({
   async function search(value = query) {
     const normalizedQuery = value.trim();
     if (!normalizedQuery) {
-      setMessage('検索するタイトルを入力してください。');
+      setMessage('検索するタイトルを入力してください');
       return;
     }
     const requestId = searchRequestId.current + 1;
@@ -89,14 +89,14 @@ export function AddBookScreen({
       }
       setResults(books);
       if (books.length === 0) {
-        setMessage('ページ数を確認できる書籍が見つかりませんでした。');
+        setMessage('ページ数を確認できる書籍が見つかりませんでした');
       }
     } catch (error) {
       if (requestId !== searchRequestId.current) {
         return;
       }
       setResults([]);
-      setMessage(error instanceof Error ? error.message : '書籍検索に失敗しました。');
+      setMessage(error instanceof Error ? error.message : '書籍検索に失敗しました');
     } finally {
       if (requestId === searchRequestId.current) {
         setSearching(false);
@@ -111,14 +111,14 @@ export function AddBookScreen({
     try {
       const imported = await importGoogleBook(book.google_books_id);
       setOwnedBooks((current) => ({ ...current, [book.google_books_id]: imported }));
-      setMessage(`「${book.title}」を本棚に追加しました。`);
+      setMessage(`「${book.title}」を本棚に追加しました`);
       setDetailBookId(imported.id);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '';
       setMessage(
         errorMessage === 'Book is already in the bookshelf'
-          ? `「${book.title}」はすでに本棚へ追加されています。`
-          : errorMessage || '本棚への追加に失敗しました。',
+          ? `「${book.title}」はすでに本棚へ追加されています`
+          : errorMessage || '本棚への追加に失敗しました',
       );
     } finally {
       setImportingId(null);
@@ -207,8 +207,8 @@ export function AddBookScreen({
             <Svg height="100%" pointerEvents="none" preserveAspectRatio="none" style={styles.searchGradient} viewBox="0 0 100 100" width="100%">
               <Defs>
                 <LinearGradient id="searchButtonGradient" x1="0" x2="1" y1="0" y2="1">
-                  <Stop offset="0" stopColor="#FF8C8C" />
-                  <Stop offset="0.45" stopColor="#DE7ECD" />
+                  <Stop offset="0" stopColor={colors.navAccent} />
+                  <Stop offset="0.45" stopColor={colors.navAccent} />
                   <Stop offset="1" stopColor={colors.navAccent} />
                 </LinearGradient>
               </Defs>
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
   content: { gap: 14, padding: 24, paddingBottom: 110 },
   searchRow: { marginTop: 8, position: 'relative' },
   search: { height: 52, paddingRight: 58, width: '100%' },
-  searchButton: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 12, height: 40, justifyContent: 'center', overflow: 'hidden', position: 'absolute', right: 6, top: 6, width: 40 },
+  searchButton: { alignItems: 'center', backgroundColor: colors.navAccent, borderRadius: 12, height: 40, justifyContent: 'center', overflow: 'hidden', position: 'absolute', right: 6, top: 6, width: 40 },
   searchGradient: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
   searchButtonPressed: { opacity: 0.72, transform: [{ scale: 0.94 }] },
   genres: { gap: 8 },

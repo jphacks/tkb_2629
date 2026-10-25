@@ -87,7 +87,7 @@ function harness(file = 'src/components/organisms/PublicReviewList.tsx', extra =
     get target() { return target; }, get backs() { return backs; },
     render(withBack = true, props = {}) {
       cursor = 0; scheduled = [];
-      const Screen = module.PublicReviewList ?? module.BookDetailScreen ?? module.CommunityBookmarks ?? module.BookmarkListCard ?? module.ReviewReactionBar;
+      const Screen = module.PublicReviewList ?? module.BookDetailScreen ?? module.CommunityBookmarks ?? module.BookmarkListCard ?? module.ReviewReactionBar ?? module.ReviewDistributionChart;
       const tree = Screen({ bookId: 1, onNavigate: (value) => { target = value; }, onBack: withBack ? () => { backs++; } : undefined, ...props });
       scheduled.forEach((effect) => effect());
       return tree;
@@ -362,28 +362,96 @@ async function distributionReady(h, distribution = { items: [{ page_number: 1, r
   return h.render();
 }
 
-test('community distribution uses full aggregate, reversed axis, neutral bars and touchable ranges', async () => {
+test('range bins preserve exact counts, reversed page order and coverage for short and million-page books', () => {
+  const { rangeReviewBins } = load('src/lib/reviewDistribution.ts');
+  for (const total of [1, 3, 100, 500, 1000000]) {
+    const distribution = {
+      items: Array.from(new Set([1, Math.ceil(total / 2), total])).map((page_number, i) => ({ page_number, review_count: i + 1 })),
+      total_count: 6,
+    };
+    for (const range of [undefined, { start: 1, end: Math.ceil(total / 2) }, { start: total, end: total }]) {
+      const bins = rangeReviewBins(total, 6, distribution, range);
+      assert.ok(bins.length <= 6);
+      assert.equal(bins[0].end, range?.end ?? total);
+      assert.equal(bins.at(-1).start, range?.start ?? 1);
+      assert.equal(bins.reduce((sum, bin) => sum + bin.count, 0),
+        distribution.items.filter((item) => !range || item.page_number >= range.start && item.page_number <= range.end)
+          .reduce((sum, item) => sum + item.review_count, 0));
+      for (let i = 1; i < bins.length; i += 1) assert.equal(bins[i].end + 1, bins[i - 1].start);
+    }
+  }
+  assert.throws(() => rangeReviewBins(100, 6, { items: [] }, { start: 0, end: 10 }), /ページ範囲/);
+  assert.throws(() => rangeReviewBins(100, 6, { items: [] }, { start: 80, end: 70 }), /ページ範囲/);
+});
+
+test('distribution chart bounds columns to viewport, scales bars by counts and allows range and exact-page drilling', () => {
+  const distribution = { items: [
+    { page_number: 1, review_count: 1 }, { page_number: 2, review_count: 3 },
+    { page_number: 499, review_count: 2 }, { page_number: 500, review_count: 4 },
+  ], total_count: 10 };
+  const h = harness('src/components/organisms/ReviewDistributionChart.tsx');
+  const selections = [];
+  const props = { totalPages: 500, distribution, onSelect: (range) => selections.push(range) };
+  let tree = h.render(true, props);
+  const columns = (tree) => nodes(tree).filter((node) => node.type === 'Pressable' && node.props.accessibilityLabel.includes('〜'));
+  assert.equal(columns(tree).length, 6);
+  assert.equal(nodes(tree).some((node) => node.type === 'ScrollView'), false);
+  tree.props.onLayout({ nativeEvent: { layout: { width: 320 } } });
+  tree = h.render(true, props);
+  let bars = columns(tree);
+  assert.equal(bars.length, 7);
+  assert.ok(320 / bars.length >= 44);
+  assert.match(bars[0].props.accessibilityLabel, /429〜500ページ、感想6件/);
+  const heights = (bar) => nodes(bar).filter((node) => node.type === 'View' && Array.isArray(node.props.style))
+    .map((node) => node.props.style[1]?.height).filter((height) => height !== undefined);
+  assert.deepEqual(heights(bars[0]), [88]);
+  assert.ok(Math.abs(heights(bars.at(-1))[0] - 88 * 4 / 6) < 0.00001);
+  assert.equal(bars[1].props.disabled, true);
+  bars[0].props.onPress();
+  const range = selections[0];
+  tree = h.render(true, { ...props, range });
+  bars = columns(tree);
+  assert.ok(bars.length <= 7);
+  const pages = nodes(tree).filter((node) => node.type === 'Pressable' && node.props.accessibilityLabel.endsWith('件を読む'));
+  assert.equal(pages.length, 2);
+  pages[0].props.onPress();
+  assert.equal(selections.at(-1).start, 499);
+  assert.equal(selections.at(-1).end, 499);
+  assert.equal(nodes(tree).find((node) => node.type === 'ScrollView').props.horizontal, undefined);
+  tree = h.render(true, { ...props, range: { start: 500, end: 500 } });
+  assert.equal(columns(tree).length, 1);
+  for (const width of [220, 440, 1000]) {
+    tree.props.onLayout({ nativeEvent: { layout: { width } } });
+    tree = h.render(true, props);
+    assert.ok(columns(tree).length <= 12);
+    assert.ok(width / columns(tree).length >= 44);
+  }
+});
+
+test('community distribution connects overview, range drilldown, page selection and reset without refetching', async () => {
   const h = harness('src/components/organisms/CommunityBookmarks.tsx');
   let tree = await distributionReady(h);
   assert.ok(nodes(tree).some((node) => node.type === 'Text' && node.props.style?.fontSize === 20 && node.props.children === 4));
   assert.match(text(tree), /件の公開しおり/);
   assert.equal(h.requests[1].kind, 'distribution');
   assert.equal(h.requests.length, 2);
-  const bins = nodes(tree).filter((node) => node.type === 'Pressable');
-  assert.equal(bins.length, 10);
-  assert.match(bins[0].props.accessibilityLabel, /91〜100ページ、公開しおり3件/);
-  assert.match(bins.at(-1).props.accessibilityLabel, /1〜10ページ、公開しおり1件/);
-  assert.equal(bins[0].props.style[0].minHeight, 112);
-  assert.doesNotMatch(text(tree), /読み進める方向|曲線は目安|薄い背景は/);
-  assert.ok(nodes(tree).some((node) => node.type === 'Text' && node.props.children === '100%'));
-  assert.ok(nodes(tree).some((node) => node.type === 'Text' && node.props.children === '10%'));
-  bins.at(-1).props.onPress();
+  const chart = (value) => nodes(value).find((node) => node.type === 'ReviewDistributionChart');
+  assert.equal(chart(tree).props.distribution.total_count, 4);
+  assert.equal(chart(tree).props.range, undefined);
+  chart(tree).props.onSelect({ start: 1, end: 10 });
   tree = h.render();
   const list = nodes(tree).find((node) => node.type === 'PublicReviewList');
   assert.deepEqual(JSON.parse(JSON.stringify(list.props.range)), { start: 1, end: 10 });
-  assert.equal(nodes(tree).filter((node) => node.type === 'Pressable').at(-1).props.accessibilityState.selected, true);
-  bins[7].props.onPress();
-  assert.deepEqual(JSON.parse(JSON.stringify(nodes(h.render()).find((node) => node.type === 'PublicReviewList').props.range)), { start: 21, end: 30 });
+  assert.equal(chart(tree).props.range.end, 10);
+  chart(tree).props.onSelect({ start: 1, end: 1 });
+  tree = h.render();
+  assert.equal(nodes(tree).find((node) => node.props?.accessibilityLabel === '感想を探すページ番号').props.value, '1');
+  assert.equal(nodes(tree).find((node) => node.type === 'PublicReviewList').props.range.end, 1);
+  button(tree, '本全体に戻る').props.onPress();
+  tree = h.render();
+  assert.equal(chart(tree).props.range, undefined);
+  assert.equal(nodes(tree).find((node) => node.type === 'PublicReviewList').props.range, undefined);
+  assert.equal(h.requests.length, 2);
 });
 
 test('community retry, refresh, empty and manual books never present a failed count as zero', async () => {
@@ -399,7 +467,7 @@ test('community retry, refresh, empty and manual books never present a failed co
   h.requests.at(-1).resolve({ items: [], total_count: 0 }); await flush();
   tree = h.render();
   assert.match(text(tree), /公開しおりはまだありません/);
-  nodes(tree).find((node) => node.type === 'Pressable').props.onPress();
+  assert.ok(nodes(tree).find((node) => node.type === 'ReviewDistributionChart'));
   assert.ok(nodes(h.render()).find((node) => node.type === 'PublicReviewList'));
   assert.equal(button(h.render(), 'しおりを更新'), undefined);
   h.unmount();
@@ -568,7 +636,7 @@ test('distribution API authenticates and validates shape, ordering and exact tot
     let tree = h.render();
     let list = nodes(tree).find((node) => node.type === 'PublicReviewList');
     assert.deepEqual(JSON.parse(JSON.stringify(list.props.range)), { start: 10, end: 10 });
-    assert.equal(list.props.compact, true);
+    assert.equal(list.props.bookmarkLayout, true);
     assert.doesNotMatch(text(tree), /ページを指定/);
     assert.equal(button(tree, 'このページを見る'), undefined);
     const input = nodes(tree).find((node) => node.props?.accessibilityLabel === '感想を探すページ番号');
@@ -578,7 +646,7 @@ test('distribution API authenticates and validates shape, ordering and exact tot
     );
     assert.ok(group);
     assert.ok(nodes(group).some((node) => node.type === 'Text' && node.props.children === 'ページの'));
-    assert.ok(nodes(tree).some((node) => node.type === 'Text' && node.props.style?.fontSize === 20 && node.props.children === 10));
+    assert.equal(nodes(tree).find((node) => node.type === 'ReviewDistributionChart').props.range.start, 10);
     assert.equal(button(tree, 'しおりを更新'), undefined);
     const other = harness('src/components/organisms/CommunityBookmarks.tsx');
     other.render(true, { initialPage: 42 }); other.requests[0].resolve(book); await flush();

@@ -47,6 +47,6 @@ const styles = StyleSheet.create({
   copy: { flex: 1 },
   title: { color: colors.text, fontSize: 16, fontWeight: '700' },
   author: { color: colors.placeholder, fontSize: 11, marginTop: 6 },
-  bookmarkButton: { alignItems: 'center', backgroundColor: 'rgba(255, 113, 113, 0.86)', borderColor: 'rgba(255, 255, 255, 0.9)', borderRadius: 22, borderWidth: 1, flexShrink: 0, height: 44, justifyContent: 'center', width: 44 },
+  bookmarkButton: { alignItems: 'center', backgroundColor: colors.navAccent, borderColor: 'rgba(255, 255, 255, 0.9)', borderRadius: 22, borderWidth: 1, flexShrink: 0, height: 44, justifyContent: 'center', width: 44 },
   pressed: { opacity: 0.72, transform: [{ scale: 0.96 }] },
 });

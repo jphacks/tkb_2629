@@ -37,7 +37,7 @@ export function useCompletedBookCount() {
         setCount(completedReadCount(books));
       }
     }).catch((reason: unknown) => {
-      if (active) setError(reason instanceof Error ? reason.message : '読了冊数の取得に失敗しました。');
+      if (active) setError(reason instanceof Error ? reason.message : '読了冊数の取得に失敗しました');
     });
     return () => { active = false; };
   }, [version]);

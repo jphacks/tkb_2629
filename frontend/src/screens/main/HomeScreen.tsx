@@ -33,7 +33,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: Navigate }) {
       } catch (reason: unknown) {
         if (active) setReadCount({
           status: 'error',
-          message: reason instanceof Error ? reason.message : '読了冊数の取得に失敗しました。',
+          message: reason instanceof Error ? reason.message : '読了冊数の取得に失敗しました',
         });
       }
     }
@@ -51,7 +51,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: Navigate }) {
       .catch((reason: unknown) => {
         if (active) setRecent({
           status: 'error',
-          message: reason instanceof Error ? reason.message : '読書中の本の取得に失敗しました。',
+          message: reason instanceof Error ? reason.message : '読書中の本の取得に失敗しました',
         });
       });
     return () => { active = false; };
@@ -93,7 +93,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: Navigate }) {
               <ActionButton label="続きを読むを再読み込み" onPress={() => setRecentVersion((value) => value + 1)} secondary />
             </>}
             {recent.status === 'ready' && recent.books.length === 0 && <>
-              <Text style={styles.description}>読書中の本はありません。本を追加して、読書を始めましょう。</Text>
+              <Text style={styles.description}>{"読書中の本はありません\n本を追加して、読書を始めましょう"}</Text>
               <ActionButton label="本を探す" onPress={() => onNavigate('search')} />
             </>}
             {recent.status === 'ready' && recent.books.map((book) => (

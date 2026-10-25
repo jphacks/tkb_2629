@@ -6,9 +6,9 @@ import { getReviewReactions, setReviewReaction, type ReactionKind, type ReviewRe
 import { colors } from '../../theme/colors';
 
 const reactions = [
-  { kind: 'empathy', label: '共感した', icon: 'heart-outline', selectedIcon: 'heart', color: '#BA5679', background: '#FBEAF0' },
-  { kind: 'insight', label: 'なるほど', icon: 'bulb-outline', selectedIcon: 'bulb', color: '#986810', background: '#FFF3D7' },
-  { kind: 'curious', label: '気になる', icon: 'eye-outline', selectedIcon: 'eye', color: '#587BA6', background: '#EAF1FB' },
+  { kind: 'empathy', label: '共感した', icon: 'heart-outline', selectedIcon: 'heart', color: colors.navAccent, background: colors.backgroundSoft },
+  { kind: 'insight', label: 'なるほど', icon: 'bulb-outline', selectedIcon: 'bulb', color: colors.navAccent, background: colors.backgroundSoft },
+  { kind: 'curious', label: '気になる', icon: 'eye-outline', selectedIcon: 'eye', color: colors.navAccent, background: colors.backgroundSoft },
 ] as const;
 
 type State = {
@@ -36,7 +36,7 @@ export function ReviewReactionBar({ googleBooksId, reviewId }: { googleBooksId: 
       } catch (reason: unknown) {
         if (request === epoch.current) setState({
           key, summary: null, busy: false,
-          error: reason instanceof Error ? reason.message : 'リアクションの取得に失敗しました。',
+          error: reason instanceof Error ? reason.message : 'リアクションの取得に失敗しました',
         });
       } finally {
         if (request === epoch.current) locked.current = false;
@@ -59,7 +59,7 @@ export function ReviewReactionBar({ googleBooksId, reviewId }: { googleBooksId: 
     } catch (reason: unknown) {
       if (request === epoch.current) setState((current) => ({
         ...current, busy: false,
-        error: reason instanceof Error ? reason.message : 'リアクションの更新に失敗しました。',
+        error: reason instanceof Error ? reason.message : 'リアクションの更新に失敗しました',
       }));
     } finally {
       if (request === epoch.current) locked.current = false;

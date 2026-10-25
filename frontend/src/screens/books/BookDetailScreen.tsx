@@ -72,7 +72,7 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
           setState({
             bookId,
             status: 'error',
-            message: reason instanceof Error ? reason.message : '本の詳細の取得に失敗しました。',
+            message: reason instanceof Error ? reason.message : '本の詳細の取得に失敗しました',
           });
         }
       });
@@ -90,7 +90,7 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
     getBookReviews(bookId, book.latest_iteration).then((items) => {
       if (active) setReviews(items);
     }).catch((reason: unknown) => {
-      if (active) setReviewError(reason instanceof Error ? reason.message : 'しおり一覧の取得に失敗しました。');
+      if (active) setReviewError(reason instanceof Error ? reason.message : 'しおり一覧の取得に失敗しました');
     });
     return () => { active = false; };
   }, [book, bookId, reviewVersion]);
@@ -102,7 +102,7 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
     getEmotionComparison(bookId).then((summary) => {
       if (active) setEmotions(summary);
     }).catch((reason: unknown) => {
-      if (active) setEmotionError(reason instanceof Error ? reason.message : '感情分析の取得に失敗しました。');
+      if (active) setEmotionError(reason instanceof Error ? reason.message : '感情分析の取得に失敗しました');
     });
     return () => { active = false; };
   }, [book, bookId, reviewVersion]);
@@ -114,7 +114,7 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
     getIterations(bookId).then((items) => {
       if (active) setIterations(items);
     }).catch((reason: unknown) => {
-      if (active) setIterationError(reason instanceof Error ? reason.message : '読書の記録の取得に失敗しました。');
+      if (active) setIterationError(reason instanceof Error ? reason.message : '読書の記録の取得に失敗しました');
     });
     return () => { active = false; };
   }, [book, bookId, iterationVersion]);
@@ -131,7 +131,7 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
       // 409: already completed elsewhere, so just reload the latest state.
       if (!(reason instanceof ApiError && reason.status === 409)) {
         setCompleting(false);
-        setCompleteError(reason instanceof Error ? reason.message : '読了の記録に失敗しました。');
+        setCompleteError(reason instanceof Error ? reason.message : '読了の記録に失敗しました');
         return;
       }
     }
@@ -143,7 +143,7 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
     if (completing) return;
     Alert.alert(
       '読了にしますか？',
-      `「${target.title}」を読了にします。この読書回のしおりは追加・編集できなくなります。`,
+      `「${target.title}」を読了にします\nこの読書回のしおりは追加・編集できなくなります`,
       [
         { style: 'cancel', text: 'キャンセル' },
         { onPress: () => { void complete(target); }, text: '読了にする' },
@@ -163,7 +163,7 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
       setRequestVersion((version) => version + 1);
     } catch (reason: unknown) {
       if (activeBook.current === target.id) {
-        setStartError(reason instanceof Error ? reason.message : '再読の開始に失敗しました。');
+        setStartError(reason instanceof Error ? reason.message : '再読の開始に失敗しました');
       }
     } finally {
       if (activeBook.current === target.id) {
@@ -177,7 +177,7 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
     if (startLocked.current) return;
     Alert.alert(
       'もう一度読みますか？',
-      `「${target.title}」の${target.latest_iteration + 1}回目の読書を始めます。過去のしおりは残ります。`,
+      `「${target.title}」の${target.latest_iteration + 1}回目の読書を始めます\n過去のしおりは残ります`,
       [
         { style: 'cancel', text: 'キャンセル' },
         { text: 'もう一度読む', onPress: () => { void startRereading(target); } },
@@ -206,7 +206,7 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
           <>
             <GlassSurface style={styles.hero}>
               <Pressable accessibilityLabel="本の情報を編集" accessibilityRole="button" onPress={() => onNavigate({ name: 'book-edit', bookId })} style={styles.editButton}>
-                <Ionicons color={emotionColor} name="pencil" size={22} />
+                <Ionicons color={colors.navAccent} name="pencil" size={22} />
               </Pressable>
               <BookCover large title={book.title} author={book.author ?? '著者不明'} />
               <View style={styles.info}>
@@ -268,8 +268,8 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
                 community={(page) => <CommunityBookmarks key={`${bookId}:${page ?? 'all'}`} bookId={bookId} initialPage={page} />}
                 currentPage={book.current_page}
                 onOpen={(page) => onNavigate({ name: 'bookmark', bookId, iteration: book.latest_iteration, page })}
-                accentColor={emotionColor}
-                tintColor={emotionTint}
+                accentColor={colors.navAccent}
+                tintColor={colors.backgroundSoft}
               />
             {!emotions && !emotionError && <Text style={styles.message}>感情分析を読み込んでいます…</Text>}
             {emotionError && (

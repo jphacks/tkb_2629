@@ -20,7 +20,7 @@ const styles = StyleSheet.create({
   brand: { alignItems: "center", flexDirection: "row", gap: 12 },
   symbol: {
     alignItems: "center",
-    backgroundColor: colors.accent,
+    backgroundColor: colors.navAccent,
     borderRadius: 44,
     height: 88,
     justifyContent: "center",

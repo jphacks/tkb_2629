@@ -45,7 +45,7 @@ export function EmotionAnalysisCard({ summary }: { summary: EmotionComparison })
       </View>
       <Svg accessible accessibilityLabel={mine.map((emotion, index) =>
         `${emotion.label}：自分 ${summary.mine.review_count ? `${Math.round(emotion.value * 100)}%` : '未記録'}、みんな ${summary.others.review_count ? `${Math.round(others[index]!.value * 100)}%` : '未記録'}`
-      ).join('。')} height={280} viewBox="0 0 320 280" width="100%">
+      ).join('\n')} height={280} viewBox="0 0 320 280" width="100%">
         <Defs>
           {emotionDefinitions.map((emotion, index) => {
             const point = getPoint(index, 1);
@@ -70,8 +70,8 @@ export function EmotionAnalysisCard({ summary }: { summary: EmotionComparison })
           return <SvgText key={emotion.label} fill={emotion.color} fontSize="12" fontWeight="600" textAnchor="middle" x={labelPoint.x} y={labelPoint.y}>{emotion.label}</SvgText>;
         })}
       </Svg>
-      {summary.mine.review_count === 0 && <Text style={styles.description}>しおりを書くと、自分の感情も重なります。</Text>}
-      {summary.others.review_count === 0 && <Text style={styles.description}>みんなの感情は、公開しおりの解析後に表示されます。</Text>}
+      {summary.mine.review_count === 0 && <Text style={styles.description}>{"しおりを書くと、自分の感情も重なります"}</Text>}
+      {summary.others.review_count === 0 && <Text style={styles.description}>{"みんなの感情は、公開しおりの解析後に表示されます"}</Text>}
     </GlassSurface>
   );
 }

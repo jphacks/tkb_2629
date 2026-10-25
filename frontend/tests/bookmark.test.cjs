@@ -895,21 +895,29 @@ test('visibility API authenticates PATCH, validates returned setting and propaga
     assert.equal(find(BookmarkListCard({ reviews: [], currentPage: 0, onOpen() {} }), 'BookmarkTimeline').props.bookmarks.length, 0);
   });
 
-test('timeline expands only crowded intervals, preserves all markers and ends at the read page', () => {
+test('timeline fits viewport, groups crowded pages and preserves individually selectable emotion colors', () => {
+  const states = [];
+  let cursor = 0;
   const { createTimelineLayout, BookmarkTimeline } = load('src/components/molecules/BookmarkTimeline.tsx', {
-    react: { useState: (value) => [value, () => {}] },
+    react: { useState: (initial) => {
+      const i = cursor++;
+      if (!(i in states)) states[i] = initial;
+      return [states[i], (value) => { states[i] = value; }];
+    } },
     'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
     'react-native': { StyleSheet: { create: (value) => value }, View: 'View', Text: 'Text', Pressable: 'Pressable', ScrollView: 'ScrollView' },
   });
-  const bookmarks = [42, 43, 44, 120].map((page) => ({ id: String(page), page }));
+  const bookmarks = [42, 43, 44, 120].map((page) => ({ id: String(page), page, color: '#123456', note: 'My note' }));
   const layout = createTimelineLayout(bookmarks, 120, 300);
   assert.equal(layout.markers.length, 4);
-  for (let i = 1; i < layout.markers.length; i++) {
-    assert.ok(layout.markers[i - 1].x - layout.markers[i].x >= 56);
+  for (let i = 1; i < layout.groups.length; i++) {
+    assert.ok(layout.groups[i - 1].x - layout.groups[i].x >= 56);
   }
   assert.equal(layout.markers.at(-1).x, 32);
   assert.ok(layout.markers[0].x > layout.markers.at(-1).x);
-  assert.ok(layout.width > 300);
+  assert.equal(layout.width, 300);
+  assert.equal(layout.groups.length, 2);
+  assert.equal(layout.groups[0].bookmarks.length, 3);
   const trailing = createTimelineLayout(bookmarks.slice(0, 3), 120, 300);
   assert.ok(trailing.markers.at(-1).x > 32);
   const empty = createTimelineLayout([], 0, 300);
@@ -917,19 +925,54 @@ test('timeline expands only crowded intervals, preserves all markers and ends at
   assert.equal(empty.width, 300);
   const dense = createTimelineLayout(Array.from({ length: 100 }, (_, i) => ({ id: String(i), page: i + 1 })), 100, 300);
   assert.equal(dense.markers.length, 100);
-  assert.ok(dense.width >= 100 * 56);
+  assert.equal(dense.width, 300);
+  assert.equal(dense.groups.flatMap((group) => group.bookmarks).length, 100);
   assert.ok(dense.markers.every((marker) => marker.x >= 32 && marker.x <= dense.endX));
   let selected;
-  const tree = BookmarkTimeline({ bookmarks, currentPage: 120, onSelect: (id) => { selected = id; } });
-  assert.equal(find(tree, 'ScrollView').props.horizontal, true);
-  assert.equal(nodes(tree).filter((node) => node.type === 'Pressable').length, 4);
+  const render = () => {
+    cursor = 0;
+    return BookmarkTimeline({ bookmarks, currentPage: 120, onSelect: (id) => { selected = id; } });
+  };
+  let tree = render();
+  assert.equal(find(tree, 'ScrollView'), undefined);
+  assert.equal(nodes(tree).filter((node) => node.type === 'Pressable').length, 2);
+  nodes(tree).find((node) => node.props?.accessibilityLabel === '42〜44ページのしおり3件を選ぶ').props.onPress();
+  assert.equal(selected, undefined);
+  tree = render();
+  assert.equal(find(tree, 'ScrollView').props.horizontal, undefined);
   nodes(tree).find((node) => node.props?.accessibilityLabel === '43ページのしおりを開く').props.onPress();
   assert.equal(selected, '43');
+  const detail = nodes(tree).find((node) => node.props?.accessibilityLabel === '43ページのしおりを開く');
+  assert.ok(detail.props.style.minHeight >= 44);
+  assert.ok(nodes(detail).some((node) => Array.isArray(node.props?.style) && node.props.style[1]?.backgroundColor === '#123456'));
+  nodes(tree).find((node) => node.props?.accessibilityLabel === 'しおりの選択を閉じる').props.onPress();
+  assert.equal(find(render(), 'ScrollView'), undefined);
   assert.ok(nodes(tree).some((node) => Array.isArray(node.props?.children) && node.props.children.join('') === '120ページ'));
   const endpoints = nodes(tree).filter((node) => node.type === 'Text' && Array.isArray(node.props?.style));
   const farthest = endpoints.find((node) => Array.isArray(node.props.children) && node.props.children.join('') === '120ページ');
   const zero = endpoints.find((node) => node.props.children === '0ページ');
   assert.ok(farthest.props.style[1].left < zero.props.style[1].left);
+});
+
+test('bookmark tabs have prominent selection, large touch targets and retain the compact variant elsewhere', () => {
+  const { SegmentedTabs } = load('src/components/molecules/SegmentedTabs.tsx', {
+    'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
+    'react-native': { StyleSheet: { create: (value) => value }, Text: 'Text', Pressable: 'Pressable' },
+  });
+  let selected;
+  const props = {
+    options: [{ value: 'mine', label: '自分のしおり' }, { value: 'others', label: 'みんなのしおり' }],
+    value: 'mine', activeColor: '#123456', tintColor: '#EEEEEE', onChange: (value) => { selected = value; },
+  };
+  const tabs = nodes(SegmentedTabs({ ...props, prominent: true })).filter((node) => node.type === 'Pressable');
+  tabs.forEach((tab) => assert.ok(tab.props.style.some((style) => style?.minHeight >= 56)));
+  assert.equal(tabs[0].props.accessibilityState.selected, true);
+  assert.equal(tabs[1].props.accessibilityState.selected, false);
+  assert.ok(tabs[0].props.style.some((style) => style?.borderColor === '#123456' && style.borderWidth === 2));
+  tabs[1].props.onPress();
+  assert.equal(selected, 'others');
+  const compact = nodes(SegmentedTabs(props)).find((node) => node.type === 'Pressable');
+  assert.equal(compact.props.style[0].minHeight, 36);
 });
 
 test('nine reviews paginate as five then four, while all timeline points remain selectable', () => {

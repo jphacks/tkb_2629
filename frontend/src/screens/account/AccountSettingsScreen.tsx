@@ -30,7 +30,7 @@ export function AccountSettingsScreen({ onNavigate }: { onNavigate: Navigate }) 
   return (
     <ScreenFrame activeRoute="account" onNavigate={onNavigate} title="アカウント設定">
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.notice}>名前は他の読者にも表示されます。</Text>
+        <Text style={styles.notice}>{"名前は他の読者にも表示されます"}</Text>
         <Text style={styles.section}>アカウント情報</Text>
         <GlassSurface style={styles.group}>
           <SettingsRow label="メールアドレス" value={user?.email} readOnly />
@@ -57,7 +57,7 @@ export function AccountSettingsScreen({ onNavigate }: { onNavigate: Navigate }) 
         <Text style={styles.section}>サポート</Text>
         <GlassSurface style={styles.group}>
           <SettingsRow label="ヘルプ・よくある質問" onPress={() => setSupport(support === 'help' ? null : 'help')} />
-          {support === 'help' && <Text style={styles.support}>本を探して本棚に追加し、読んだページにしおりと感想を残せます。</Text>}
+          {support === 'help' && <Text style={styles.support}>{"本を探して本棚に追加し、読んだページにしおりと感想を残せます"}</Text>}
           <SettingsRow label="お問い合わせ" onPress={() => setSupport(support === 'contact' ? null : 'contact')} />
           {support === 'contact' && <TextInput accessibilityLabel="お問い合わせ内容" multiline placeholder="お問い合わせ内容を入力" value={message} onChangeText={setMessage} style={styles.message} />}
         </GlassSurface>

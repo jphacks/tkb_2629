@@ -16,7 +16,7 @@ async function read(key: string): Promise<string[]> {
   if (!Array.isArray(value) || value.length > 10 ||
     value.some((item) => typeof item !== 'string' || !item || item !== normalize(item)) ||
     new Set(value).size !== value.length) {
-    throw new Error('検索履歴の保存データを読み取れません。履歴をすべて削除してから再試行してください。');
+    throw new Error('検索履歴の保存データを読み取れません\n履歴をすべて削除してから再試行してください');
   }
   return value;
 }
@@ -78,7 +78,7 @@ export function useSearchHistory(scope: SearchHistoryScope) {
     searchHistory.read(userId, scope).then((saved) => {
       if (generation.current === request) setItems(saved);
     }).catch((reason: unknown) => {
-      if (generation.current === request) setError(reason instanceof Error ? reason.message : '検索履歴を読み込めませんでした。');
+      if (generation.current === request) setError(reason instanceof Error ? reason.message : '検索履歴を読み込めませんでした');
     }).finally(() => { if (generation.current === request) setLoading(false); });
     return () => { generation.current += 1; };
   }, [scope, userId]);
@@ -91,7 +91,7 @@ export function useSearchHistory(scope: SearchHistoryScope) {
       const saved = await operation(userId);
       if (generation.current === request) setItems(saved);
     } catch (reason: unknown) {
-      if (generation.current === request) setError(reason instanceof Error ? reason.message : '検索履歴を保存できませんでした。');
+      if (generation.current === request) setError(reason instanceof Error ? reason.message : '検索履歴を保存できませんでした');
     } finally {
       if (generation.current === request) setLoading(false);
     }

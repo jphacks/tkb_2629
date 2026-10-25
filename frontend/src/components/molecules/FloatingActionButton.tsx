@@ -1,5 +1,6 @@
 import { Image, Pressable, StyleSheet } from 'react-native';
 import { SvgUri } from 'react-native-svg';
+import { colors } from '../../theme/colors';
 
 type FloatingActionButtonProps = {
   onPress?: () => void;
@@ -26,7 +27,7 @@ export function FloatingActionButton({ onPress, disabled = false }: FloatingActi
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 113, 113, 0.86)',
+    backgroundColor: colors.navAccent,
     borderColor: 'rgba(255, 255, 255, 0.9)',
     borderWidth: 1,
     borderRadius: 30,
@@ -36,7 +37,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'absolute',
     right: 24,
-    shadowColor: '#B66E87',
+    shadowColor: colors.navAccent,
     shadowOffset: { height: 3, width: 0 },
     shadowOpacity: 0.22,
     shadowRadius: 6,
