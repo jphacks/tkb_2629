@@ -74,7 +74,7 @@ function harness(file = 'src/components/organisms/PublicReviewList.tsx', extra =
       getReviewReactions: (...args) => request('reactions', args),
       setReviewReaction: (...args) => request('react', args),
       reviewAnalysisLabel: load('src/lib/api.ts').reviewAnalysisLabel,
-      getBookReviews: async () => [], getBookEmotions: async () => ({}), getIterations: async () => [],
+      getBookReviews: async () => [], getEmotionComparison: () => new Promise(() => {}), getIterations: async () => [],
     },
     '../../components/organisms/EmotionAnalysisCard': {
       getEmotionTint: () => '#fff', EmotionAnalysisCard: 'EmotionAnalysisCard',

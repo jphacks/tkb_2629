@@ -101,7 +101,7 @@ function detailHarness() {
       completeIteration: (...args) => pending('complete', args),
       startIteration: (...args) => pending('start', args),
       getBook: (...args) => pending('book', args),
-      getBookEmotions: () => new Promise(() => {}),
+      getEmotionComparison: () => new Promise(() => {}),
       getBookReviews: () => new Promise(() => {}),
       getIterations: () => new Promise(() => {}),
     },

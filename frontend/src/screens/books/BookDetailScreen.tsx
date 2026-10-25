@@ -13,7 +13,7 @@ import { EmotionAnalysisCard, getEmotionTint } from '../../components/organisms/
 import { BookmarkListCard } from '../../components/organisms/BookmarkListCard';
 import { CommunityBookmarks } from '../../components/organisms/CommunityBookmarks';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import { ApiError, completeIteration, startIteration, getBook, getBookEmotions, getBookReviews, getIterations, type Book, type BookEmotions, type PageReview, type ReadingIteration } from '../../lib/api';
+import { ApiError, completeIteration, startIteration, getBook, getEmotionComparison, getBookReviews, getIterations, type Book, type EmotionComparison, type PageReview, type ReadingIteration } from '../../lib/api';
 import { formatDate, iterationLabel } from '../../lib/readingStatus';
 import type { Navigate } from '../types';
 
@@ -34,7 +34,7 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
   const [reviews, setReviews] = useState<PageReview[] | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewVersion, setReviewVersion] = useState(0);
-  const [emotions, setEmotions] = useState<BookEmotions | null>(null);
+  const [emotions, setEmotions] = useState<EmotionComparison | null>(null);
   const [emotionError, setEmotionError] = useState<string | null>(null);
   const [completing, setCompleting] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
@@ -99,7 +99,7 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
     setEmotions(null);
     setEmotionError(null);
     if (!book) return;
-    getBookEmotions(bookId).then((summary) => {
+    getEmotionComparison(bookId).then((summary) => {
       if (active) setEmotions(summary);
     }).catch((reason: unknown) => {
       if (active) setEmotionError(reason instanceof Error ? reason.message : '感情分析の取得に失敗しました。');
@@ -118,7 +118,7 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
     });
     return () => { active = false; };
   }, [book, bookId, iterationVersion]);
-  const emotionColor = emotions?.color_code ?? '#8C8C8C';
+  const emotionColor = emotions?.mine.color_code ?? '#8C8C8C';
   const emotionTint = getEmotionTint(emotionColor);
   const isReading = book?.reading_status === 'reading';
 

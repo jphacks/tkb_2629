@@ -12,6 +12,7 @@ from ..application.service import ReviewService
 from .dependencies import get_public_review_service, get_review_service
 from .schemas import (
     BookEmotionResponse,
+    EmotionComparisonResponse,
     PagePopularityPoint,
     PagePopularityResponse,
     PageReviewResponse,
@@ -103,8 +104,13 @@ def list_public_reviews(
 ) -> PublicReviewsResponse:
     response.headers["Cache-Control"] = "no-store"
     items = service.list(
-        google_books_id, page, limit, offset, page_start=page_start, page_end=page_end,
-        exclude_user_id=user_id if exclude_mine else None
+        google_books_id,
+        page,
+        limit,
+        offset,
+        page_start=page_start,
+        page_end=page_end,
+        exclude_user_id=user_id if exclude_mine else None,
     )
     return PublicReviewsResponse(
         items=[PublicReviewResponse.model_validate(item) for item in items],
@@ -166,6 +172,17 @@ def get_book_emotions(
     user_id: CurrentUserId,
 ) -> BookEmotionResponse:
     return BookEmotionResponse.model_validate(service.average_emotions(user_id, book_id))
+
+
+@router.get("/books/{book_id}/emotions/comparison", response_model=EmotionComparisonResponse)
+def compare_book_emotions(
+    book_id: int,
+    service: ReviewServiceDependency,
+    user_id: CurrentUserId,
+    response: Response,
+) -> EmotionComparisonResponse:
+    response.headers["Cache-Control"] = "no-store"
+    return EmotionComparisonResponse.model_validate(service.compare_emotions(user_id, book_id))
 
 
 @router.get("/books/{book_id}/pages/{page_number}/review", response_model=PageReviewResponse)

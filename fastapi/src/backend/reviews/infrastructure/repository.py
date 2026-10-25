@@ -132,7 +132,9 @@ class SqlReviewRepository:
             )
         )
 
-    def analysis_references(self, reading_ids: Sequence[int]) -> list[tuple[int, int]]:
+    def analysis_references(
+        self, reading_ids: Sequence[int], *, public_only: bool = False
+    ) -> list[tuple[int, int]]:
         if not reading_ids:
             return []
         ids = list(dict.fromkeys(reading_ids))
@@ -144,6 +146,7 @@ class SqlReviewRepository:
                     select(PageReview.id, PageReview.analysis_revision).where(
                         PageReview.user_book_id.in_(ids[offset : offset + 1000]),
                         PageReview.analysis_status == "completed",
+                        *([PageReview.visibility == "public"] if public_only else []),
                     )
                 )
             )

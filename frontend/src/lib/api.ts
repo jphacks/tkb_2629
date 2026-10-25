@@ -200,6 +200,24 @@ export type BookEmotions = {
   color_code: string;
 };
 
+export type EmotionComparison = { mine: BookEmotions; others: BookEmotions };
+
+export async function getEmotionComparison(bookId: number): Promise<EmotionComparison> {
+  const response = await authenticatedFetch(`${API_URL}/books/${bookId}/emotions/comparison`);
+  const result = await parseResponse<EmotionComparison>(response, "感情分析の取得に失敗しました");
+  for (const summary of [result?.mine, result?.others]) {
+    if (!summary || !Number.isSafeInteger(summary.review_count) || summary.review_count < 0 ||
+      !/^#[0-9a-f]{6}$/i.test(summary.color_code) || !summary.emotion_scores ||
+      (summary.review_count > 0 && ['joy', 'trust', 'fear', 'surprise', 'sadness', 'disgust', 'anger', 'anticipation'].some((key) => {
+        const value = summary.emotion_scores[key];
+        return typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1;
+      }))) {
+      throw new Error("感情分析の応答形式が正しくありません。");
+    }
+  }
+  return result;
+}
+
 export async function getBookEmotions(bookId: number): Promise<BookEmotions> {
   const response = await authenticatedFetch(
     `${API_URL}/books/${bookId}/emotions`,
