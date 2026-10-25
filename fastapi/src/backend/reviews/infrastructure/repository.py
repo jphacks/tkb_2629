@@ -82,7 +82,8 @@ class SqlReviewRepository:
 
     def analysis_references(self, reading_ids: Sequence[int]) -> list[tuple[int, int]]:
         if not reading_ids:
-            ids = list(dict.fromkeys(reading_ids))
+            return []
+        ids = list(dict.fromkeys(reading_ids))
         references = []
         for offset in range(0, len(ids), 1000):
             references.extend(
