@@ -11,6 +11,11 @@ class UserSummary:
 
 
 @dataclass(frozen=True)
+class PublicProfile:
+    public_display_name: str | None
+
+
+@dataclass(frozen=True)
 class SessionTokens:
     access_token: str = field(repr=False)
     refresh_token: str = field(repr=False)
