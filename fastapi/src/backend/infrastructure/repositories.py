@@ -397,7 +397,7 @@ class SqlReviewRepository(ReviewRepository):
         row = self._row(reading.id, page)
         if row is None:
             raise NotFound("Review not found")
-        color_code = "#808080"
+        result = None
         if row.analysis_status == "completed":
             result = self.db.scalar(
                 select(EmotionAnalysis).where(
@@ -405,18 +405,45 @@ class SqlReviewRepository(ReviewRepository):
                     EmotionAnalysis.review_revision == row.analysis_revision,
                 )
             )
-            if result is not None:
-                color_code = result.color_code
+        return self._review(row, reading, book_id, result)
+
+    def _review(
+        self, row: PageReview, reading: UserBook, book_id: int, result: EmotionAnalysis | None
+    ) -> Review:
         return Review(
             id=row.id,
             book_id=book_id,
-            page_number=page,
+            page_number=row.page_number,
             review_text=row.review_text,
-            color_code=color_code,
+            color_code=result.color_code if result else "#808080",
             created_at=row.created_at,
             updated_at=row.updated_at,
             iteration_number=reading.iteration_number,
+            analysis_status=row.analysis_status,
+            source=result.source if result else None,
         )
+
+    def list(
+        self, user_id: int, book_id: int, iteration_number: int | None, limit: int, offset: int
+    ) -> list[Review]:
+        reading = self._reading(user_id, book_id, iteration_number)
+        rows = self.db.execute(
+            select(PageReview, EmotionAnalysis)
+            .outerjoin(
+                EmotionAnalysis,
+                and_(
+                    EmotionAnalysis.review_id == PageReview.id,
+                    EmotionAnalysis.review_revision == PageReview.analysis_revision,
+                    PageReview.analysis_status == "completed",
+                ),
+            )
+            .where(PageReview.user_book_id == reading.id)
+            .order_by(PageReview.page_number)
+            .limit(limit)
+            .offset(offset)
+            .execution_options(populate_existing=True)
+        ).all()
+        return [self._review(row, reading, book_id, result) for row, result in rows]
 
     def save_text(
         self,

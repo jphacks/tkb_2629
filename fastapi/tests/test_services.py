@@ -53,6 +53,21 @@ def catalog():
     return create_autospec(BookCatalog, instance=True, spec_set=True)
 
 
+def test_list_reviews_checks_ownership_and_passes_pagination(
+    books_repo, reviews_repo, analyzer, review
+):
+    service = ReviewService(books_repo, reviews_repo, analyzer)
+    reviews_repo.list.return_value = [review]
+    assert service.list(1, 10, 2, 5, 3) == [review]
+    books_repo.get.assert_called_once_with(1, 10)
+    reviews_repo.list.assert_called_once_with(1, 10, 2, 5, 3)
+    books_repo.get.side_effect = NotFound("Book not found")
+    reviews_repo.list.reset_mock()
+    with pytest.raises(NotFound):
+        service.list(2, 10)
+    reviews_repo.list.assert_not_called()
+
+
 def test_user_create_and_list(users_repo, user):
     service = UserService(users_repo)
     users_repo.create.return_value = user

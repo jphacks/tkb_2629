@@ -17,8 +17,10 @@ export type ScreenKey =
   | 'bookmark-book-select';
 
 export type Route =
-  | { name: Exclude<ScreenKey, 'book-detail' | 'book-edit'> }
-  | { name: 'book-detail' | 'book-edit'; bookId: number };
+  | { name: Exclude<ScreenKey, 'book-detail' | 'book-edit' | 'bookmark'> }
+  | { name: 'book-detail' | 'book-edit'; bookId: number }
+  | { name: 'bookmark'; bookId?: never; iteration?: never }
+  | { name: 'bookmark'; bookId: number; iteration: number };
 
 export type NavigationTarget =
   | Exclude<ScreenKey, 'book-detail' | 'book-edit'>

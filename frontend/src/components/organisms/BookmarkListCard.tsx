@@ -6,6 +6,7 @@ import { BookmarkAreaChart } from '../molecules/BookmarkAreaChart';
 import { SegmentedTabs } from '../molecules/SegmentedTabs';
 import { BookmarkTimeline } from '../molecules/BookmarkTimeline';
 import { GlassSurface } from '../atoms/GlassSurface';
+import { reviewAnalysisLabel, type PageReview } from '../../lib/api';
 import type { Bookmark } from '../../types/bookmark';
 
 const myBookmarks: Bookmark[] = [
@@ -22,12 +23,26 @@ const otherBookmarks: Bookmark[] = [
 
 export const allBookmarks = [...myBookmarks, ...otherBookmarks];
 
-export function BookmarkListCard({ accentColor = colors.accent, tintColor = '#FFF4F4' }: { accentColor?: string; tintColor?: string }) {
+export function BookmarkListCard({
+  accentColor = colors.accent, tintColor = '#FFF4F4', reviews, totalPages = 180,
+}: { accentColor?: string; tintColor?: string; reviews: PageReview[]; totalPages?: number }) {
+  const ownBookmarks: Bookmark[] = reviews.map((review) => ({
+    id: String(review.id),
+    page: review.page_number,
+    position: totalPages > 1 ? ((review.page_number - 1) / (totalPages - 1)) * 100 : 0,
+    count: 1,
+    title: `${review.page_number}ページ`,
+    note: review.review_text,
+    date: new Date(review.updated_at).toLocaleDateString('ja-JP'),
+    author: 'あなた',
+    color: review.color_code,
+    analysisLabel: reviewAnalysisLabel(review),
+  }));
   const [view, setView] = useState<'mine' | 'others'>('mine');
-  const [selectedId, setSelectedId] = useState('mine-1');
-  const bookmarks = view === 'mine' ? myBookmarks : otherBookmarks;
+  const [selectedId, setSelectedId] = useState('');
+  const bookmarks = view === 'mine' ? ownBookmarks : otherBookmarks;
   const selectedBookmark = bookmarks.find((bookmark) => bookmark.id === selectedId) ?? bookmarks[0];
-  const total = view === 'mine' ? myBookmarks.length : otherBookmarks.reduce((sum, bookmark) => sum + bookmark.count, 0);
+  const total = view === 'mine' ? ownBookmarks.length : otherBookmarks.reduce((sum, bookmark) => sum + bookmark.count, 0);
   const maxCount = Math.max(...otherBookmarks.map((bookmark) => bookmark.count));
 
   return (
@@ -48,7 +63,27 @@ export function BookmarkListCard({ accentColor = colors.accent, tintColor = '#FF
           onChange={(value) => setView(value as 'mine' | 'others')}
         />
       </View>
-      {view === 'mine' ? <BookmarkTimeline accentColor={accentColor} bookmarks={bookmarks} selectedBookmark={selectedBookmark} onSelect={setSelectedId} tintColor={tintColor} /> : <BookmarkAreaChart accentColor={accentColor} bookmarks={otherBookmarks} maxCount={maxCount} selectedBookmark={selectedBookmark} onSelect={setSelectedId} tintColor={tintColor} />}
+      {view === 'mine' ? (
+        <>
+          {ownBookmarks.length === 0 && <Text style={styles.count}>まだしおりがありません。</Text>}
+          <BookmarkTimeline totalPages={totalPages} accentColor={accentColor} bookmarks={bookmarks} selectedBookmark={selectedBookmark} onSelect={setSelectedId} tintColor={tintColor} />
+          {ownBookmarks.map((bookmark) => (
+            <View key={bookmark.id} style={styles.review}>
+              <View style={[styles.swatch, { backgroundColor: bookmark.color }]} />
+              <View style={styles.reviewText}>
+                <Text style={styles.heading}>{bookmark.page}ページ</Text>
+                <Text>{bookmark.note}</Text>
+                <Text style={styles.count}>{bookmark.analysisLabel}</Text>
+              </View>
+            </View>
+          ))}
+        </>
+      ) : (
+        <>
+          <Text style={styles.count}>他の人のしおりはサンプルです。</Text>
+          <BookmarkAreaChart accentColor={accentColor} bookmarks={otherBookmarks} maxCount={maxCount} selectedBookmark={selectedBookmark} onSelect={setSelectedId} tintColor={tintColor} />
+        </>
+      )}
     </GlassSurface>
   );
 }
@@ -58,4 +93,7 @@ const styles = StyleSheet.create({
   header: { gap: 14 },
   heading: { color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 4 },
   count: { color: colors.placeholder, fontSize: 12 },
+  review: { flexDirection: 'row', gap: 12, marginTop: 18 },
+  swatch: { width: 14, minHeight: 48, borderBottomLeftRadius: 7, borderBottomRightRadius: 7 },
+  reviewText: { flex: 1, gap: 6 },
 });

@@ -11,7 +11,7 @@ import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { EmotionAnalysisCard, getAggregateEmotionColor, getEmotionTint } from '../../components/organisms/EmotionAnalysisCard';
 import { allBookmarks, BookmarkListCard } from '../../components/organisms/BookmarkListCard';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import { getBook, type Book } from '../../lib/api';
+import { getBook, getBookReviews, type Book, type PageReview } from '../../lib/api';
 import type { Navigate } from '../types';
 
 type BookDetailScreenProps = {
@@ -27,6 +27,9 @@ type BookDetailState =
 export function BookDetailScreen({ bookId, onNavigate }: BookDetailScreenProps) {
   const [state, setState] = useState<BookDetailState>({ bookId, status: 'loading' });
   const [requestVersion, setRequestVersion] = useState(0);
+  const [reviews, setReviews] = useState<PageReview[] | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewVersion, setReviewVersion] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -52,6 +55,18 @@ export function BookDetailScreen({ bookId, onNavigate }: BookDetailScreenProps) 
   }, [bookId, requestVersion]);
 
   const book = state.bookId === bookId && state.status === 'success' ? state.book : null;
+  useEffect(() => {
+    let active = true;
+    setReviews(null);
+    setReviewError(null);
+    if (!book) return;
+    getBookReviews(bookId, book.latest_iteration).then((items) => {
+      if (active) setReviews(items);
+    }).catch((reason: unknown) => {
+      if (active) setReviewError(reason instanceof Error ? reason.message : 'しおり一覧の取得に失敗しました。');
+    });
+    return () => { active = false; };
+  }, [book, bookId, reviewVersion]);
   const emotionColor = getAggregateEmotionColor(allBookmarks);
   const emotionTint = getEmotionTint(emotionColor);
   const isReading = book?.reading_status === 'reading';
@@ -89,14 +104,26 @@ export function BookDetailScreen({ bookId, onNavigate }: BookDetailScreenProps) 
                 <ReadingProgress color={emotionColor} currentPage={book.current_page} totalPages={book.total_pages} />
               </GlassSurface>
             )}
-            {isReading && <Text style={styles.message}>しおり追加は接続準備中です。</Text>}
-            <Text style={styles.message}>しおり一覧・感情分析・感情色はサンプル表示です。</Text>
-            <BookmarkListCard accentColor={emotionColor} tintColor={emotionTint} />
+            {!reviews && !reviewError && <Text style={styles.message}>しおりを読み込んでいます…</Text>}
+            {reviewError && (
+              <View style={styles.error}>
+                <Text accessibilityRole="alert" style={styles.message}>{reviewError}</Text>
+                <ActionButton label="しおり一覧を再試行" onPress={() => setReviewVersion((version) => version + 1)} />
+              </View>
+            )}
+            {reviews && <BookmarkListCard key={`${bookId}:${book.latest_iteration}`} reviews={reviews} totalPages={book.total_pages} accentColor={emotionColor} tintColor={emotionTint} />}
+            <Text style={styles.message}>以下の感情分析・画面のアクセント色はサンプルです。自分のしおりには保存された色を表示します。</Text>
             <EmotionAnalysisCard bookmarks={allBookmarks} />
           </>
         )}
       </ScrollView>
-      {isReading && <FloatingActionButton disabled />}
+      {book && isReading && (
+        <FloatingActionButton onPress={() => onNavigate({
+          name: 'bookmark',
+          bookId,
+          iteration: book.latest_iteration,
+        })} />
+      )}
     </ScreenFrame>
   );
 }

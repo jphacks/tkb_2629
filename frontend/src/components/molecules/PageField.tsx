@@ -7,15 +7,17 @@ import { colors } from '../../theme/colors';
 type PageFieldProps = {
   value: string;
   onChangeText: (value: string) => void;
+  editable?: boolean;
 };
 
-export function PageField({ value, onChangeText }: PageFieldProps) {
+export function PageField({ value, onChangeText, editable = true }: PageFieldProps) {
   return (
     <View style={styles.field}>
       <FieldLabel>今のページ数</FieldLabel>
       <View style={styles.row}>
         <ShadowInput
           accessibilityLabel="今のページ数"
+          editable={editable}
           keyboardType="number-pad"
           onChangeText={onChangeText}
           placeholder="例: 42"

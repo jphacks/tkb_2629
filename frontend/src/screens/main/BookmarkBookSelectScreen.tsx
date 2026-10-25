@@ -27,7 +27,11 @@ export function BookmarkBookSelectScreen({ onNavigate }: { onNavigate: Navigate 
       <ScrollView contentContainerStyle={styles.content} style={styles.scroll}>
         <View style={styles.bookList}>
           {readingBooks.map((book) => (
-            <ReadingBookCard book={book} key={book.title} onPress={() => onNavigate('bookmark')} />
+            <ReadingBookCard
+              book={book}
+              key={book.title}
+              onPress={() => onNavigate({ name: 'book-detail', bookId: book.id })}
+            />
           ))}
         </View>
       </ScrollView>
