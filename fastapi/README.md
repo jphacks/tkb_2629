@@ -60,6 +60,8 @@ infrastructureは自身のapplication/domainのポートを実装します。他
 実AI（jev）・モック（mock）・解析待ち／失敗をクライアントが区別できます。
 感想の `visibility` は初期値が `private` で、本人だけが専用APIで変更できます。
 移行・API・検証手順は [感想の公開設定](docs/review-visibility.md) を参照してください。
+`contains_spoilers` は初期値が `true` で、公開範囲とは独立して本人だけが変更できます。
+詳細は [感想のネタバレ設定](docs/review-spoilers.md) を参照してください。
 `GET /books/{book_id}/reviews` は本人の指定読書回（省略時は最新回）の感想一覧を
 ページ番号順で返します。`limit` は1〜100、`offset` は0以上です。
 既存DBとの互換性のため、進捗用のDBカラムと既存マイグレーションは維持しています。

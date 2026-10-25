@@ -39,6 +39,7 @@ class ReviewService:
                 iteration_number=scope.iteration_number,
                 analysis_status=row.analysis_status,
                 visibility=row.visibility,
+                contains_spoilers=row.contains_spoilers,
                 color_code=previews[(row.id, row.revision)].color_code
                 if (row.id, row.revision) in previews
                 else "#808080",
@@ -140,3 +141,20 @@ class ReviewService:
         reading_ids = self.readings.reading_ids(book_id, latest_only=True)
         with self.units() as unit:
             return unit.reviews.page_popularity(reading_ids)
+
+    def set_spoilers(
+        self,
+        user_id: int,
+        book_id: int,
+        page: int,
+        contains_spoilers: bool,
+        iteration: int | None = None,
+    ) -> None:
+        scope = self.readings.resolve(user_id, book_id, iteration)
+        with self.units() as unit:
+            row = unit.reviews.find(scope.id, page, lock=True)
+            if row is None:
+                raise NotFound("Review not found")
+            row.set_spoilers(contains_spoilers, self.clock.now())
+            unit.reviews.save_spoilers(row)
+            unit.commit()

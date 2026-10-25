@@ -18,6 +18,13 @@ class PageReview:
     created_at: datetime
     updated_at: datetime
     visibility: ReviewVisibility = "private"
+    contains_spoilers: bool = True
+
+    def set_spoilers(self, contains_spoilers: bool, now: datetime) -> None:
+        if not isinstance(contains_spoilers, bool):
+            raise InvalidInput("contains_spoilers must be a boolean")
+        self.contains_spoilers = contains_spoilers
+        self.updated_at = now
 
     def set_visibility(self, visibility: ReviewVisibility, now: datetime) -> None:
         if visibility not in ("private", "public"):
