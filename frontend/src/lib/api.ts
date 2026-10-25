@@ -42,6 +42,7 @@ export type PageReview = {
   analysis_status: "pending" | "completed" | "failed";
   source: string | null;
   visibility: ReviewVisibility;
+  contains_spoilers: boolean;
 };
 
 export type BookEmotions = {
@@ -259,6 +260,29 @@ export async function setReviewVisibility(
   );
   if (result.visibility !== visibility) {
     throw new Error("公開設定の保存結果が一致しません。再試行してください。");
+  }
+
+}
+
+export async function setReviewSpoilers(
+  bookId: number,
+  page: number,
+  iteration: number,
+  containsSpoilers: boolean,
+): Promise<void> {
+  const response = await authenticatedFetch(
+    `${API_URL}/books/${bookId}/pages/${page}/review/spoilers?iteration=${iteration}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contains_spoilers: containsSpoilers }),
+    },
+  );
+  const result = await parseResponse<{ contains_spoilers: boolean }>(
+    response, "ネタバレ設定の保存に失敗しました",
+  );
+  if (result.contains_spoilers !== containsSpoilers) {
+    throw new Error("ネタバレ設定の保存結果が一致しません。再試行してください。");
   }
 }
 

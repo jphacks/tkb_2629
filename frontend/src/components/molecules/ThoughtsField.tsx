@@ -12,7 +12,10 @@ type ThoughtsFieldProps = {
 export function ThoughtsField({ value, onChangeText, editable = true }: ThoughtsFieldProps) {
   return (
     <View style={styles.field}>
-      <FieldLabel>今の感想</FieldLabel>
+      <View style={styles.heading}>
+        <FieldLabel>今の感想</FieldLabel>
+        <FieldLabel>{`（${Array.from(value.trim()).length} / 140文字）`}</FieldLabel>
+      </View>
       <ShadowInput
         accessibilityLabel="今の感想"
         editable={editable}
@@ -29,5 +32,6 @@ export function ThoughtsField({ value, onChangeText, editable = true }: Thoughts
 
 const styles = StyleSheet.create({
   field: { gap: 8 },
+  heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
   input: { height: 160, padding: 16 },
 });
