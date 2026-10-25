@@ -4,11 +4,13 @@ from fastapi import APIRouter, Depends, Path, Query, Response
 
 from ..application.services import CatalogService, ReadingService, ReviewService, UserService
 from ..domain.catalog import CatalogBook
+from ..domain.emotions import emotion_vector_to_color_code
 from ..domain.entities import Book, ReadingIteration, Review, User
 from .auth import get_current_user_id
 from .dependencies import get_catalog_service, get_reading, get_reviews, get_users
 from .schemas import (
     BookCreate,
+    BookEmotionResponse,
     BookListResponse,
     BookResponse,
     GoogleBookImport,
@@ -164,6 +166,20 @@ def list_reviews(
     offset: int = Query(default=0, ge=0),
 ) -> list[Review]:
     return service.list(user_id, book_id, iteration, limit, offset)
+
+
+@reading.get("/books/{book_id}/emotions", response_model=BookEmotionResponse)
+def get_book_emotions(
+    book_id: int,
+    service: ReviewServiceDependency,
+    user_id: CurrentUserId,
+) -> BookEmotionResponse:
+    vector, count = service.average_emotions(user_id, book_id)
+    return BookEmotionResponse(
+        review_count=count,
+        emotion_scores=vector.as_dict() if vector is not None else {},
+        color_code=emotion_vector_to_color_code(vector) if vector is not None else "#8C8C8C",
+    )
 
 
 @reading.get("/books/{book_id}/pages/{page_number}/review", response_model=PageReviewResponse)
