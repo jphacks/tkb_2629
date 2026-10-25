@@ -1,3 +1,4 @@
+import { colors } from "../../theme/colors";
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -31,11 +32,11 @@ export function LoginScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => 
 
 const styles = StyleSheet.create({
   content: { padding: 24 },
-  title: { color: '#464646', fontSize: 26, fontWeight: '700', marginTop: 12 },
-  description: { color: '#9CA3AF', fontSize: 14, marginTop: 8 },
+  title: { color: colors.text, fontSize: 26, fontWeight: '700', marginTop: 12 },
+  description: { color: colors.placeholder, fontSize: 14, marginTop: 8 },
   form: { gap: 8, marginTop: 24 },
-  label: { color: '#464646', fontSize: 14, fontWeight: '600', marginTop: 8 },
+  label: { color: colors.text, fontSize: 14, fontWeight: '600', marginTop: 8 },
   input: { height: 54, width: '100%' },
-  link: { color: '#C17AED', fontSize: 13, marginVertical: 8, textAlign: 'right' },
-  prompt: { color: '#9CA3AF', fontSize: 14, marginBottom: 14, marginTop: 24, textAlign: 'center' },
+  link: { color: colors.navAccent, fontSize: 13, marginVertical: 8, textAlign: 'right' },
+  prompt: { color: colors.placeholder, fontSize: 14, marginBottom: 14, marginTop: 24, textAlign: 'center' },
 });

@@ -22,6 +22,14 @@ export function BookmarkScreen({ onNavigate }: BookmarkScreenProps) {
   return (
     <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate}>
       <View style={styles.content}>
+        <Pressable
+          accessibilityLabel="本の選択画面に戻る"
+          accessibilityRole="button"
+          onPress={() => onNavigate?.('bookmark-book-select')}
+          style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+        >
+          <Ionicons color={colors.text} name="arrow-back" size={22} />
+        </Pressable>
         {!isAdded && <BookmarkRibbon translateY={translateY} />}
         {!isAdded && <BookmarkCard onAdded={() => setIsAdded(true)} translateY={translateY} />}
         {isAdded && (
@@ -39,7 +47,9 @@ export function BookmarkScreen({ onNavigate }: BookmarkScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  content: { backgroundColor: '#F7F4FF', flex: 1, position: 'relative',marginTop: 24 },
+  content: { backgroundColor: colors.backgroundSoft, flex: 1, position: 'relative',marginTop: 24 },
+  backButton: { alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.72)', borderColor: 'rgba(255, 255, 255, 0.9)', borderRadius: 20, borderWidth: 1, height: 40, justifyContent: 'center', left: 20, position: 'absolute', top: 40, width: 40, zIndex: 4 },
+  pressed: { opacity: 0.72, transform: [{ scale: 0.94 }] },
   successState: { alignItems: 'center', left: 0, position: 'absolute', right: 0, top: 270 },
   successTitle: { color: colors.text, fontSize: 20, fontWeight: '700', marginTop: 14 },
   resetButton: { backgroundColor: colors.accent, borderRadius: 12, marginTop: 20, paddingHorizontal: 22, paddingVertical: 12 },

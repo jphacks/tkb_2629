@@ -1,3 +1,4 @@
+import { colors } from "../../theme/colors";
 import Svg, { Circle, Line, Polygon, Text as SvgText } from 'react-native-svg';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -44,7 +45,7 @@ export function EmotionAnalysisCard({ bookmarks }: { bookmarks: Bookmark[] }) {
           const point = getPoint(index, 1);
           return <Line key={emotion.label} stroke="#E9E7F0" strokeWidth="1" x1={center.x} x2={point.x} y1={center.y} y2={point.y} />;
         })}
-        <Circle cx={aggregatePoint.x} cy={aggregatePoint.y} fill={aggregateColor} r="8" stroke="#FFFFFF" strokeWidth="3" />
+        <Circle cx={aggregatePoint.x} cy={aggregatePoint.y} fill={aggregateColor} r="8" stroke={colors.background} strokeWidth="3" />
         {emotions.map((emotion, index) => {
           const labelPoint = getPoint(index, 1.22);
           return <SvgText key={emotion.label} fill={emotion.color} fontSize="12" fontWeight="600" textAnchor="middle" x={labelPoint.x} y={labelPoint.y}>{emotion.label}</SvgText>;
@@ -163,9 +164,9 @@ function hslToHex(hue: number, saturation: number, lightness: number) {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, elevation: 2, marginTop: 16, padding: 18, shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } },
-  heading: { color: '#464646', fontSize: 16, fontWeight: '700' },
-  description: { color: '#9CA3AF', fontSize: 12, marginTop: 5 },
+  card: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, elevation: 2, marginTop: 16, padding: 18, shadowColor: colors.black, shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } },
+  heading: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  description: { color: colors.placeholder, fontSize: 12, marginTop: 5 },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: -4 },
   legendItem: { alignItems: 'center', flexDirection: 'row', minWidth: '45%' },
   legendDot: { borderRadius: 5, height: 10, marginRight: 6, width: 10 },

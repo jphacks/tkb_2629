@@ -1,3 +1,4 @@
+import { colors } from "../../theme/colors";
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '../../components/molecules/ActionButton';
@@ -22,9 +23,9 @@ export function AccountRegisterCompleteScreen({ onNavigate }: { onNavigate: (rou
 const styles = StyleSheet.create({
   content: { alignItems: 'center', padding: 24, paddingTop: 32 },
   check: { alignItems: 'center', backgroundColor: '#E9C7F5', borderRadius: 82, height: 164, justifyContent: 'center', width: 164 },
-  checkText: { color: '#FFFFFF', fontSize: 72, fontWeight: '700' },
-  title: { color: '#464646', fontSize: 25, fontWeight: '700', marginTop: 44, textAlign: 'center' },
-  description: { color: '#464646', fontSize: 15, marginTop: 18, textAlign: 'center' },
-  body: { color: '#9CA3AF', fontSize: 14, lineHeight: 22, textAlign: 'center' },
+  checkText: { color: colors.background, fontSize: 72, fontWeight: '700' },
+  title: { color: colors.text, fontSize: 25, fontWeight: '700', marginTop: 44, textAlign: 'center' },
+  description: { color: colors.text, fontSize: 15, marginTop: 18, textAlign: 'center' },
+  body: { color: colors.placeholder, fontSize: 14, lineHeight: 22, textAlign: 'center' },
   start: { marginVertical: 38 },
 });

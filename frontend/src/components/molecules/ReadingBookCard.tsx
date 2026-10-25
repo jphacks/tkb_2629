@@ -1,3 +1,4 @@
+import { colors } from "../../theme/colors";
 import { StyleSheet, Text, View } from 'react-native';
 
 import { GlassSurface } from '../atoms/GlassSurface';
@@ -42,6 +43,6 @@ export function ReadingBookCard({ book, onPress }: ReadingBookCardProps) {
 const styles = StyleSheet.create({
   book: { alignItems: 'center', borderRadius: 18, flexDirection: 'row', gap: 16, padding: 14, width: '100%' },
   copy: { flex: 1 },
-  title: { color: '#464646', fontSize: 16, fontWeight: '700' },
-  author: { color: '#9CA3AF', fontSize: 11, marginTop: 6 },
+  title: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  author: { color: colors.placeholder, fontSize: 11, marginTop: 6 },
 });

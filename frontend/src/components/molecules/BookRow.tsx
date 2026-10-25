@@ -31,7 +31,7 @@ export function BookRow({
 }
 
 const styles = StyleSheet.create({
-  row: { alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, flexDirection: 'row', marginBottom: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { height: 1, width: 0 } },
+  row: { alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, flexDirection: 'row', marginBottom: 12, padding: 16, shadowColor: colors.black, shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { height: 1, width: 0 } },
   copy: { flex: 1, marginLeft: 16 },
   title: { color: colors.text, fontSize: 16, fontWeight: '700' },
   description: { color: colors.placeholder, fontSize: 13, marginTop: 7 },

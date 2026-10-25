@@ -1,3 +1,4 @@
+import { colors } from "../../theme/colors";
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -29,7 +30,7 @@ export function BookDetailScreen({ onNavigate, readingStatus = 'reading' }: Book
           <Pressable accessibilityLabel="本の情報を編集" accessibilityRole="button" onPress={() => onNavigate('book-edit')} style={styles.editButton}>
             <Ionicons color={emotionColor} name="pencil" size={22} />
           </Pressable>
-          <BookCover large title="星の旅" />
+          <BookCover color={emotionColor} large title="星の旅" />
           <View style={styles.info}>
             <Text style={styles.title}>星の旅</Text>
             <Text style={styles.author}>著者名</Text>
@@ -51,9 +52,9 @@ const styles = StyleSheet.create({
   content: { padding: 24, paddingBottom: 110 },
   hero: { alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 20, flexDirection: 'row', marginTop: 8, padding: 18, position: 'relative' },
   info: { flex: 1, marginLeft: 18, justifyContent: 'center' },
-  editButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 18, elevation: 2, height: 36, justifyContent: 'center', position: 'absolute', right: 14, top: 14, width: 36 },
-  title: { color: '#464646', fontSize: 24, fontWeight: '700'},
-  author: { color: '#777777', fontSize: 14, marginTop: 8 },
-  publisher: { color: '#9CA3AF', fontSize: 12, marginTop: 6 },
-  card: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, elevation: 2, marginTop: 16, padding: 18, shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } },
+  editButton: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 18, elevation: 2, height: 36, justifyContent: 'center', position: 'absolute', right: 14, top: 14, width: 36 },
+  title: { color: colors.text, fontSize: 24, fontWeight: '700'},
+  author: { color: colors.textSecondary, fontSize: 14, marginTop: 8 },
+  publisher: { color: colors.placeholder, fontSize: 12, marginTop: 6 },
+  card: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, elevation: 2, marginTop: 16, padding: 18, shadowColor: colors.black, shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } },
 });

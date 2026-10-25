@@ -1,3 +1,4 @@
+import { colors } from "../../theme/colors";
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -21,7 +22,7 @@ const otherBookmarks: Bookmark[] = [
 
 export const allBookmarks = [...myBookmarks, ...otherBookmarks];
 
-export function BookmarkListCard({ accentColor = '#FF7171', tintColor = '#FFF4F4' }: { accentColor?: string; tintColor?: string }) {
+export function BookmarkListCard({ accentColor = colors.accent, tintColor = '#FFF4F4' }: { accentColor?: string; tintColor?: string }) {
   const [view, setView] = useState<'mine' | 'others'>('mine');
   const [selectedId, setSelectedId] = useState('mine-1');
   const bookmarks = view === 'mine' ? myBookmarks : otherBookmarks;
@@ -53,8 +54,8 @@ export function BookmarkListCard({ accentColor = '#FF7171', tintColor = '#FFF4F4
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, elevation: 2, marginTop: 16, padding: 18, shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } },
+  card: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, elevation: 2, marginTop: 16, padding: 18, shadowColor: colors.black, shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } },
   header: { gap: 14 },
-  heading: { color: '#464646', fontSize: 16, fontWeight: '700', marginBottom: 4 },
-  count: { color: '#9CA3AF', fontSize: 12 },
+  heading: { color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 4 },
+  count: { color: colors.placeholder, fontSize: 12 },
 });

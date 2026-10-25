@@ -1,3 +1,4 @@
+import { colors } from "../../theme/colors";
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -16,7 +17,7 @@ export function BookmarkBookSelectScreen({ onNavigate }: { onNavigate: (route: S
           onPress={() => onNavigate('add-book')}
           style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
         >
-          <Ionicons color="#C17AED" name="add" size={24} />
+          <Ionicons color={colors.navAccent} name="add" size={24} />
         </Pressable>
       )}
       onNavigate={onNavigate}

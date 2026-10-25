@@ -1,3 +1,4 @@
+import { colors } from "../../theme/colors";
 import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -144,14 +145,14 @@ export function AddBookScreen({
 const styles = StyleSheet.create({
   content: { gap: 14, padding: 24, paddingBottom: 110 },
   search: { height: 52, marginTop: 8, width: '100%' },
-  message: { color: '#777777', fontSize: 14, lineHeight: 20 },
-  resultCount: { color: '#464646', fontSize: 16, fontWeight: '700', marginTop: 8 },
+  message: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
+  resultCount: { color: colors.text, fontSize: 16, fontWeight: '700', marginTop: 8 },
   result: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
     borderRadius: 18,
     elevation: 2,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: colors.black,
     shadowOpacity: 0.08,
     shadowRadius: 5,
     shadowOffset: { height: 1, width: 0 },
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
   importedResult: { opacity: 0.55 },
   book: { alignItems: 'center', flexDirection: 'row', gap: 18 },
   bookDetails: { flex: 1 },
-  title: { color: '#464646', fontSize: 16, fontWeight: '700' },
-  body: { color: '#9CA3AF', fontSize: 13, marginTop: 5 },
-  tap: { color: '#C17AED', fontSize: 13, fontWeight: '700', marginTop: 9 },
+  title: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  body: { color: colors.placeholder, fontSize: 13, marginTop: 5 },
+  tap: { color: colors.navAccent, fontSize: 13, fontWeight: '700', marginTop: 9 },
 });

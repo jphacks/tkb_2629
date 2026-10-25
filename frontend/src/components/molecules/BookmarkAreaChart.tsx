@@ -1,3 +1,4 @@
+import { colors } from "../../theme/colors";
 import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -7,7 +8,7 @@ import type { Bookmark } from '../../types/bookmark';
 type ChartPoint = { x: number; y: number };
 type BookmarkAreaChartProps = { accentColor?: string; bookmarks: Bookmark[]; maxCount: number; selectedBookmark?: Bookmark; onSelect: (id: string) => void; tintColor?: string };
 
-export function BookmarkAreaChart({ accentColor = '#C17AED', bookmarks, maxCount, selectedBookmark, onSelect, tintColor = '#FF8C8C' }: BookmarkAreaChartProps) {
+export function BookmarkAreaChart({ accentColor = colors.navAccent, bookmarks, maxCount, selectedBookmark, onSelect, tintColor = '#FF8C8C' }: BookmarkAreaChartProps) {
   const points: ChartPoint[] = bookmarks.map((bookmark) => ({ x: 12 + bookmark.position * 2.76, y: 132 - (bookmark.count / maxCount) * 96 }));
   const firstPoint = points[0];
   const lastPoint = points[points.length - 1];
@@ -33,7 +34,7 @@ export function BookmarkAreaChart({ accentColor = '#C17AED', bookmarks, maxCount
         <Path d={linePath} fill="none" stroke={accentColor} strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
         {bookmarks.map((bookmark, index) => {
           const point = points[index];
-          return point ? <Circle key={bookmark.id} cx={point.x} cy={point.y} fill="#FFFFFF" r="5" stroke={accentColor} strokeWidth="3" /> : null;
+          return point ? <Circle key={bookmark.id} cx={point.x} cy={point.y} fill={colors.background} r="5" stroke={accentColor} strokeWidth="3" /> : null;
         })}
       </Svg>
       {bookmarks.map((bookmark, index) => {

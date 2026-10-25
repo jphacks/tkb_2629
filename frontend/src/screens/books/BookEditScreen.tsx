@@ -1,3 +1,4 @@
+import { colors } from "../../theme/colors";
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 
@@ -11,4 +12,4 @@ export function BookEditScreen({ onNavigate }: { onNavigate: (route: ScreenKey) 
   return <ScreenFrame activeRoute="bookshelf" onNavigate={onNavigate} title="本の編集"><ScrollView contentContainerStyle={styles.content}><Text style={styles.label}>書名</Text><ShadowInput onChangeText={setTitle} value={title} style={styles.input} /><Text style={styles.label}>著者名</Text><ShadowInput onChangeText={setAuthor} value={author} style={styles.input} /><Text style={styles.label}>出版社</Text><ShadowInput onChangeText={setPublisher} value={publisher} style={styles.input} /><ActionButton label="保存する" onPress={() => onNavigate('book-detail')} /></ScrollView></ScreenFrame>;
 }
 
-const styles = StyleSheet.create({ content: { gap: 8, padding: 24, paddingBottom: 110 }, label: { color: '#464646', fontSize: 14, fontWeight: '600', marginTop: 8 }, input: { height: 54, width: '100%' } });
+const styles = StyleSheet.create({ content: { gap: 8, padding: 24, paddingBottom: 110 }, label: { color: colors.text, fontSize: 14, fontWeight: '600', marginTop: 8 }, input: { height: 54, width: '100%' } });
