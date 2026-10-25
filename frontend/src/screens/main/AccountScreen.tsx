@@ -3,9 +3,9 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SettingsRow } from '../../components/molecules/SettingsRow';
 import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import type { ScreenKey } from '../types';
+import type { Navigate } from '../types';
 
-export function AccountScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => void }) {
+export function AccountScreen({ onNavigate }: { onNavigate: Navigate }) {
   return (
     <ScreenFrame activeRoute="account" onNavigate={onNavigate} title="アカウント">
       <ScrollView contentContainerStyle={styles.content}>

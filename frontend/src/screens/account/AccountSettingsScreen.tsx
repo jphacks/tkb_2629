@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SettingsRow } from '../../components/molecules/SettingsRow';
 import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import type { ScreenKey } from '../types';
+import type { Navigate } from '../types';
 
 export function AccountSettingsScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => void }) {
   return <ScreenFrame activeRoute="account" onNavigate={onNavigate} title="アカウント設定"><ScrollView contentContainerStyle={styles.content}><Text style={styles.section}>アカウント情報</Text><GlassSurface style={styles.group}><SettingsRow label="メールアドレス" value="user@example.com" /><SettingsRow label="ユーザー名" value="読書ユーザー" /><SettingsRow label="パスワード" value="変更する" /></GlassSurface><Text style={styles.note}>アカウント情報を変更できます</Text><Text style={styles.section}>読書の設定</Text><GlassSurface style={styles.group}><SettingsRow label="読書目標" value="月3冊" /><View style={styles.reminder}><View><Text style={styles.reminderLabel}>読書リマインダー</Text><Text style={styles.note}>毎日 20:00</Text></View><Switch value trackColor={{ false: '#DDD', true: '#E2B7F0' }} thumbColor="#C17AED" /></View></GlassSurface><Text style={styles.section}>サポート</Text><GlassSurface style={styles.group}><SettingsRow label="ヘルプ・よくある質問" /><SettingsRow label="お問い合わせ" /></GlassSurface><Text style={styles.logout}>↪　ログアウト</Text></ScrollView></ScreenFrame>;

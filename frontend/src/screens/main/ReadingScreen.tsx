@@ -12,7 +12,7 @@ const readingBooks = [
   { author: '著者名 ・ 出版社', currentPage: 28, title: '夜の図書館', totalPages: 156 },
 ];
 
-export function ReadingScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => void }) {
+export function ReadingScreen({ onNavigate }: { onNavigate: Navigate }) {
   return (
     <ScreenFrame activeRoute="reading" onNavigate={onNavigate} title="今読んでる本" subtitle="読書の続きを記録しましょう">
       <ScrollView contentContainerStyle={styles.content}>

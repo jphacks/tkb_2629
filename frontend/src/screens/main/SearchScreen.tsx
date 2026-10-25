@@ -1,7 +1,7 @@
 import { AddBookScreen } from '../books/AddBookScreen';
-import type { ScreenKey } from '../types';
+import type { Navigate } from '../types';
 
-export function SearchScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => void }) {
+export function SearchScreen({ onNavigate }: { onNavigate: Navigate }) {
   return (
     <AddBookScreen
       activeRoute="search"

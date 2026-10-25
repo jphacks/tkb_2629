@@ -15,26 +15,29 @@ import { ReadingScreen } from './src/screens/main/ReadingScreen';
 import { SearchScreen } from './src/screens/main/SearchScreen';
 import { AccountScreen } from './src/screens/main/AccountScreen';
 import { ReadingCompleteScreen } from './src/screens/reading/ReadingCompleteScreen';
-import type { ScreenKey } from './src/screens/types';
+import type { Navigate, Route } from './src/screens/types';
 
 export default function App() {
-  const [screen, setScreen] = useState<ScreenKey>('register');
+  const [route, setRoute] = useState<Route>({ name: 'register' });
+  const navigate: Navigate = (target) => {
+    setRoute(typeof target === 'string' ? { name: target } : target);
+  };
 
-  switch (screen) {
-    case 'register': return <AccountRegisterScreen onNavigate={setScreen} />;
-    case 'login': return <LoginScreen onNavigate={setScreen} />;
-    case 'verify-email': return <EmailVerificationScreen onNavigate={setScreen} />;
-    case 'register-complete': return <AccountRegisterCompleteScreen onNavigate={setScreen} />;
-    case 'home': return <HomeScreen onNavigate={setScreen} />;
-    case 'bookshelf': return <BookshelfScreen onNavigate={setScreen} />;
-    case 'reading': return <ReadingScreen onNavigate={setScreen} />;
-    case 'search': return <SearchScreen onNavigate={setScreen} />;
-    case 'account': return <AccountScreen onNavigate={setScreen} />;
-    case 'book-detail': return <BookDetailScreen onNavigate={setScreen} />;
-    case 'book-edit': return <BookEditScreen onNavigate={setScreen} />;
-    case 'add-book': return <AddBookScreen onNavigate={setScreen} />;
-    case 'account-settings': return <AccountSettingsScreen onNavigate={setScreen} />;
-    case 'reading-complete': return <ReadingCompleteScreen onNavigate={setScreen} />;
-    case 'bookmark': return <BookmarkScreen onNavigate={setScreen} />;
+  switch (route.name) {
+    case 'register': return <AccountRegisterScreen onNavigate={navigate} />;
+    case 'login': return <LoginScreen onNavigate={navigate} />;
+    case 'verify-email': return <EmailVerificationScreen onNavigate={navigate} />;
+    case 'register-complete': return <AccountRegisterCompleteScreen onNavigate={navigate} />;
+    case 'home': return <HomeScreen onNavigate={navigate} />;
+    case 'bookshelf': return <BookshelfScreen onNavigate={navigate} />;
+    case 'reading': return <ReadingScreen onNavigate={navigate} />;
+    case 'search': return <SearchScreen onNavigate={navigate} />;
+    case 'account': return <AccountScreen onNavigate={navigate} />;
+    case 'book-detail': return <BookDetailScreen bookId={route.bookId} onNavigate={navigate} />;
+    case 'book-edit': return <BookEditScreen bookId={route.bookId} onNavigate={navigate} />;
+    case 'add-book': return <AddBookScreen onNavigate={navigate} />;
+    case 'account-settings': return <AccountSettingsScreen onNavigate={navigate} />;
+    case 'reading-complete': return <ReadingCompleteScreen onNavigate={navigate} />;
+    case 'bookmark': return <BookmarkScreen onNavigate={navigate} />;
   }
 }

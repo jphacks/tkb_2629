@@ -8,7 +8,7 @@ import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { EmotionAnalysisCard, getAggregateEmotionColor, getEmotionTint } from '../../components/organisms/EmotionAnalysisCard';
 import { allBookmarks, BookmarkListCard } from '../../components/organisms/BookmarkListCard';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import type { ScreenKey } from '../types';
+import type { Navigate } from '../types';
 
 export type ReadingStatus = 'reading' | 'completed'; // 読み途中 or 読了
 

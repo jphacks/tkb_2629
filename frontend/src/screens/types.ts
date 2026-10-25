@@ -14,3 +14,13 @@ export type ScreenKey =
   | 'account-settings'
   | 'reading-complete'
   | 'bookmark';
+
+export type Route =
+  | { name: Exclude<ScreenKey, 'book-detail' | 'book-edit'> }
+  | { name: 'book-detail' | 'book-edit'; bookId: number };
+
+export type NavigationTarget =
+  | Exclude<ScreenKey, 'book-detail' | 'book-edit'>
+  | Route;
+
+export type Navigate = (route: NavigationTarget) => void;

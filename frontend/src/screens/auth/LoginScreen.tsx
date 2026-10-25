@@ -5,9 +5,9 @@ import { ActionButton } from '../../components/molecules/ActionButton';
 import { BrandHeader } from '../../components/molecules/BrandHeader';
 import { ShadowInput } from '../../components/atoms/ShadowInput';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import type { ScreenKey } from '../types';
+import type { Navigate } from '../types';
 
-export function LoginScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => void }) {
+export function LoginScreen({ onNavigate }: { onNavigate: Navigate }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   return (

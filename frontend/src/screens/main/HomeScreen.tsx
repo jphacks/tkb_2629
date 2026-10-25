@@ -3,9 +3,9 @@ import { StyleSheet, View } from 'react-native';
 import { BookStack } from '../../components/molecules/BookStack';
 import { FloatingActionButton } from '../../components/molecules/FloatingActionButton';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import type { ScreenKey } from '../types';
+import type { Navigate } from '../types';
 
-export function HomeScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => void }) {
+export function HomeScreen({ onNavigate }: { onNavigate: Navigate }) {
   const totalReadBooks = 12;
 
   return (

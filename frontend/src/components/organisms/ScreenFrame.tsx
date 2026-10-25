@@ -5,12 +5,12 @@ import { StatusBar } from 'expo-status-bar';
 import { colors } from '../../theme/colors';
 import { BottomNavigation } from './BottomNavigation';
 import { GlassSurface } from '../atoms/GlassSurface';
-import type { ScreenKey } from '../../screens/types';
+import type { Navigate, ScreenKey } from '../../screens/types';
 
 type ScreenFrameProps = {
   children: ReactNode;
   activeRoute?: ScreenKey;
-  onNavigate?: (route: ScreenKey) => void;
+  onNavigate?: Navigate;
   title?: string;
   subtitle?: string;
   showNavigation?: boolean;

@@ -7,9 +7,9 @@ import { colors } from '../../theme/colors';
 import { BookmarkCard } from '../organisms/BookmarkCard';
 import { BookmarkRibbon } from '../organisms/BookmarkRibbon';
 import { BottomNavigation } from '../organisms/BottomNavigation';
-import type { ScreenKey } from '../../screens/types';
+import type { Navigate } from '../../screens/types';
 
-type BookmarkScreenProps = { onNavigate?: (route: ScreenKey) => void };
+type BookmarkScreenProps = { onNavigate?: Navigate };
 
 export function BookmarkScreen({ onNavigate }: BookmarkScreenProps) {
   const [isAdded, setIsAdded] = useState(false);

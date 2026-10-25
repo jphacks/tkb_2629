@@ -2,9 +2,9 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '../../components/molecules/ActionButton';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import type { ScreenKey } from '../types';
+import type { Navigate } from '../types';
 
-export function AccountRegisterCompleteScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => void }) {
+export function AccountRegisterCompleteScreen({ onNavigate }: { onNavigate: Navigate }) {
   return (
     <ScreenFrame activeRoute="account" onNavigate={onNavigate}>
       <View style={styles.content}>
