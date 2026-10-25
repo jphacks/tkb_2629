@@ -8,10 +8,10 @@ import { BookCover } from '../../components/molecules/BookCover';
 import { FloatingActionButton } from '../../components/molecules/FloatingActionButton';
 import { ReadingProgress } from '../../components/molecules/ReadingProgress';
 import { GlassSurface } from '../../components/atoms/GlassSurface';
-import { EmotionAnalysisCard, getAggregateEmotionColor, getEmotionTint } from '../../components/organisms/EmotionAnalysisCard';
-import { allBookmarks, BookmarkListCard } from '../../components/organisms/BookmarkListCard';
+import { EmotionAnalysisCard, getEmotionTint } from '../../components/organisms/EmotionAnalysisCard';
+import { BookmarkListCard } from '../../components/organisms/BookmarkListCard';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import { getBook, getBookReviews, type Book, type PageReview } from '../../lib/api';
+import { getBook, getBookEmotions, getBookReviews, type Book, type BookEmotions, type PageReview } from '../../lib/api';
 import type { Navigate } from '../types';
 
 type BookDetailScreenProps = {
@@ -30,6 +30,8 @@ export function BookDetailScreen({ bookId, onNavigate }: BookDetailScreenProps) 
   const [reviews, setReviews] = useState<PageReview[] | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [reviewVersion, setReviewVersion] = useState(0);
+  const [emotions, setEmotions] = useState<BookEmotions | null>(null);
+  const [emotionError, setEmotionError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -67,7 +69,19 @@ export function BookDetailScreen({ bookId, onNavigate }: BookDetailScreenProps) 
     });
     return () => { active = false; };
   }, [book, bookId, reviewVersion]);
-  const emotionColor = getAggregateEmotionColor(allBookmarks);
+  useEffect(() => {
+    let active = true;
+    setEmotions(null);
+    setEmotionError(null);
+    if (!book) return;
+    getBookEmotions(bookId).then((summary) => {
+      if (active) setEmotions(summary);
+    }).catch((reason: unknown) => {
+      if (active) setEmotionError(reason instanceof Error ? reason.message : '感情分析の取得に失敗しました。');
+    });
+    return () => { active = false; };
+  }, [book, bookId, reviewVersion]);
+  const emotionColor = emotions?.color_code ?? '#8C8C8C';
   const emotionTint = getEmotionTint(emotionColor);
   const isReading = book?.reading_status === 'reading';
 
@@ -121,8 +135,14 @@ export function BookDetailScreen({ bookId, onNavigate }: BookDetailScreenProps) 
                 tintColor={emotionTint}
               />
             )}
-            <Text style={styles.message}>以下の感情分析・画面のアクセント色はサンプルです。自分のしおりには保存された色を表示します。</Text>
-            <EmotionAnalysisCard bookmarks={allBookmarks} />
+            {!emotions && !emotionError && <Text style={styles.message}>感情分析を読み込んでいます…</Text>}
+            {emotionError && (
+              <View style={styles.error}>
+                <Text accessibilityRole="alert" style={styles.message}>{emotionError}</Text>
+                <ActionButton label="感情分析を再試行" onPress={() => setReviewVersion((version) => version + 1)} />
+              </View>
+            )}
+            {emotions && <EmotionAnalysisCard summary={emotions} />}
           </>
         )}
       </ScrollView>

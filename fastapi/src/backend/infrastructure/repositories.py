@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from ..application.ports import BookCatalog, ReadingRepository, ReviewRepository, UserRepository
 from ..application.results import ReviewTextSaveResult
 from ..domain.catalog import CatalogBook
-from ..domain.emotions import EmotionResult
+from ..domain.emotions import BASIC_EMOTION_NAMES, EmotionResult, EmotionVector
 from ..domain.entities import (
     Book as BookEntity,
 )
@@ -360,6 +360,32 @@ class SqlReviewRepository(ReviewRepository):
     def __init__(self, db: Session) -> None:
         self.db = db
 
+    def average_emotions(self, book_id: int) -> tuple[EmotionVector | None, int]:
+        columns = [getattr(EmotionAnalysis, name) for name in BASIC_EMOTION_NAMES]
+        row = self.db.execute(
+            select(func.count(EmotionAnalysis.id), *(func.avg(column) for column in columns))
+            .select_from(EmotionAnalysis)
+            .join(PageReview, PageReview.id == EmotionAnalysis.review_id)
+            .join(UserBook, UserBook.id == PageReview.user_book_id)
+            .where(
+                UserBook.book_id == book_id,
+                PageReview.analysis_status == "completed",
+                EmotionAnalysis.review_revision == PageReview.analysis_revision,
+                EmotionAnalysis.source == "jev",
+                *(column.is_not(None) for column in columns),
+            )
+        ).one()
+        count = row[0]
+        if count == 0:
+            return None, 0
+        vector = EmotionVector(
+            **{
+                name: float(value) / 100
+                for name, value in zip(BASIC_EMOTION_NAMES, row[1:], strict=True)
+            }
+        )
+        return vector, count
+
     def _row(self, reading_id: int, page: int) -> PageReview | None:
         return self.db.scalar(
             select(PageReview)
@@ -507,7 +533,7 @@ class SqlReviewRepository(ReviewRepository):
             valence=result.valence,
             arousal=result.arousal,
             palette_version=result.palette_version,
-            **(result.emotion_vector.as_dict() if result.emotion_vector else {}),
+            **(result.emotion_vector.as_percentages() if result.emotion_vector else {}),
             **(
                 {
                     "projection_x": result.emotion_projection.x,

@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from ..domain.catalog import CatalogBook
-from ..domain.emotions import EmotionResult
+from ..domain.emotions import EmotionResult, EmotionVector
 from ..domain.entities import Book, PagePopularity, ReadingIteration, Review, User
 from .results import ReviewTextSaveResult
 
@@ -88,6 +88,10 @@ class BookCatalog(ABC):
 
 
 class ReviewRepository(ABC):
+    @abstractmethod
+    def average_emotions(self, book_id: int) -> tuple[EmotionVector | None, int]:
+        raise NotImplementedError
+
     @abstractmethod
     def list(
         self, user_id: int, book_id: int, iteration_number: int | None, limit: int, offset: int

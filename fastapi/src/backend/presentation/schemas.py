@@ -96,6 +96,12 @@ class ReviewSave(BaseModel):
     review_text: str = Field(min_length=1, max_length=140)
 
 
+class BookEmotionResponse(BaseModel):
+    review_count: int
+    emotion_scores: dict[str, float]
+    color_code: str
+
+
 class PageReviewResponse(BaseModel):
     id: int
     book_id: int

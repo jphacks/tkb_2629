@@ -127,7 +127,7 @@ Repositoryの `complete()` はその結果を `emotion_analyses` に保存しま
 0002はvalence/arousalとパレット版、0003は8感情、0004は投影座標を追加します。
 現在の8感情解析ではvalence/arousalは未使用のためNULLになります。
 APIを使う前に `uv run alembic upgrade head`（Dockerでは上記のexecコマンド）で
-0007まで適用してください。0007は既存の読書記録を1回目として扱い、同じ本の再読履歴、
+0008まで適用してください。0007は既存の読書記録を1回目として扱い、同じ本の再読履歴、
 読了状態、最新の読書回だけを使うページ別集計を追加します。アプリ起動時の `create_all()` は行いません。
 既存DBでAlembic履歴がない場合は、冒頭のスキーマ確認・バックアップ手順に従ってください。
 
@@ -160,3 +160,8 @@ Dockerでは設定変更後に `docker compose up -d --force-recreate api` で�
 `AUTH_DISABLED` は未設定または `false` なら通常の認証処理です。
 `true` の場合でも `APP_ENV=development` と正の整数の `DEV_USER_ID` が必要で、
 設定不正の場合は503を返して処理を止めます。本番環境では `AUTH_DISABLED=false` にしてください。
+
+## 感情スコアの保存形式
+
+`emotion_analyses` の `joy`・`trust`・`fear`・`surprise`・`sadness`・`disgust`・`anger`・`anticipation` は、各感情の強度を独立した0〜100の整数で保存します（合計100ではありません）。0〜1の分析値を100倍して四捨五入し、色の算出には丸める前の分析値を使います。
+0008のマイグレーションは既存の0〜1の保存値も同じ方法で変換し、未保存のNULLは維持します。APIレスポンスは従来どおり `color_code` を返します。

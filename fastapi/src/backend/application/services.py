@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 from ..domain.catalog import CatalogBook
-from ..domain.emotions import EmotionAnalyzer, EmotionResult
+from ..domain.emotions import EmotionAnalyzer, EmotionResult, EmotionVector
 from ..domain.entities import Book, PagePopularity, ReadingIteration, Review, User
 from ..domain.errors import InvalidInput
 from ..domain.values import BookDetails, ReviewText, UserDetails
@@ -108,6 +108,10 @@ class ReadingService:
 
 
 class ReviewService:
+    def average_emotions(self, user_id: int, book_id: int) -> tuple[EmotionVector | None, int]:
+        self.books.get(user_id, book_id)
+        return self.reviews.average_emotions(book_id)
+
     def __init__(
         self,
         books: ReadingRepository,

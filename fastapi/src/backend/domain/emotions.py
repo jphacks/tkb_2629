@@ -86,6 +86,10 @@ class EmotionVector:
             "anticipation": self.anticipation,
         }
 
+    def as_percentages(self) -> dict[str, int]:
+        """Return independent 0–100 scores, rounding halves upward."""
+        return {name: math.floor(value * 100 + 0.5) for name, value in self.as_dict().items()}
+
 
 def emotion_vector_to_color_code(vector: EmotionVector) -> str:
     """Project an emotion vector to 2D, then map its direction and intensity to HSV."""

@@ -40,6 +40,17 @@ export type PageReview = {
   source: string | null;
 };
 
+export type BookEmotions = {
+  review_count: number;
+  emotion_scores: Record<string, number>;
+  color_code: string;
+};
+
+export async function getBookEmotions(bookId: number): Promise<BookEmotions> {
+  const response = await fetch(`${API_URL}/books/${bookId}/emotions`);
+  return parseResponse<BookEmotions>(response, '感情分析の取得に失敗しました');
+}
+
 export function reviewAnalysisLabel(review: PageReview): string {
   if (review.analysis_status === 'failed') return '感想は保存済み・AI解析に失敗しました';
   if (review.analysis_status === 'pending') return '感想は保存済み・解析待ち';
