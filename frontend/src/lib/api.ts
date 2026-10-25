@@ -1,5 +1,6 @@
 import { authenticatedFetch } from "./auth";
 import type { User } from "../types/user";
+import { demoRequest } from "./demoApi";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -491,7 +492,8 @@ export async function completeIteration(
 }
 
 export async function startIteration(bookId: number): Promise<ReadingIteration> {
-  const response = await fetch(`${API_URL}/books/${bookId}/iterations`, { method: 'POST' });
+  const request = process.env.EXPO_PUBLIC_DEMO_MODE === 'true' ? demoRequest : fetch;
+  const response = await request(`${API_URL}/books/${bookId}/iterations`, { method: 'POST' });
   return parseResponse<ReadingIteration>(response, '再読の開始に失敗しました');
 }
 
