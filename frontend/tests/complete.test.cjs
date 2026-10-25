@@ -37,7 +37,7 @@ test('progress is shown on one line as pages and percent read', () => {
     'react-native': { StyleSheet: { create: (value) => value }, Text: 'Text', View: 'View' },
   });
   const tree = ReadingProgress({ currentPage: 42, totalPages: 180 });
-  const lines = tree.props.children.filter((node) => node?.type === 'Text').map(text);
+  const lines = tree.props.children[0].props.children.filter((node) => node?.type === 'Text').map(text);
   assert.deepEqual([...lines], ['42 / 180 ページ（23% 読了）']);
   assert.equal(text(ReadingProgress({ currentPage: 0, totalPages: 0 }).props.children[0]), '0 / 0 ページ（0% 読了）');
 });

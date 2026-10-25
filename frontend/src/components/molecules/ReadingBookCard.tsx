@@ -1,6 +1,6 @@
 import { colors } from "../../theme/colors";
-import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SvgUri } from 'react-native-svg';
 
 import type { Book } from '../../lib/api';
 import { GlassSurface } from '../atoms/GlassSurface';
@@ -12,6 +12,8 @@ type ReadingBookCardProps = {
   onBookmark: () => void;
   onPress: () => void;
 };
+
+const addBookmarkSvgUri = Image.resolveAssetSource(require('../../assets/addBookmark.svg'))?.uri ?? '';
 
 export function ReadingBookCard({ book, onBookmark, onPress }: ReadingBookCardProps) {
   const author = book.author ?? '著者不明';
@@ -25,16 +27,16 @@ export function ReadingBookCard({ book, onBookmark, onPress }: ReadingBookCardPr
       <View style={styles.copy}>
         <Text numberOfLines={1} style={styles.title}>{book.title}</Text>
         <Text numberOfLines={1} style={styles.author}>{author}</Text>
-        <ReadingProgress currentPage={book.current_page} totalPages={book.total_pages} />
-        <Pressable
-          accessibilityLabel={`${book.title}にしおりを追加`}
-          accessibilityRole="button"
-          onPress={onBookmark}
-          style={({ pressed }) => [styles.bookmarkButton, pressed && styles.pressed]}
-        >
-          <Ionicons color={colors.navAccent} name="bookmark-outline" size={16} />
-          <Text style={styles.bookmarkLabel}>しおりを追加</Text>
-        </Pressable>
+        <ReadingProgress currentPage={book.current_page} totalPages={book.total_pages}>
+          <Pressable
+            accessibilityLabel={`${book.title}にしおりを追加`}
+            accessibilityRole="button"
+            onPress={onBookmark}
+            style={({ pressed }) => [styles.bookmarkButton, pressed && styles.pressed]}
+          >
+            <SvgUri height={28} uri={addBookmarkSvgUri} width={26} />
+          </Pressable>
+        </ReadingProgress>
       </View>
     </GlassSurface>
   );
@@ -45,7 +47,6 @@ const styles = StyleSheet.create({
   copy: { flex: 1 },
   title: { color: colors.text, fontSize: 16, fontWeight: '700' },
   author: { color: colors.placeholder, fontSize: 11, marginTop: 6 },
-  bookmarkButton: { alignItems: 'center', alignSelf: 'flex-start', backgroundColor: 'rgba(255, 255, 255, 0.72)', borderColor: 'rgba(255, 255, 255, 0.9)', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 6, marginTop: 10, paddingHorizontal: 12, paddingVertical: 6 },
-  bookmarkLabel: { color: colors.navAccent, fontSize: 13, fontWeight: '700' },
+  bookmarkButton: { alignItems: 'center', backgroundColor: 'rgba(255, 113, 113, 0.86)', borderColor: 'rgba(255, 255, 255, 0.9)', borderRadius: 22, borderWidth: 1, flexShrink: 0, height: 44, justifyContent: 'center', width: 44 },
   pressed: { opacity: 0.72, transform: [{ scale: 0.96 }] },
 });

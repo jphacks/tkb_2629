@@ -30,6 +30,7 @@ class BookResponse(BaseModel):
     current_page: int
     started_at: datetime | None
     completed_at: datetime | None
+    last_read_at: datetime | None = None
 
 
 class BookListResponse(BaseModel):
@@ -69,3 +70,4 @@ class ReadingIterationResponse(BaseModel):
     current_page: int
     started_at: datetime
     completed_at: datetime | None
+    last_read_at: datetime | None = None

@@ -37,13 +37,21 @@ Google Books由来のタイトル・著者・ページ数・ISBN・表紙URLはD
 | `id` | integer | 主キー |
 | `user_id` | integer | `users.id` への必須FK、ユーザー削除時 cascade |
 | `book_id` | integer | `books.id` への必須FK、書誌削除時 cascade |
+| `iteration_number` | integer | 必須、1以上。同じ本の読書回数 |
 | `current_page` | integer | 必須、0以上。APIは本の総ページ数以下も検証 |
 | `status` | varchar(16) | `reading` または `completed` |
 | `started_at` | timestamptz | 必須、初期値は現在時刻 |
 | `completed_at` | timestamptz | 任意。`completed` では必須 |
+| `last_read_at` | timestamptz | 任意。しおり本文の最終保存日時。未記録はNULL |
 | `created_at`, `updated_at` | timestamptz | 必須 |
 
-`UNIQUE(user_id, book_id)` により同じ利用者の同じ本の読書記録は1件です。同じ書誌を複数ユーザーが読めます。書誌・ユーザー・進捗検索用に外部キーインデックスを作成します。
+`UNIQUE(user_id, book_id, iteration_number)` により読書回の重複を防ぎ、部分一意インデックスで同じ利用者・本の読書中の回を1件に制限します。同じ書誌を複数ユーザーが読めます。書誌・ユーザー・進捗検索用に外部キーインデックスを作成します。
+
+`0014_last_read_at` は読書回ごとに最終しおり保存日時を追加し、
+`(user_id, status, last_read_at)` のインデックスを作成します。
+既存日時を推測するバックフィルは行いません。本文・進捗と同じトランザクションで更新し、
+再読開始時はNULLに戻ります。並び順・更新対象の詳細は
+[「続きを読む」API](../fastapi/docs/endpoints.md#続きを読むの並び順) を参照してください。
 
 ### `page_reviews`
 

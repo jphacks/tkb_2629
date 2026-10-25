@@ -35,6 +35,7 @@ class Reading:
     current_page: int
     started_at: datetime
     completed_at: datetime | None = None
+    last_read_at: datetime | None = None
 
     @classmethod
     def start(cls, user_id: int, book_id: int, now: datetime) -> Reading:

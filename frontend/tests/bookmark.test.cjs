@@ -67,12 +67,8 @@ test('thought count is parenthesized beside the label and counts Unicode charact
   }
 });
 
-test('home renders with the current emotion helpers and uses the thought color or neutral gray', () => {
-  const native = { StyleSheet: { create: (value) => value }, View: 'View' };
-  const emotions = load('src/components/organisms/EmotionAnalysisCard.tsx', {
-    'react-native': native,
-  });
-  const samples = [{ note: 'Sample thought', color: '#123456' }];
+test('home no longer offers a sample thought pointing at a fixed book', () => {
+  const native = { StyleSheet: { create: (value) => value }, View: 'View', Text: 'Text' };
   const { HomeScreen } = load('src/screens/main/HomeScreen.tsx', {
     'react-native': native,
     react: { useState: (initial) => [initial, () => {}], useEffect() {} },
@@ -80,22 +76,11 @@ test('home renders with the current emotion helpers and uses the thought color o
       jsx: (type, props) => ({ type, props }),
       jsxs: (type, props) => ({ type, props }),
     },
-    '../../components/organisms/BookmarkListCard': { myBookmarks: samples },
-    '../../components/organisms/EmotionAnalysisCard': emotions,
   });
-  let target;
-  const render = () => HomeScreen({ onNavigate: (value) => { target = value; } });
-  let card = find(render(), 'MyThoughtCard');
-  assert.equal(card.props.emotionColor, '#123456');
-  assert.equal(card.props.emotionTint, emotions.getEmotionTint('#123456'));
-  card.props.onPress();
-  assert.equal(target.name, 'book-detail');
-  assert.equal(target.bookId, 1);
-  delete samples[0].color;
-  card = find(render(), 'MyThoughtCard');
-  assert.equal(card.props.emotionColor, '#8C8C8C');
-  samples.length = 0;
-  assert.equal(find(render(), 'MyThoughtCard'), undefined);
+  const tree = HomeScreen({ onNavigate() {} });
+  assert.equal(find(tree, 'MyThoughtCard'), undefined);
+  assert.equal(find(tree, 'ReadingBookCard'), undefined);
+  assert.ok(nodes(tree).some((node) => node.props?.children === '続きを読む'));
 });
 
 function screenHarness() {

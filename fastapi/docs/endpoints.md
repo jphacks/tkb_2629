@@ -37,17 +37,29 @@ CASCADEの説明は外部キーが有効なDB（標準構成のPostgreSQL）を�
 | --- | --- | --- |
 | `POST /books` | title・authorをtrimして検証。book_id未指定ならbooksを新規作成。指定時は既存booksを取得し、title・author・total_pagesの一致を確認。その後user_booksで現在のユーザーと紐付け・commit。 | 201、書籍情報 |
 | `GET /books` | booksと各書籍の最新のuser_booksをJOINし、現在のユーザーの書籍だけをID昇順で取得。limitは既定50、1〜100。offsetは既定0、0以上。 | 200、items・limit・offset |
+| `GET /books/continue-reading` | 本人の各書籍の最新回がreadingの本だけを、しおり本文の最終保存日時順に取得。limitは既定3、1〜20。 | 200、items・limit・offset（常に0）、Cache-Control: no-store |
 | `GET /books/{book_id}` | 現在のユーザーの本棚に存在する書籍と最新の読書回を取得。他人だけが所有する本や存在しない本は404。 | 200、書籍情報 |
 | `GET /books/{book_id}/iterations` | 指定書籍の読書回を古い順に取得。 | 200、読書回の配列 |
 | `POST /books/{book_id}/iterations` | 最新回が読了済みの場合だけ、回数を1増やした新しい読書回を開始。 | 201、新しい読書回 |
 | `POST /books/{book_id}/iterations/{iteration_number}/complete` | 読書中の指定回を読了にし、current_pageを総ページ数へ更新。 | 200、更新後の読書回 |
 | `GET /books/{book_id}/page-popularity` | 各ユーザーの最新の読書回だけを対象に、感想のあるページごとのユーザー数を集計。 | 200、page_number・user_countの配列 |
 
-書籍情報にはid・title・author・total_pages・created_atに加え、latest_iteration・reading_status・current_page・started_at・completed_atを含みます。
+書籍情報にはid・title・author・total_pages・created_atに加え、latest_iteration・reading_status・current_page・started_at・completed_at・last_read_atを含みます。
 titleはtrim後1〜255文字、authorは省略可・trim後255文字以内、total_pagesは1〜1,000,000です。
 既存書籍の内容不一致や同じ本棚への重複登録は409、指定された既存書籍がなければ404です。
 同じ本を再読するには現在の回を先に読了する必要があります。同一ユーザー・書籍で読書中にできる回は1つだけです。
 書籍の更新・削除APIはありません。
+
+### 「続きを読む」の並び順
+
+- `last_read_at` は実際に本を読んだ時刻ではなく、しおり（感想本文）を最後に保存したサーバー日時です。書籍情報と読書回レスポンスの両方に含まれます。
+- 同じページ・同じ本文の再保存や、以前のページへの保存でも更新します。`current_page` は従来どおり巻き戻しません。
+- 進捗・本文・日時は同じトランザクションで保存し、入力不正や本文保存・commitの失敗では更新しません。保存後の解析失敗では、保存済み本文と日時を保持します。
+- 本や感想の閲覧、公開・ネタバレ設定、リアクション、解析の結果保存では更新しません。読了操作も日時を更新せず、候補から除外します。
+- 登録直後・再読開始直後・既存データの `last_read_at` はnullです。過去の `updated_at` 等から日時を推測しません。再読に前回の日時は引き継ぎません。
+- 並び順は `last_read_at DESC NULLS LAST` → `started_at DESC` → 読書回ID降順です。記録済みを優先し、未記録同士は読書開始日の新しい順、同日時でも安定した順で返します。
+- DBで対象・順序・件数を絞ってから、選択された書籍のみ書誌を取得します。通常の本棚 `GET /books` のID昇順は変更しません。
+- API利用前にマイグレーション `0014_last_read_at` を適用してください。downgradeするとこの日時記録とインデックスを削除しますが、本棚・感想は保持します。
 
 ## ページごとの感想
 

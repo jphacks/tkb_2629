@@ -44,6 +44,7 @@ class LibraryService:
             current_page=reading.current_page,
             started_at=reading.started_at,
             completed_at=reading.completed_at,
+            last_read_at=reading.last_read_at,
         )
 
     def register(
@@ -85,6 +86,13 @@ class LibraryService:
             reading = unit.readings.get(user_id, book_id)
             book = unit.books.get(book_id)
         return self._view(book, reading)
+
+    def continue_reading(self, user_id: int, limit: int = 3) -> list[BookView]:
+        if not 1 <= limit <= 20:
+            raise InvalidInput("limit must be between 1 and 20")
+        with self.units() as unit:
+            rows = unit.books.list_recent_reading(user_id, limit)
+        return [self._view(book, reading) for book, reading in rows]
 
     def list_iterations(self, user_id: int, book_id: int) -> list[Reading]:
         with self.units() as unit:
@@ -132,6 +140,7 @@ class LibraryService:
         with self.units() as unit:
             reading = unit.readings.get(user_id, book_id, iteration, lock=True)
             reading.record_progress(page, total_pages)
+            reading.last_read_at = self.clock.now()
             unit.readings.save(reading)
             unit.commit()
             return ReadingReference(

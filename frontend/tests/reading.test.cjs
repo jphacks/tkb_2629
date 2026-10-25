@@ -23,12 +23,12 @@ function compile(relative, dependencies, dev = false) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
   }).outputText;
   const exports = {};
-  vm.runInNewContext(code, { exports, Error, Promise, __DEV__: dev, require: (name) => dependencies[name] ?? stub });
+  vm.runInNewContext(code, { exports, process, Error, SyntaxError, Promise, __DEV__: dev, require: (name) => dependencies[name] ?? stub });
   return exports;
 }
 
 function harness(file, component, dev = false) {
-  const state = [], effects = [], requests = [];
+  const state = [], effects = [], requests = [], recentRequests = [];
   let cursor = 0, scheduled = [], target;
   const loader = compile('src/lib/readingBooks.ts', {
     './api': {
@@ -64,11 +64,15 @@ function harness(file, component, dev = false) {
     },
     '../../lib/readingBooks': loader,
     '../../lib/readingStatus': compile('src/lib/readingStatus.ts', {}),
-    '../../components/organisms/BookmarkListCard': { myBookmarks: [] },
-    '../../components/organisms/EmotionAnalysisCard': { getEmotionTint: () => '#fff' },
+    '../../lib/api': {
+      getContinueReadingBooks() {
+        return new Promise((resolve, reject) => { recentRequests.push({ resolve, reject }); });
+      },
+    },
   }, dev);
   return {
     requests,
+    recentRequests,
     get target() { return target; },
     render() {
       cursor = 0;
@@ -87,10 +91,66 @@ const cards = (tree) => nodes(tree).filter((node) => node.type === 'ReadingBookC
 const text = (tree) => nodes(tree).filter((node) => node.type === 'Text').map((node) => node.props.children).flat().join('\n');
 const button = (tree, label) => nodes(tree).find((node) => node.props?.label === label || node.props?.accessibilityLabel === label);
 
+function recentApi(payload, status = 200) {
+  const requests = [];
+  const api = compile('src/lib/api.ts', {
+    './auth': {
+      authenticatedFetch: async (...args) => {
+        requests.push(args);
+        return {
+          status, ok: status === 200, headers: { get: () => 'application/json' },
+          json: async () => payload,
+        };
+      },
+    },
+  });
+  return { requests, api };
+}
+
+test('recent-reading API authenticates a bounded request and preserves the server order and unknown dates', async () => {
+  for (const items of [[], [{ ...book(8), last_read_at: null }, { ...book(2), last_read_at: '2026-10-25T00:00:00Z' }]]) {
+    const h = recentApi({ items, limit: 3, offset: 0 });
+    assert.equal(await h.api.getContinueReadingBooks(), items);
+    assert.match(h.requests[0][0], /\/books\/continue-reading\?limit=3$/);
+    assert.equal(h.requests.length, 1);
+  }
+});
+
+test('recent-reading API surfaces HTTP failures rather than showing an empty list', async () => {
+  for (const status of [401, 404, 503]) {
+    const h = recentApi({ detail: 'Recent request failed' }, status);
+    await assert.rejects(h.api.getContinueReadingBooks(), (error) => (
+      error.message === 'Recent request failed' && error.status === status
+    ));
+  }
+});
+
+test('recent-reading API rejects malformed, excessive, duplicate or non-reading suggestions', async () => {
+  const valid = { ...book(8), last_read_at: null };
+  const shape = (items) => ({ items, limit: 3, offset: 0 });
+  const invalid = [
+    null, {}, shape(null), shape([null]), shape([valid, valid]),
+    shape(Array.from({ length: 4 }, (_, id) => ({ ...valid, id: id + 1 }))),
+    { ...shape([]), limit: 20 }, { ...shape([]), offset: 3 },
+    ...[
+      { id: 0 }, { id: 1.5 }, { title: '' }, { title: ' ' }, { author: 12 },
+      { reading_status: 'completed' }, { latest_iteration: 0 },
+      { total_pages: 0 }, { current_page: -1 }, { current_page: 201 },
+      { last_read_at: 'invalid' }, { last_read_at: undefined },
+    ].map((fields) => shape([{ ...valid, ...fields }])),
+  ];
+  for (const payload of invalid) {
+    await assert.rejects(recentApi(payload).api.getContinueReadingBooks(), /応答形式が正しくありません/);
+  }
+});
+
 test('the card shows real book fields and separates detail and bookmark actions', () => {
   const { ReadingBookCard } = compile('src/components/molecules/ReadingBookCard.tsx', {
     'react/jsx-runtime': jsxRuntime,
-    'react-native': { StyleSheet: { create: (value) => value }, Pressable: 'Pressable', Text: 'Text', View: 'View' },
+    'react-native': {
+      StyleSheet: { create: (value) => value }, Pressable: 'Pressable', Text: 'Text', View: 'View',
+      Image: { resolveAssetSource: () => ({ uri: 'bookmark-icon' }) },
+    },
   });
   const calls = [];
   const tree = ReadingBookCard({
@@ -100,12 +160,40 @@ test('the card shows real book fields and separates detail and bookmark actions'
   });
   assert.ok(text(tree).includes('Book 3'));
   assert.ok(text(tree).includes('著者不明'));
+  assert.doesNotMatch(text(tree), /しおりを追加/);
+  const icon = nodes(tree).find((node) => node.type === 'SvgUri');
+  assert.equal(icon.props.uri, 'bookmark-icon');
+  const iconButton = button(tree, 'Book 3にしおりを追加');
+  assert.equal(iconButton.props.accessibilityRole, 'button');
+  const style = iconButton.props.style({ pressed: false })[0];
+  assert.equal(style.width, 44);
+  assert.equal(style.height, 44);
   const progress = nodes(tree).find((node) => node.type === 'ReadingProgress');
   assert.equal(progress.props.currentPage, 42);
   assert.equal(progress.props.totalPages, 180);
+  assert.equal(progress.props.children, iconButton);
   tree.props.onPress();
   button(tree, 'Book 3にしおりを追加').props.onPress();
   assert.deepEqual(calls, ['detail', 'bookmark']);
+});
+
+test('reading progress places the bookmark action beside the completion label and above the bar', () => {
+  const { ReadingProgress } = compile('src/components/molecules/ReadingProgress.tsx', {
+    'react/jsx-runtime': jsxRuntime,
+    'react-native': { StyleSheet: { create: (value) => value }, Text: 'Text', View: 'View' },
+  });
+  const action = { type: 'BookmarkAction', props: {} };
+  const tree = ReadingProgress({ currentPage: 42, totalPages: 180, children: action });
+  const [heading, track] = tree.props.children;
+  assert.equal(heading.props.style.flexDirection, 'row');
+  assert.equal(heading.props.style.alignItems, 'center');
+  const actionSpace = heading.props.children[1];
+  assert.equal(actionSpace.props.children, action);
+  assert.equal(actionSpace.props.style.flex, 1);
+  assert.equal(actionSpace.props.style.alignItems, 'center');
+  assert.equal(actionSpace.props.style.minWidth, 44);
+  assert.match(text(heading), /読了/);
+  assert.equal(track.type, 'GlassSurface');
 });
 
 test('only reading books are listed; card opens detail and its button opens the bookmark input', async () => {
@@ -173,7 +261,86 @@ test('unmounting stops pagination after an in-flight request', async () => {
   assert.equal(h.requests.length, 1);
 });
 
-const fab = (tree) => nodes(tree).find((node) => node.type === 'FloatingActionButton');
+test('home replaces dummy thoughts with recent reading in server order and real navigation', async () => {
+  const h = home();
+  assert.match(text(h.render()), /読書中の本を読み込み中/);
+  assert.equal(h.recentRequests.length, 1);
+  h.recentRequests[0].resolve([book(9, 'reading', 3), book(2), book(7)]);
+  await flush();
+  const tree = h.render();
+  assert.deepEqual(cards(tree).map((card) => card.props.book.id), [9, 2, 7]);
+  assert.equal(nodes(tree).find((node) => node.type === 'MyThoughtCard'), undefined);
+  cards(tree)[0].props.onPress();
+  assert.deepEqual({ ...h.target }, { name: 'book-detail', bookId: 9 });
+  cards(tree)[0].props.onBookmark();
+  assert.deepEqual({ ...h.target }, { name: 'bookmark', bookId: 9, iteration: 3 });
+  button(tree, '今読んでいる本をすべて見る').props.onPress();
+  assert.equal(h.target, 'reading');
+  assert.match(text(tree), /最近しおりを保存した本/);
+  assert.match(text(tree), /読了冊数を読み込み中/);
+});
+
+test('home empty suggestions guide to search without a fake book', async () => {
+  const h = home();
+  h.render();
+  h.recentRequests[0].resolve([]);
+  await flush();
+  const tree = h.render();
+  assert.match(text(tree), /読書中の本はありません/);
+  assert.equal(cards(tree).length, 0);
+  button(tree, '本を探す').props.onPress();
+  assert.equal(h.target, 'search');
+});
+
+test('home suggestions fail explicitly and retry independently of tower totals', async () => {
+  const h = home();
+  h.render();
+  h.requests[0].resolve([book(1, 'completed', 2)]);
+  h.recentRequests[0].reject(new Error('Recent failed'));
+  await flush();
+  let tree = h.render();
+  assert.match(text(tree), /Recent failed/);
+  assert.doesNotMatch(text(tree), /読書中の本はありません/);
+  assert.equal(nodes(tree).find((node) => node.type === 'BookStack').props.count, 2);
+  button(tree, '続きを読むを再読み込み').props.onPress();
+  h.render();
+  assert.equal(h.requests.length, 1);
+  assert.equal(h.recentRequests.length, 2);
+  h.recentRequests[1].resolve([book(8)]);
+  await flush();
+  tree = h.render();
+  assert.doesNotMatch(text(tree), /Recent failed/);
+  assert.equal(cards(tree)[0].props.book.id, 8);
+});
+
+test('home tower failure does not hide recent books or refetch them on tower retry', async () => {
+  const h = home();
+  h.render();
+  h.requests[0].reject(new Error('Count failed'));
+  h.recentRequests[0].resolve([book(4)]);
+  await flush();
+  assert.equal(cards(h.render())[0].props.book.id, 4);
+  button(h.render(), '読了冊数を再読み込み').props.onPress();
+  h.render();
+  assert.equal(h.recentRequests.length, 1);
+  assert.equal(cards(h.render()).length, 1);
+});
+
+test('leaving home ignores late suggestion success or failure and reentry fetches again', async () => {
+  for (const failure of [false, true]) {
+    const h = home();
+    h.render();
+    h.unmount();
+    if (failure) h.recentRequests[0].reject(new Error('Late failure'));
+    else h.recentRequests[0].resolve([book(5)]);
+    await flush();
+    assert.equal(cards(h.render()).length, 0);
+    assert.doesNotMatch(text(h.render()), /Late failure/);
+    const reopened = home();
+    reopened.render();
+    assert.equal(reopened.recentRequests.length, 1);
+  }
+});
 
 test('development preview switches tower counts without changing server data and restores real totals', async () => {
   const h = harness('src/screens/main/HomeScreen.tsx', 'HomeScreen', true);
@@ -197,29 +364,15 @@ test('development preview switches tower counts without changing server data and
   assert.doesNotMatch(text(tree), /開発用|表示確認/);
 });
 
-test('home bookmark button opens the input directly when exactly one book is being read', async () => {
+test('home no longer has a floating bookmark button or a separate book-selection request', async () => {
   const h = home();
-  fab(h.render()).props.onPress();
-  h.requests[1].resolve([book(3, 'reading', 2), book(4, 'completed')]);
+  const tree = h.render();
+  assert.equal(nodes(tree).find((node) => node.type === 'FloatingActionButton'), undefined);
+  h.recentRequests[0].resolve([book(3, 'reading', 2)]);
   await flush();
+  cards(h.render())[0].props.onBookmark();
   assert.deepEqual({ ...h.target }, { name: 'bookmark', bookId: 3, iteration: 2 });
-});
-
-test('home bookmark button opens the reading list for zero or several books and on failure, ignoring double taps', async () => {
-  for (const settle of [
-    (request) => request.resolve([]),
-    (request) => request.resolve([book(1), book(2)]),
-    (request) => request.reject(new Error('offline')),
-  ]) {
-    const h = home();
-    const button = fab(h.render());
-    button.props.onPress();
-    fab(h.render()).props.onPress();
-    assert.equal(h.requests.length, 2);
-    settle(h.requests[1]);
-    await flush();
-    assert.equal(h.target, 'reading');
-  }
+  assert.equal(h.requests.length, 1);
 });
 
 test('home uses all shelf pages and counts completed rereads during an ongoing reread', async () => {

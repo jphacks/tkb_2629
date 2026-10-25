@@ -18,6 +18,7 @@ class BookRepository(Protocol):
     def list_owned(
         self, user_id: int, limit: int, offset: int
     ) -> list[tuple[StoredBook, Reading]]: ...
+    def list_recent_reading(self, user_id: int, limit: int) -> list[tuple[StoredBook, Reading]]: ...
 
 
 class ReadingRepository(Protocol):

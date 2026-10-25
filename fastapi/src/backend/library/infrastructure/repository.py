@@ -26,6 +26,7 @@ def reading_entity(row: UserBook) -> Reading:
         row.current_page,
         row.started_at,
         row.completed_at,
+        row.last_read_at,
     )
 
 
@@ -80,6 +81,30 @@ class SqlBookRepository:
             .limit(limit)
             .offset(offset)
         ).all()
+        return [(stored_book(book), reading_entity(reading)) for book, reading in rows]
+
+    def list_recent_reading(self, user_id: int, limit: int) -> list[tuple[StoredBook, Reading]]:
+        latest = (
+            select(func.max(UserBook.iteration_number))
+            .where(UserBook.user_id == user_id, UserBook.book_id == Book.id)
+            .correlate(Book)
+            .scalar_subquery()
+        )
+        rows = self.db.execute(
+            select(Book, UserBook)
+            .join(UserBook, UserBook.book_id == Book.id)
+            .where(
+                UserBook.user_id == user_id,
+                UserBook.iteration_number == latest,
+                UserBook.status == "reading",
+            )
+            .order_by(
+                UserBook.last_read_at.desc().nulls_last(),
+                UserBook.started_at.desc(),
+                UserBook.id.desc(),
+            )
+            .limit(limit)
+        )
         return [(stored_book(book), reading_entity(reading)) for book, reading in rows]
 
 
@@ -152,6 +177,7 @@ class SqlReadingRepository:
             current_page=reading.current_page,
             started_at=reading.started_at,
             completed_at=reading.completed_at,
+            last_read_at=reading.last_read_at,
         )
         self.db.add(row)
         self.db.flush()
@@ -165,5 +191,6 @@ class SqlReadingRepository:
                 status=reading.status,
                 current_page=reading.current_page,
                 completed_at=reading.completed_at,
+                last_read_at=reading.last_read_at,
             )
         )

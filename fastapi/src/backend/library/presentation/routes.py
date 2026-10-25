@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 
 from backend.shared.presentation.auth import get_current_user_id
 
@@ -58,6 +58,20 @@ def list_books(
     for book in books:
         items.append(BookResponse.model_validate(book, from_attributes=True))
     return BookListResponse(items=items, limit=limit, offset=offset)
+
+
+@router.get("/books/continue-reading", response_model=BookListResponse)
+def continue_reading(
+    service: LibraryServiceDependency,
+    user_id: CurrentUserId,
+    response: Response,
+    limit: int = Query(default=3, ge=1, le=20),
+) -> BookListResponse:
+    response.headers["Cache-Control"] = "no-store"
+    books = service.continue_reading(user_id, limit)
+    return BookListResponse(
+        items=[BookResponse.model_validate(book) for book in books], limit=limit, offset=0
+    )
 
 
 @router.get("/books/{book_id}", response_model=BookResponse)
