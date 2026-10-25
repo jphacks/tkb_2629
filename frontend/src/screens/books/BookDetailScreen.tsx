@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { ActionButton } from '../../components/molecules/ActionButton';
 import { BookCover } from '../../components/molecules/BookCover';
 import { FloatingActionButton } from '../../components/molecules/FloatingActionButton';
 import { ReadingProgress } from '../../components/molecules/ReadingProgress';
@@ -8,6 +10,7 @@ import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { EmotionAnalysisCard, getAggregateEmotionColor, getEmotionTint } from '../../components/organisms/EmotionAnalysisCard';
 import { allBookmarks, BookmarkListCard } from '../../components/organisms/BookmarkListCard';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
+import { getBook, type Book } from '../../lib/api';
 import type { Navigate } from '../types';
 
 export type ReadingStatus = 'reading' | 'completed'; // 読み途中 or 読了

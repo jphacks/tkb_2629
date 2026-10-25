@@ -20,14 +20,45 @@ export type Book = {
   google_books_id: string | null;
   isbn_13: string | null;
   thumbnail_url: string | null;
+  latest_iteration: number;
+  reading_status: string;
+  current_page: number;
+  started_at: string | null;
+  completed_at: string | null;
 };
 
 async function parseResponse<T>(response: Response, message: string): Promise<T> {
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null) as { detail?: string } | null;
-    throw new Error(payload?.detail ?? `${message} (${response.status})`);
+  const contentType = response.headers.get('content-type') ?? '';
+  const mediaType = contentType.split(';')[0]?.trim().toLowerCase() ?? '';
+  const isJson = mediaType === 'application/json' || (
+    mediaType.startsWith('application/') && mediaType.endsWith('+json')
+  );
+  const context = `${response.url || API_URL} / HTTP ${response.status} / ${contentType || 'Content-Typeなし'}`;
+  if (__DEV__) {
+    console.info(`[API] ${context}`);
   }
-  return response.json() as Promise<T>;
+
+  if (!isJson) {
+    throw new Error(`${message}：JSONではない応答です。API接続先を確認してください。\n${context}`);
+  }
+
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) {
+      throw error;
+    }
+    throw new Error(`${message}：応答をJSONとして読み取れませんでした。\n${context}`);
+  }
+
+  if (!response.ok) {
+    const detail = typeof payload === 'object' && payload !== null && 'detail' in payload
+      ? payload.detail
+      : undefined;
+    throw new Error(typeof detail === 'string' ? detail : `${message} (${response.status})`);
+  }
+  return payload as T;
 }
 
 export async function getUsers(): Promise<User[]> {
@@ -61,4 +92,9 @@ export async function getBooks(): Promise<Book[]> {
     '本棚の取得に失敗しました',
   );
   return payload.items;
+}
+
+export async function getBook(bookId: number): Promise<Book> {
+  const response = await fetch(`${API_URL}/books/${bookId}`);
+  return parseResponse<Book>(response, '本の詳細の取得に失敗しました');
 }
