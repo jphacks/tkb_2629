@@ -12,7 +12,6 @@ export type ScreenKey =
   | 'book-detail'
   | 'book-memo'
   | 'add-book'
-  | 'bookmark-book-select'
   | 'account-settings'
   | 'public-profile'
   | 'public-reviews'
