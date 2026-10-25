@@ -10,10 +10,10 @@ from backend.domain.errors import ExternalServiceError, NotFound
 from backend.infrastructure.google_books import GoogleBooksCatalog
 
 VOLUME = {"id": "volume-1", "volumeInfo": {"title": "Book", "pageCount": 180}}
-TTL = 30 * 24 * 60 * 60
+TTL = 24 * 60 * 60
 
 
-def test_cache_is_shared_across_catalogs_and_expires_after_30_days():
+def test_cache_is_shared_across_catalogs_and_expires_after_24_hours():
     cache = fakeredis.FakeRedis()
     requests = []
 

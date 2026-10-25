@@ -15,7 +15,8 @@ from ..domain.catalog import CatalogBook
 from ..domain.errors import NotFound
 
 GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
-CACHE_TTL_SECONDS = 30 * 24 * 60 * 60
+# Application policy for reducing repeated metadata fetches, not a Google retention allowance.
+CACHE_TTL_SECONDS = 24 * 60 * 60
 logger = logging.getLogger(__name__)
 
 
