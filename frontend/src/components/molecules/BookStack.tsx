@@ -30,7 +30,7 @@ function BookSvg({ gradient }: { gradient: { end: string; start: string } }) {
         </LinearGradient>
       </Defs>
       <Path d="M443 0.041C449.16 0.549 454 5.709 454 12c0 6.291-4.841 11.45-11 11.958V24H401.501v122H443v.041c6.16.508 11 5.668 11 11.959 0 6.291-4.841 11.45-11 11.958V170H30c-16.569 0-30-13.431-30-30V30C0 13.431 13.431 0 30 0h413v.041Z" fill="url(#bookGradient)" />
-      <Rect fill="#D9D9D9" height="121" rx="20" width="400" x="43" y="24" />
+      <Rect fill="#ebebeb" height="121" rx="20" width="400" x="43" y="24" />
       <Path d="M43 40.5h400M43 54.5h400M43 68.5h400M43 82.5h400M43 96.5h400M43 110.5h400M43 124.5h400" stroke={colors.borderMuted} strokeWidth="5" />
       <Circle cx="442" cy="12" fill="url(#bookGradient)" r="12" />
       <Circle cx="442" cy="158" fill="url(#bookGradient)" r="12" />

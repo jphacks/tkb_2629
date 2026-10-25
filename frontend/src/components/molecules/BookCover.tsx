@@ -1,16 +1,16 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-type BookCoverProps = { title?: string; author?: string; color?: string; large?: boolean; grid?: boolean };
+type BookCoverProps = { title?: string; author?: string; color?: string; compact?: boolean; large?: boolean; grid?: boolean };
 
-export function BookCover({ title = '本のタイトル', author = '著者名', color, large = false, grid = false }: BookCoverProps) {
+export function BookCover({ title = '本のタイトル', author = '著者名', color, compact = false, large = false, grid = false }: BookCoverProps) {
   const coverColor = color ?? '#E7B7F2';
   const sunColor = adjustLightness(coverColor, 0.18);
   const waveColor = adjustLightness(coverColor, -0.12);
 
   return (
-    <View style={[styles.cover, { backgroundColor: coverColor }, large && styles.large, grid && styles.grid]}>
-      <Text style={styles.coverTitle}>{title}</Text>
-      <Text style={styles.author}>{author}</Text>
+    <View style={[styles.cover, { backgroundColor: coverColor }, compact && styles.compact, large && styles.large, grid && styles.grid]}>
+      <Text style={[styles.coverTitle, compact && styles.compactTitle]}>{title}</Text>
+      <Text style={[styles.author, compact && styles.compactAuthor]}>{author}</Text>
       <View style={[styles.sun, { backgroundColor: sunColor }]} />
       <View style={[styles.wave, { backgroundColor: waveColor }]} />
       <Text style={styles.publisher}>出版社</Text>
@@ -63,10 +63,13 @@ function adjustLightness(hex: string, amount: number) {
 
 const styles = StyleSheet.create({
   cover: { backgroundColor: '#E7B7F2', borderRadius: 4, height: 95, overflow: 'hidden', width: 66 },
+  compact: { height: 72, width: 50 },
   large: { height: 140, width: 94 },
   grid: { height: 140, width: 94 },
   coverTitle: { color: '#5D3B6F', fontSize: 9, fontWeight: '700', margin: 8 },
+  compactTitle: { fontSize: 7, margin: 6 },
   author: { color: '#6E4F7D', fontSize: 6, marginHorizontal: 8 },
+  compactAuthor: { fontSize: 5, marginHorizontal: 6 },
   sun: { backgroundColor: '#F8DC84', borderRadius: 30, height: 30, position: 'absolute', right: 8, top: 42, width: 30 },
   wave: { backgroundColor: '#F39BA7', borderRadius: 60, bottom: -35, height: 80, left: -20, position: 'absolute', width: 130 },
   publisher: { bottom: 8, color: '#6E4F7D', fontSize: 6, position: 'absolute', right: 8 },

@@ -9,7 +9,7 @@ import { GlassSurface } from '../atoms/GlassSurface';
 import { reviewAnalysisLabel, type PageReview } from '../../lib/api';
 import type { Bookmark } from '../../types/bookmark';
 
-const myBookmarks: Bookmark[] = [
+export const myBookmarks: Bookmark[] = [
   { id: 'mine-1', page: 42, position: 23, count: 1, title: '旅のはじまり', note: '主人公が星空を見上げる場面。', date: '6月12日', author: 'あなた' },
   { id: 'mine-2', page: 96, position: 53, count: 1, title: '心に残った言葉', note: '「遠くても、見上げれば同じ空」が印象的。', date: '6月15日', author: 'あなた' },
   { id: 'mine-3', page: 142, position: 79, count: 1, title: '次に読むところ', note: '大きな決断をする直前で一度休憩。', date: '6月18日', author: 'あなた' },

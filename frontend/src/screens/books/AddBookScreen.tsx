@@ -1,6 +1,8 @@
 import { colors } from "../../theme/colors";
+import { Ionicons } from '@expo/vector-icons';
 import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { ActionButton } from '../../components/molecules/ActionButton';
 import { BookCover } from '../../components/molecules/BookCover';
@@ -94,15 +96,35 @@ export function AddBookScreen({
       subtitle={subtitle}
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <ShadowInput
-          onChangeText={setQuery}
-          onSubmitEditing={search}
-          placeholder="本のタイトルを検索"
-          returnKeyType="search"
-          value={query}
-          style={styles.search}
-        />
-        <ActionButton label={searching ? '検索中…' : '検索する'} onPress={searching ? undefined : search} />
+        <View style={styles.searchRow}>
+          <ShadowInput
+            onChangeText={setQuery}
+            onSubmitEditing={search}
+            placeholder="本のタイトルを検索"
+            returnKeyType="search"
+            value={query}
+            style={styles.search}
+          />
+          <Pressable
+            accessibilityLabel="検索する"
+            accessibilityRole="button"
+            disabled={searching}
+            onPress={search}
+            style={({ pressed }) => [styles.searchButton, pressed && styles.searchButtonPressed]}
+          >
+            <Svg height="100%" pointerEvents="none" preserveAspectRatio="none" style={styles.searchGradient} viewBox="0 0 100 100" width="100%">
+              <Defs>
+                <LinearGradient id="searchButtonGradient" x1="0" x2="1" y1="0" y2="1">
+                  <Stop offset="0" stopColor="#FF8C8C" />
+                  <Stop offset="0.45" stopColor="#DE7ECD" />
+                  <Stop offset="1" stopColor={colors.navAccent} />
+                </LinearGradient>
+              </Defs>
+              <Rect fill="url(#searchButtonGradient)" height="100" rx="12" width="100" />
+            </Svg>
+            <Ionicons color={colors.background} name="search" size={21} />
+          </Pressable>
+        </View>
         {message && <Text style={styles.message}>{message}</Text>}
         {results.length > 0 && (
           <Text style={styles.resultCount}>検索結果 {results.length}件</Text>
@@ -144,7 +166,11 @@ export function AddBookScreen({
 
 const styles = StyleSheet.create({
   content: { gap: 14, padding: 24, paddingBottom: 110 },
-  search: { height: 52, marginTop: 8, width: '100%' },
+  searchRow: { marginTop: 8, position: 'relative' },
+  search: { height: 52, paddingRight: 58, width: '100%' },
+  searchButton: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 12, height: 40, justifyContent: 'center', overflow: 'hidden', position: 'absolute', right: 6, top: 6, width: 40 },
+  searchGradient: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
+  searchButtonPressed: { opacity: 0.72, transform: [{ scale: 0.94 }] },
   message: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
   resultCount: { color: colors.text, fontSize: 16, fontWeight: '700', marginTop: 8 },
   result: {
