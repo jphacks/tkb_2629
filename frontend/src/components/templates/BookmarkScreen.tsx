@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { getBook, getPageReview, reviewAnalysisLabel, savePageReview, setReviewVisibility, type Book, type PageReview, type ReviewVisibility } from '../../lib/api';
+import { getBook, getPageReview, reviewAnalysisLabel, savePageReview, setReviewSpoilers, setReviewVisibility, type Book, type PageReview, type ReviewVisibility } from '../../lib/api';
 import { colors } from '../../theme/colors';
 import { ActionButton } from '../molecules/ActionButton';
 import { BackButton } from '../molecules/BackButton';
@@ -49,6 +49,7 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
   const translateY = useRef(new Animated.Value(0)).current;
   const contentHeight = useRef(720);
   const [visibility, setVisibility] = useState<ReviewVisibility>('private');
+  const [containsSpoilers, setContainsSpoilers] = useState(true);
   const savedDraft = useRef<PageReview | null>(null);
 
   useEffect(() => {
@@ -81,6 +82,9 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
 
   const book = bookState.status === 'success' ? bookState.book : null;
   const canEdit = book?.reading_status === 'reading' && book.latest_iteration === iteration;
+  const analysisReview = result ?? existing;
+  const analysisLabel = analysisReview && !(analysisReview.analysis_status === 'completed' && analysisReview.source === 'jev')
+    ? reviewAnalysisLabel(analysisReview) : undefined;
 
   useEffect(() => {
     if (!book) {
@@ -91,6 +95,7 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
     setExisting(null);
     setThoughts('');
     setVisibility('private');
+    setContainsSpoilers(true);
     savedDraft.current = null;
     setError(null);
     if (!page.trim()) return;
@@ -105,6 +110,7 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
           setExisting(review);
           setThoughts(review?.review_text ?? '');
           setVisibility(review?.visibility ?? 'private');
+          setContainsSpoilers(review?.contains_spoilers ?? true);
           setLoaded(true);
         }
       }).catch((reason: unknown) => {
@@ -136,6 +142,16 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
       let saved = savedDraft.current ?? existing;
       if (!saved || saved.review_text !== text) {
         saved = await savePageReview(bookId, Number(page), iteration, text);
+        savedDraft.current = saved;
+      }
+      if (saved.contains_spoilers !== containsSpoilers) {
+        try {
+          await setReviewSpoilers(bookId, Number(page), iteration, containsSpoilers);
+        } catch (reason) {
+          const detail = reason instanceof Error ? reason.message : 'ネタバレ設定の保存に失敗しました。';
+          throw new Error(`感想本文は保存済みですが、ネタバレ設定を保存できませんでした。設定を確認してもう一度保存してください。\n${detail}`);
+        }
+        saved = { ...saved, contains_spoilers: containsSpoilers };
         savedDraft.current = saved;
       }
       if (saved.visibility !== visibility) {
@@ -174,6 +190,7 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
     setExisting(null);
     setThoughts('');
     setVisibility('private');
+    setContainsSpoilers(true);
     savedDraft.current = null;
     setResult(null);
     setCompleted(false);
@@ -221,15 +238,18 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
               readOnly={!canEdit}
               visibility={visibility}
               onVisibilityChange={setVisibility}
+              containsSpoilers={containsSpoilers}
+              onSpoilersChange={setContainsSpoilers}
               error={error}
               color={result?.color_code ?? existing?.color_code}
-              analysisLabel={result ? reviewAnalysisLabel(result) : existing ? reviewAnalysisLabel(existing) : undefined}
+              analysisLabel={analysisLabel}
               onPageChange={(value) => {
                 setPage(value);
                 setLoaded(false);
                 setExisting(null);
                 setThoughts('');
                 setVisibility('private');
+                setContainsSpoilers(true);
                 savedDraft.current = null;
                 setError(null);
               }}
@@ -250,7 +270,7 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
             <Ionicons color={result.color_code} name="checkmark-circle" size={56} />
             <Text style={styles.successTitle}>しおりを{existing ? '更新' : '追加'}しました</Text>
             <Text style={styles.message}>「{book.title}」 {result.page_number}ページ・{iteration}回目</Text>
-            <Text style={styles.message}>{reviewAnalysisLabel(result)}</Text>
+            {analysisLabel && <Text style={styles.message}>{analysisLabel}</Text>}
             <View style={styles.successActions}>
               <ActionButton label="本の詳細へ" onPress={() => onNavigate({ name: 'book-detail', bookId })} />
               <ActionButton label="続けて他のページの感想も書く" secondary onPress={choosePage} />
