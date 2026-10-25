@@ -46,6 +46,7 @@ const review = (id = 7, page = 42) => ({
   review_text: 'Saved text', color_code: '#123456',
   created_at: '2026-10-25T04:00:00Z', updated_at: '2026-10-25T04:00:00Z',
   analysis_status: 'completed', source: 'jev',
+  visibility: 'private',
 });
 
 test('home renders with the current emotion helpers and uses the thought color or neutral gray', () => {
@@ -132,6 +133,7 @@ function screenHarness() {
       getBook: (...args) => request('book', args),
       getPageReview: (...args) => request('get', args),
       savePageReview: (...args) => request('put', args),
+      setReviewVisibility: (...args) => request('visibility', args),
       reviewAnalysisLabel: (review) => `${review.analysis_status}:${review.source}`,
     },
   };
@@ -209,8 +211,8 @@ async function openPage(h, existing = null, page = '42') {
 test('API sends explicit book/page/iteration, trims text, and only treats JSON 404 as absence', async () => {
   const calls = [];
   let response;
-  const api = load('src/lib/api.ts', {}, {
-    fetch: async (...args) => { calls.push(args); return response.clone(); },
+  const api = load('src/lib/api.ts', {
+    './auth': { authenticatedFetch: async (...args) => { calls.push(args); return response.clone(); } },
   });
   response = new Response(JSON.stringify(review()), { headers: { 'content-type': 'application/json' } });
   assert.equal((await api.savePageReview(7, 42, 2, '  text  ')).color_code, '#123456');
@@ -499,6 +501,16 @@ test('swipe uses current form callbacks, is blocked while busy, and never perfor
   render();
   assert.equal(gestures.onMoveShouldSetPanResponder(null, { dy: -130, dx: 0 }), false);
   const ready = render({ loaded: true });
+  const visibilitySwitch = nodes(ready).find((node) => node.props?.accessibilityLabel === '他の読者に公開する');
+  assert.equal(visibilitySwitch.props.value, false);
+  assert.equal(visibilitySwitch.props.disabled, false);
+  assert.equal(visibilitySwitch.props.style.transform[0].scale, 1.2);
+  let visibilityValue;
+  const publicTree = render({ visibility: 'public', onVisibilityChange: (value) => { visibilityValue = value; } });
+  const publicSwitch = nodes(publicTree).find((node) => node.props?.accessibilityLabel === '他の読者に公開する');
+  assert.equal(publicSwitch.props.value, true);
+  publicSwitch.props.onValueChange(false);
+  assert.equal(visibilityValue, 'private');
   const swipeArea = nodes(ready).find((node) => node.props?.accessibilityLabel === 'しおりのスワイプ領域');
   assert.equal(swipeArea.props.style.height, 104);
   assert.equal(swipeArea.props.style.left, 0);
@@ -510,15 +522,20 @@ test('swipe uses current form callbacks, is blocked while busy, and never perfor
   assert.equal(gestures.onMoveShouldSetPanResponder(null, { dy: -130, dx: 0 }), true);
   assert.equal(gestures.onMoveShouldSetPanResponderCapture(null, { dy: -130, dx: 0 }), true);
   assert.equal(gestures.onMoveShouldSetPanResponder(null, { dy: -10, dx: 30 }), false);
+  assert.equal(gestures.onMoveShouldSetPanResponder(null, { dy: -24, dx: 0 }), false);
+  assert.equal(gestures.onMoveShouldSetPanResponder(null, { dy: -25, dx: 0 }), true);
+  assert.equal(gestures.onMoveShouldSetPanResponder(null, { dy: -30, dx: 25 }), false);
   assert.equal(gestures.onMoveShouldSetPanResponder(null, { dy: 20, dx: 0 }), false);
   gestures.onPanResponderGrant();
-  gestures.onPanResponderRelease(null, { dy: -63, vy: 0 });
+  gestures.onPanResponderRelease(null, { dy: -103, vy: 0 });
   assert.equal(submitted, 0);
   assert.equal(springs, 1);
-  gestures.onPanResponderRelease(null, { dy: -64, vy: 0 });
+  gestures.onPanResponderRelease(null, { dy: -104, vy: 0 });
   assert.equal(submitted, 1);
   assert.equal(springs, 1);
   render({ busy: true });
+  const busySwitch = nodes(render({ busy: true })).find((node) => node.props?.accessibilityLabel === '他の読者に公開する');
+  assert.equal(busySwitch.props.disabled, true);
   assert.equal(gestures.onMoveShouldSetPanResponder(null, { dy: -130, dx: 0 }), false);
   gestures.onPanResponderRelease(null, { dy: -150 });
   assert.equal(submitted, 1);
@@ -529,18 +546,18 @@ test('swipe uses current form callbacks, is blocked while busy, and never perfor
   assert.equal(submitted, 21);
   assert.equal(springs, 1);
   gestures.onPanResponderRelease(null, { dy: -24, vy: -0.6 });
-  assert.equal(submitted, 31);
+  assert.equal(submitted, 21);
   gestures.onPanResponderRelease(null, { dy: -23, vy: -1 });
-  assert.equal(submitted, 31);
-  assert.equal(springs, 2);
-  render({ thoughts: '' });
-  gestures.onPanResponderRelease(null, { dy: -80, vy: 0 });
+  assert.equal(submitted, 21);
   assert.equal(springs, 3);
-  assert.equal(submitted, 41);
+  render({ thoughts: '' });
+  gestures.onPanResponderRelease(null, { dy: -104, vy: 0 });
+  assert.equal(springs, 4);
+  assert.equal(submitted, 31);
   const readOnlyTree = render({ readOnly: true });
   assert.equal(gestures.onMoveShouldSetPanResponder(null, { dy: -130, dx: 0 }), false);
   gestures.onPanResponderRelease(null, { dy: -150 });
-  assert.equal(submitted, 41);
+  assert.equal(submitted, 31);
   assert.equal(nodes(readOnlyTree).find((node) => node.props?.accessibilityLabel === 'しおりのスワイプ領域'), undefined);
   assert.equal(button(readOnlyTree, 'しおりを追加する'), undefined);
   assert.equal(find(readOnlyTree, 'ThoughtsField').props.editable, false);
@@ -557,42 +574,44 @@ test('swipe uses current form callbacks, is blocked while busy, and never perfor
     nativeEvent: { contentOffset: { y: offset }, contentSize: { height: content }, layoutMeasurement: { height: viewport } },
   });
   start();
-  move(-80); end();
-  assert.equal(submitted, 41);
+  move(-104); end();
+  assert.equal(submitted, 31);
   scroll.props.onLayout({ nativeEvent: { layout: { height: 400 } } });
   scroll.props.onContentSizeChange(320, 1000);
   sendScroll(200);
   start();
   sendScroll(600);
-  move(-80); end();
-  assert.equal(submitted, 41, 'scrolling to the bottom must not save');
-  start(); move(-80); end();
-  assert.equal(submitted, 51);
+  move(-104); end();
+  assert.equal(submitted, 31, 'scrolling to the bottom must not save');
+  start(); move(-103); end();
+  assert.equal(submitted, 31, 'below the new threshold must not save');
+  start(); move(-104); end();
+  assert.equal(submitted, 41);
   sendScroll(300);
-  start(); move(-80); end();
-  assert.equal(submitted, 51);
+  start(); move(-104); end();
+  assert.equal(submitted, 41);
   sendScroll(0, 300, 400);
-  start(); move(-80); end();
-  assert.equal(submitted, 61, 'content that fits is already at the bottom');
+  start(); move(-104); end();
+  assert.equal(submitted, 51, 'content that fits is already at the bottom');
   start(); move(-40); end();
-  assert.equal(submitted, 61, 'short swipes must not save');
-  start(); move(-80); outer.props.onTouchCancelCapture(); end();
-  assert.equal(submitted, 61, 'cancelled touches must not save');
+  assert.equal(submitted, 51, 'short swipes must not save');
+  start(); move(-104); outer.props.onTouchCancelCapture(); end();
+  assert.equal(submitted, 51, 'cancelled touches must not save');
   render({ busy: true });
-  start(); move(-80); end();
-  assert.equal(submitted, 61);
+  start(); move(-104); end();
+  assert.equal(submitted, 51);
   render({ busy: false, readOnly: true });
-  start(); move(-80); end();
-  assert.equal(submitted, 61);
+  start(); move(-104); end();
+  assert.equal(submitted, 51);
   keyboardListeners.keyboardDidHide();
   const fixed = render({ readOnly: false, busy: false });
   assert.equal(find(fixed, 'ScrollView').props.scrollEnabled, false);
   const fixedOuter = find(fixed, 'AnimatedView');
   sendScroll(0, 1000, 400);
   fixedOuter.props.onTouchStartCapture({ nativeEvent: { pageX: 100, pageY: 400 } });
-  fixedOuter.props.onTouchMoveCapture({ nativeEvent: { pageX: 100, pageY: 320 } });
+  fixedOuter.props.onTouchMoveCapture({ nativeEvent: { pageX: 100, pageY: 296 } });
   fixedOuter.props.onTouchEndCapture();
-  assert.equal(submitted, 71, 'with keyboard hidden, the full card can swipe without internal scrolling');
+  assert.equal(submitted, 61, 'with keyboard hidden, the full card can swipe without internal scrolling');
 });
 
 test('automatic page lookup ignores stale responses and never copies another page into the editor', async () => {
@@ -623,12 +642,12 @@ test('automatic page lookup ignores stale responses and never copies another pag
 
   test('list API fetches all pages and analysis labels distinguish AI, mock and failed analysis', async () => {
     const urls = [];
-    const api = load('src/lib/api.ts', {}, {
-      fetch: async (url) => {
+    const api = load('src/lib/api.ts', {
+      './auth': { authenticatedFetch: async (url) => {
         urls.push(url);
         const items = urls.length === 1 ? Array.from({ length: 100 }, () => review()) : [review(7, 150)];
         return new Response(JSON.stringify(items), { headers: { 'content-type': 'application/json' } });
-      },
+      } },
     });
     const items = await api.getBookReviews(7, 2);
     assert.equal(items.length, 101);
@@ -638,6 +657,92 @@ test('automatic page lookup ignores stale responses and never copies another pag
     assert.equal(api.reviewAnalysisLabel({ ...review(), source: 'mock' }), 'AI未接続・仮の色');
     assert.match(api.reviewAnalysisLabel({ ...review(), analysis_status: 'failed', source: null }), /失敗/);
   });
+
+test('visibility defaults private, loads existing public setting and resets between pages', async () => {
+    const h = screenHarness();
+    await openBook(h);
+    let card = await openPage(h);
+    assert.equal(card.props.visibility, 'private');
+    card.props.onVisibilityChange('public');
+    assert.equal(find(h.render(), 'BookmarkCard').props.visibility, 'public');
+    card = await openPage(h, { ...review(), visibility: 'public' }, '43');
+    assert.equal(card.props.visibility, 'public');
+    card = await openPage(h, null, '44');
+    assert.equal(card.props.visibility, 'private');
+});
+
+test('visibility save failure retains draft and retries PATCH without resaving text or animating success', async () => {
+    const h = screenHarness();
+    await openBook(h);
+    let card = await openPage(h);
+    card.props.onThoughtsChange('New note');
+    card.props.onVisibilityChange('public');
+    card = find(h.render(), 'BookmarkCard');
+    card.props.onSubmit();
+    h.requests.at(-1).resolve({ ...review(), review_text: 'New note' });
+    await flush();
+    assert.equal(h.requests.at(-1).kind, 'visibility');
+    assert.deepEqual(h.requests.at(-1).args, [7, 42, 2, 'public']);
+    assert.equal(h.animations.length, 0);
+    assert.equal(find(h.render(), 'BookmarkCard').props.busy, true);
+    h.requests.at(-1).reject(new Error('Offline'));
+    await flush();
+    card = find(h.render(), 'BookmarkCard');
+    assert.match(card.props.error, /本文は保存済み/);
+    assert.match(card.props.error, /Offline/);
+    assert.equal(card.props.busy, false);
+    assert.equal(card.props.thoughts, 'New note');
+    assert.equal(card.props.visibility, 'public');
+    card.props.onSubmit();
+    card.props.onSubmit();
+    assert.equal(h.requests.filter((r) => r.kind === 'put').length, 1);
+    assert.equal(h.requests.filter((r) => r.kind === 'visibility').length, 2);
+    h.requests.at(-1).resolve();
+    await flush();
+    assert.equal(h.animations.length, 1);
+    h.animations[0].callback({ finished: true });
+    button(h.render(), '続けて他のページの感想も書く').props.onPress();
+    assert.equal(find(h.render(), 'BookmarkCard').props.visibility, 'private');
+});
+
+test('existing public note can be made private and unchanged setting does not send PATCH', async () => {
+    const h = screenHarness();
+    await openBook(h);
+    let card = await openPage(h, { ...review(), visibility: 'public' });
+    card.props.onVisibilityChange('private');
+    card = find(h.render(), 'BookmarkCard');
+    card.props.onSubmit();
+    assert.deepEqual(h.requests.at(-1).args, [7, 42, 2, 'private']);
+    assert.equal(h.requests.filter((r) => r.kind === 'put').length, 0);
+    h.requests.at(-1).resolve();
+    await flush();
+    assert.equal(h.animations.length, 1);
+    const other = screenHarness();
+    await openBook(other);
+    let unchanged = await openPage(other, review());
+    unchanged.props.onSubmit();
+    await flush();
+    assert.equal(other.requests.filter((r) => r.kind === 'put').length, 0);
+    assert.equal(other.requests.filter((r) => r.kind === 'visibility').length, 0);
+    assert.equal(other.animations.length, 1);
+});
+
+test('visibility API authenticates PATCH, validates returned setting and propagates errors', async () => {
+    const calls = [];
+    let response = new Response('{"visibility":"public"}', { headers: { 'content-type': 'application/json' } });
+    const api = load('src/lib/api.ts', {
+      './auth': { authenticatedFetch: async (...args) => { calls.push(args); return response.clone(); } },
+    });
+    await api.setReviewVisibility(7, 42, 2, 'public');
+    assert.ok(calls[0][0].endsWith('/books/7/pages/42/review/visibility?iteration=2'));
+    assert.equal(calls[0][1].method, 'PATCH');
+    assert.deepEqual(JSON.parse(calls[0][1].body), { visibility: 'public' });
+    await assert.rejects(api.setReviewVisibility(7, 42, 2, 'private'), /一致しません/);
+    for (const status of [401, 404, 422, 503]) {
+      response = new Response('{"detail":"Failure"}', { status, headers: { 'content-type': 'application/json' } });
+      await assert.rejects(api.setReviewVisibility(7, 42, 2, 'public'), (error) => error.status === status);
+    }
+});
 
   test('own bookmarks map real text, per-review colors and current page instead of sample bookmarks', () => {
     const { BookmarkListCard } = load('src/components/organisms/BookmarkListCard.tsx', {

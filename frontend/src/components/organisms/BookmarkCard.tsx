@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ComponentRef } from 'react';
-import { Animated, Keyboard, PanResponder, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Keyboard, PanResponder, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import type { PanResponderCallbacks } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { colors } from '../../theme/colors';
+import type { ReviewVisibility } from '../../lib/api';
 import { PageField } from '../molecules/PageField';
 import { ActionButton } from '../molecules/ActionButton';
 import { ThoughtsField } from '../molecules/ThoughtsField';
@@ -25,7 +26,12 @@ type BookmarkCardProps = {
   onThoughtsChange: (value: string) => void;
   onRetry: () => void;
   onSubmit: () => void;
+  visibility: ReviewVisibility;
+  onVisibilityChange: (value: ReviewVisibility) => void;
 };
+
+const SWIPE_START_DISTANCE = 24;
+const SWIPE_SAVE_DISTANCE = 104;
 
 export function BookmarkCard(props: BookmarkCardProps) {
   const {
@@ -48,9 +54,9 @@ export function BookmarkCard(props: BookmarkCardProps) {
   }, []);
   const bottomSwipe = useRef(false);
   const touch = useRef({ x: 0, y: 0, dy: 0 });
-  function finishSwipe(dy: number, vy = 0) {
+  function finishSwipe(dy: number) {
     if (!latest.current.loaded || latest.current.busy || latest.current.readOnly) return;
-    const reached = dy <= -64 || (dy <= -24 && vy <= -0.6);
+    const reached = dy <= -SWIPE_SAVE_DISTANCE;
     const length = Array.from(latest.current.thoughts.trim()).length;
     if (!reached || length < 1 || length > 140) {
       Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
@@ -60,10 +66,10 @@ export function BookmarkCard(props: BookmarkCardProps) {
   const gestures: PanResponderCallbacks = {
       onMoveShouldSetPanResponder: (_, gestureState) =>
         latest.current.loaded && !latest.current.busy && !latest.current.readOnly &&
-        gestureState.dy < -8 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+        gestureState.dy < -SWIPE_START_DISTANCE && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.5,
       onMoveShouldSetPanResponderCapture: (_, gestureState) =>
         latest.current.loaded && !latest.current.busy && !latest.current.readOnly &&
-        gestureState.dy < -8 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+        gestureState.dy < -SWIPE_START_DISTANCE && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.5,
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => {
         bottomSwipe.current = false;
@@ -71,11 +77,11 @@ export function BookmarkCard(props: BookmarkCardProps) {
       },
       onPanResponderMove: (_, gestureState) => {
         if (!latest.current.busy && !latest.current.readOnly && gestureState.dy < 0) {
-          translateY.setValue(gestureState.dy);
+          translateY.setValue(Math.min(0, gestureState.dy + SWIPE_START_DISTANCE));
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        finishSwipe(gestureState.dy, gestureState.vy);
+        finishSwipe(gestureState.dy);
       },
       onPanResponderTerminate: () => {
         Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
@@ -104,9 +110,9 @@ export function BookmarkCard(props: BookmarkCardProps) {
         if (!bottomSwipe.current || latest.current.busy || latest.current.readOnly) return;
         const dx = event.nativeEvent.pageX - touch.current.x;
         const dy = event.nativeEvent.pageY - touch.current.y;
-        if (dy < -8 && Math.abs(dy) > Math.abs(dx)) {
+        if (dy < -SWIPE_START_DISTANCE && Math.abs(dy) > Math.abs(dx) * 1.5) {
           touch.current.dy = dy;
-          translateY.setValue(dy);
+          translateY.setValue(dy + SWIPE_START_DISTANCE);
         } else if (touch.current.dy !== 0) {
           touch.current.dy = 0;
           translateY.setValue(0);
@@ -175,13 +181,25 @@ export function BookmarkCard(props: BookmarkCardProps) {
             />
             {!loaded && !error && <Text style={styles.note}>{page.trim() ? 'ページの感想を確認しています。' : 'ページを入力すると、保存済みの感想を自動で読み込みます。'}</Text>}
             <ThoughtsField onChangeText={onThoughtsChange} editable={loaded && !busy && !readOnly} value={thoughts} />
+            {loaded && (!readOnly || updating) && (
+              <View style={styles.visibilityRow} onTouchStart={() => { bottomSwipe.current = false; }}>
+                <Text style={styles.note}>他の読者に公開する</Text>
+                <Switch
+                  style={styles.visibilitySwitch}
+                  accessibilityLabel="他の読者に公開する"
+                  value={props.visibility === 'public'}
+                  disabled={busy || readOnly}
+                  onValueChange={(value) => props.onVisibilityChange(value ? 'public' : 'private')}
+                />
+              </View>
+            )}
             {loaded && readOnly && !updating && <Text style={styles.note}>このページにはしおりがありません。</Text>}
             {color && <View style={[styles.savedColor, { backgroundColor: color }]} />}
             {analysisLabel && <Text style={styles.note}>{analysisLabel}</Text>}
             {loaded && !readOnly && (
               <>
                 <Text style={styles.note}>{Array.from(thoughts.trim()).length} / 140文字</Text>
-                <Text style={styles.note}>ネタバレ設定・他の人への公開は未対応です。</Text>
+                <Text style={styles.note}>公開への同意を保存します。他の読者への表示は準備中です。</Text>
                 <Text style={styles.swipeHint}>{busy ? '保存しています…' : `↑スワイプして${updating ? '更新' : '追加'}↑`}</Text>
                 <ActionButton label={busy ? '保存中…' : updating ? 'しおりを更新する' : 'しおりを追加する'} onPress={busy ? undefined : props.onSubmit} />
               </>
@@ -227,6 +245,8 @@ const styles = StyleSheet.create({
   colorTint: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0, opacity: 0.2 },
   scrollContent: { paddingBottom: 120 },
   note: { color: colors.text, fontSize: 13 },
+  visibilityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, gap: 12 },
+  visibilitySwitch: { transform: [{ scale: 1.2 }], marginHorizontal: 6 },
   savedColor: { height: 18, borderRadius: 4 },
   title: { color: colors.text, fontSize: 24, fontWeight: '700', marginBottom: 12, marginTop: 12 },
   formFields: { gap: 20 },

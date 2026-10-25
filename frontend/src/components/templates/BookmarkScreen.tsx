@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { getBook, getPageReview, reviewAnalysisLabel, savePageReview, type Book, type PageReview } from '../../lib/api';
+import { getBook, getPageReview, reviewAnalysisLabel, savePageReview, setReviewVisibility, type Book, type PageReview, type ReviewVisibility } from '../../lib/api';
 import { colors } from '../../theme/colors';
 import { ActionButton } from '../molecules/ActionButton';
 import { BackButton } from '../molecules/BackButton';
@@ -48,6 +48,8 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
   const mounted = useRef(false);
   const translateY = useRef(new Animated.Value(0)).current;
   const contentHeight = useRef(720);
+  const [visibility, setVisibility] = useState<ReviewVisibility>('private');
+  const savedDraft = useRef<PageReview | null>(null);
 
   useEffect(() => {
     mounted.current = true;
@@ -88,6 +90,8 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
     setLoaded(false);
     setExisting(null);
     setThoughts('');
+    setVisibility('private');
+    savedDraft.current = null;
     setError(null);
     if (!page.trim()) return;
     const pageNumber = Number(page.trim());
@@ -100,6 +104,7 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
         if (active) {
           setExisting(review);
           setThoughts(review?.review_text ?? '');
+          setVisibility(review?.visibility ?? 'private');
           setLoaded(true);
         }
       }).catch((reason: unknown) => {
@@ -128,7 +133,21 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
     setError(null);
     Keyboard.dismiss();
     try {
-      const saved = await savePageReview(bookId, Number(page), iteration, text);
+      let saved = savedDraft.current ?? existing;
+      if (!saved || saved.review_text !== text) {
+        saved = await savePageReview(bookId, Number(page), iteration, text);
+        savedDraft.current = saved;
+      }
+      if (saved.visibility !== visibility) {
+        try {
+          await setReviewVisibility(bookId, Number(page), iteration, visibility);
+        } catch (reason) {
+          const detail = reason instanceof Error ? reason.message : '公開設定の保存に失敗しました。';
+          throw new Error(`感想本文は保存済みですが、公開設定を保存できませんでした。設定を確認してもう一度保存してください。\n${detail}`);
+        }
+        saved = { ...saved, visibility };
+        savedDraft.current = saved;
+      }
       if (!mounted.current) {
         return;
       }
@@ -154,6 +173,8 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
     setLoaded(false);
     setExisting(null);
     setThoughts('');
+    setVisibility('private');
+    savedDraft.current = null;
     setResult(null);
     setCompleted(false);
     setError(null);
@@ -198,6 +219,8 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
               updating={existing !== null}
               busy={busy}
               readOnly={!canEdit}
+              visibility={visibility}
+              onVisibilityChange={setVisibility}
               error={error}
               color={result?.color_code ?? existing?.color_code}
               analysisLabel={result ? reviewAnalysisLabel(result) : existing ? reviewAnalysisLabel(existing) : undefined}
@@ -206,6 +229,8 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
                 setLoaded(false);
                 setExisting(null);
                 setThoughts('');
+                setVisibility('private');
+                savedDraft.current = null;
                 setError(null);
               }}
               onThoughtsChange={(value) => { setThoughts(value); setError(null); }}
