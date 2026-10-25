@@ -7,7 +7,11 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { ActionButton } from '../../components/molecules/ActionButton';
 import { BookCover } from '../../components/molecules/BookCover';
 import { ShadowInput } from '../../components/atoms/ShadowInput';
+import { SearchHistory } from '../../components/molecules/SearchHistory';
+import { useSearchHistory } from '../../lib/searchHistory';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
+import { PopularBooks } from '../../components/organisms/PopularBooks';
+import { EmotionRecommendations } from '../../components/organisms/EmotionRecommendations';
 import { BookmarkScreen } from '../../components/templates/BookmarkScreen';
 import {
   importGoogleBook,
@@ -28,6 +32,8 @@ type AddBookScreenProps = {
   subtitle?: string;
 };
 
+const genres = ['小説', 'ミステリー', 'SF', 'ファンタジー', 'エッセイ', '歴史', 'ビジネス', '科学'];
+
 export function AddBookScreen({
   onNavigate,
   activeRoute = 'bookshelf',
@@ -44,6 +50,7 @@ export function AddBookScreen({
   const [detailBookId, setDetailBookId] = useState<number | null>(null);
   const [bookmark, setBookmark] = useState<Extract<Route, { name: 'bookmark' }> | null>(null);
   const searchRequestId = useRef(0);
+  const history = useSearchHistory('catalog');
 
   // Shelf status on results is supplementary, so a failure here only hides it.
   useEffect(() => {
@@ -63,8 +70,8 @@ export function AddBookScreen({
     };
   }, []);
 
-  async function search() {
-    const normalizedQuery = query.trim();
+  async function search(value = query) {
+    const normalizedQuery = value.trim();
     if (!normalizedQuery) {
       setMessage('検索するタイトルを入力してください。');
       return;
@@ -73,6 +80,8 @@ export function AddBookScreen({
     searchRequestId.current = requestId;
     setSearching(true);
     setMessage(null);
+    setQuery(normalizedQuery);
+    void history.remember(normalizedQuery);
     try {
       const books = await searchGoogleBooks(normalizedQuery);
       if (requestId !== searchRequestId.current) {
@@ -114,6 +123,13 @@ export function AddBookScreen({
     } finally {
       setImportingId(null);
     }
+  }
+
+  function openDiscoveredBook(book: GoogleBook) {
+    const owned = ownedBooks[book.google_books_id];
+    setMessage(null);
+    if (owned) setDetailBookId(owned.id);
+    else setPreview(book);
   }
 
   const navigate: Navigate = (target) => {
@@ -175,7 +191,7 @@ export function AddBookScreen({
         <View style={styles.searchRow}>
           <ShadowInput
             onChangeText={setQuery}
-            onSubmitEditing={search}
+            onSubmitEditing={() => { void search(); }}
             placeholder="本のタイトルを検索"
             returnKeyType="search"
             value={query}
@@ -185,7 +201,7 @@ export function AddBookScreen({
             accessibilityLabel="検索する"
             accessibilityRole="button"
             disabled={searching}
-            onPress={search}
+            onPress={() => { void search(); }}
             style={({ pressed }) => [styles.searchButton, pressed && styles.searchButtonPressed]}
           >
             <Svg height="100%" pointerEvents="none" preserveAspectRatio="none" style={styles.searchGradient} viewBox="0 0 100 100" width="100%">
@@ -201,6 +217,31 @@ export function AddBookScreen({
             <Ionicons color={colors.background} name="search" size={21} />
           </Pressable>
         </View>
+        <View style={styles.genres}>
+          <Text style={styles.genreHeading}>ジャンルから探す</Text>
+          <Text style={styles.genreHint}>ジャンル名でキーワード検索します</Text>
+          <View style={styles.genreList}>
+            {genres.map((genre) => (
+              <Pressable
+                key={genre}
+                accessibilityLabel={`${genre}の本を探す`}
+                accessibilityRole="button"
+                onPress={() => { void search(genre); }}
+                style={({ pressed }) => [styles.genreButton, pressed && styles.searchButtonPressed]}
+              >
+                <Text style={styles.genreLabel}>{genre}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+        <PopularBooks onSelect={openDiscoveredBook} />
+        <EmotionRecommendations onSelect={openDiscoveredBook} />
+        <SearchHistory
+          items={history.items} error={history.error} loading={history.loading}
+          onSelect={(value) => { void search(value); }}
+          onRemove={(value) => { void history.remove(value); }}
+          onClear={() => { void history.clear(); }}
+        />
         {message && <Text style={styles.message}>{message}</Text>}
         {results.length > 0 && (
           <Text style={styles.resultCount}>検索結果 {results.length}件</Text>
@@ -270,6 +311,12 @@ const styles = StyleSheet.create({
   searchButton: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 12, height: 40, justifyContent: 'center', overflow: 'hidden', position: 'absolute', right: 6, top: 6, width: 40 },
   searchGradient: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
   searchButtonPressed: { opacity: 0.72, transform: [{ scale: 0.94 }] },
+  genres: { gap: 8 },
+  genreHeading: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  genreHint: { color: colors.textSecondary, fontSize: 12 },
+  genreList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  genreButton: { minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 22, backgroundColor: colors.backgroundSoft },
+  genreLabel: { color: colors.text, fontSize: 14, fontWeight: '600' },
   message: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 },
   resultCount: { color: colors.text, fontSize: 16, fontWeight: '700', marginTop: 8 },
   result: {

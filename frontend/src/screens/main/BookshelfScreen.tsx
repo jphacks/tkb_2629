@@ -5,6 +5,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BookCover } from '../../components/molecules/BookCover';
 import { ActionButton } from '../../components/molecules/ActionButton';
 import { ShadowInput } from '../../components/atoms/ShadowInput';
+import { SearchHistory } from '../../components/molecules/SearchHistory';
+import { useSearchHistory } from '../../lib/searchHistory';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
 import { loadCompletedShelf, matchesKeyword, matchingReview, reviewExcerpt, shelfMonth, type ShelfEntry } from '../../lib/bookshelf';
 import { formatDate } from '../../lib/readingStatus';
@@ -17,6 +19,13 @@ export function BookshelfScreen({ onNavigate }: { onNavigate: Navigate }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [requestVersion, setRequestVersion] = useState(0);
+  const history = useSearchHistory('bookshelf');
+
+  function confirmSearch(value = query) {
+    const term = value.trim();
+    setQuery(term);
+    if (term) void history.remember(term);
+  }
 
   useEffect(() => {
     let active = true;
@@ -62,9 +71,21 @@ export function BookshelfScreen({ onNavigate }: { onNavigate: Navigate }) {
           placeholder="キーワードで検索"
           value={query}
           onChangeText={setQuery}
+          onSubmitEditing={() => confirmSearch()}
+          returnKeyType="search"
           style={styles.search}
         />
         <Text style={styles.hint}>書名・著者・自分の感想から検索（空白区切りで絞り込み）</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="本棚を検索する"
+          onPress={() => confirmSearch()} style={styles.confirmSearch}>
+          <Text style={styles.searchLabel}>検索する</Text>
+        </Pressable>
+        <SearchHistory
+          items={history.items} error={history.error} loading={history.loading}
+          onSelect={confirmSearch}
+          onRemove={(value) => { void history.remove(value); }}
+          onClear={() => { void history.clear(); }}
+        />
         {loading && <Text style={styles.message}>本棚と過去の感想を読み込んでいます…</Text>}
         {error && (
           <View>
@@ -122,6 +143,8 @@ const styles = StyleSheet.create({
   addButton: { alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.72)', borderColor: 'rgba(255, 255, 255, 0.9)', borderRadius: 20, borderWidth: 1, height: 40, justifyContent: 'center', marginTop: 2, width: 40 },
   pressed: { opacity: 0.72, transform: [{ scale: 0.94 }] },
   search: { height: 52 },
+  confirmSearch: { minHeight: 44, alignSelf: 'flex-end', justifyContent: 'center', paddingHorizontal: 16 },
+  searchLabel: { color: colors.navAccent, fontSize: 14, fontWeight: '700' },
   hint: { color: colors.textSecondary, fontSize: 12, marginTop: 8, marginBottom: 20 },
   month: { color: colors.text, fontSize: 20, fontWeight: '700', marginBottom: 18 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginBottom: 30 },

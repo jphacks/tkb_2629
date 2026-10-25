@@ -58,6 +58,18 @@ class GoogleBookSearchResponse(BaseModel):
     items: list[GoogleBookResponse]
 
 
+class PopularBookResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    book: GoogleBookResponse
+    reader_count: int = Field(ge=1)
+
+
+class PopularBookListResponse(BaseModel):
+    items: list[PopularBookResponse]
+    limit: int
+
+
 class GoogleBookImport(BaseModel):
     google_books_id: str = Field(min_length=1, max_length=128)
 

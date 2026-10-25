@@ -6,6 +6,7 @@ from typing import Protocol
 
 from .application.errors import ExternalServiceError, ServiceUnavailable
 from .application.results import ReadingKey, ReadingReference
+from .domain.catalog import CatalogBook
 from .domain.errors import Conflict, InvalidInput, NotFound
 
 __all__ = [
@@ -17,10 +18,14 @@ __all__ = [
     "NotFound",
     "ExternalServiceError",
     "ServiceUnavailable",
+    "CatalogBook",
 ]
 
 
 class LibraryAccess(Protocol):
+    def owned_reading_ids(self, user_id: int) -> list[int]: ...
+    def discovery_candidates(self, user_id: int) -> dict[str, list[int]]: ...
+    def catalog_book(self, google_books_id: str) -> CatalogBook: ...
     def catalog_reading_keys(self, google_books_id: str) -> list[ReadingKey]: ...
     def resolve_reading(
         self, user_id: int, book_id: int, iteration: int | None

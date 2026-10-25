@@ -2,9 +2,27 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 
 from ..domain.reactions import ReactionKind
 from ..domain.values import ReviewVisibility
+
+
+@dataclass(frozen=True)
+class RecommendationBook:
+    google_books_id: str
+    title: str
+    author: str | None
+    total_pages: int
+    isbn_13: str | None
+    thumbnail_url: str | None
+
+
+@dataclass(frozen=True)
+class Recommendations:
+    items: list[RecommendationBook]
+    status: Literal["ready", "needs_reviews", "no_candidates"]
+    limit: int
 
 
 @dataclass(frozen=True)
