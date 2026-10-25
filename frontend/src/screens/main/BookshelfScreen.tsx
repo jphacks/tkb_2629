@@ -4,26 +4,48 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { BookCover } from '../../components/molecules/BookCover';
+import { ActionButton } from '../../components/molecules/ActionButton';
 import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
 import { getBooks, type Book } from '../../lib/api';
 import { colors } from '../../theme/colors';
 import type { Navigate } from '../types';
 
+type BookFilter = 'all' | 'reading' | 'completed';
+
+const filters: { label: string; value: BookFilter }[] = [
+  { label: 'すべて', value: 'all' },
+  { label: '読書中', value: 'reading' },
+  { label: '読了', value: 'completed' },
+];
+
 export function BookshelfScreen({ onNavigate }: { onNavigate: Navigate }) {
   const [books, setBooks] = useState<Book[]>([]);
-  const [bookFilter, setBookFilter] = useState('all');
+  const [bookFilter, setBookFilter] = useState<BookFilter>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [requestVersion, setRequestVersion] = useState(0);
 
   useEffect(() => {
     let active = true;
-    getBooks()
-      .then((items) => {
-        if (active) {
+    setLoading(true);
+    setError(null);
+    setBooks([]);
+    async function loadBooks() {
+      const items: Book[] = [];
+      let offset = 0;
+      while (active) {
+        const page = await getBooks(offset);
+        if (!active) return;
+        items.push(...page);
+        if (page.length < 100) {
           setBooks(items);
+          return;
         }
-      })
+        offset += page.length;
+      }
+    }
+    loadBooks()
       .catch((reason: unknown) => {
         if (active) {
           setError(reason instanceof Error ? reason.message : '本棚の取得に失敗しました。');
@@ -37,7 +59,16 @@ export function BookshelfScreen({ onNavigate }: { onNavigate: Navigate }) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [requestVersion]);
+
+  const filteredBooks = bookFilter === 'all'
+    ? books
+    : books.filter((book) => book.reading_status === bookFilter);
+  const emptyMessage = books.length === 0
+    ? '本棚にはまだ本がありません。'
+    : bookFilter === 'reading'
+      ? '読書中の本はありません。'
+      : '読了した本はありません。';
 
   return (
     <ScreenFrame
@@ -58,11 +89,7 @@ export function BookshelfScreen({ onNavigate }: { onNavigate: Navigate }) {
     >
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.filters}>
-          {[
-            { label: 'すべて', value: 'all' },
-            { label: '読書中', value: 'reading' },
-            { label: '読了', value: 'completed' },
-          ].map((option) => {
+          {filters.map((option) => {
             const isSelected = bookFilter === option.value;
 
             return (
@@ -92,12 +119,21 @@ export function BookshelfScreen({ onNavigate }: { onNavigate: Navigate }) {
           })}
         </View>
         {loading && <Text style={styles.message}>本棚を読み込んでいます…</Text>}
-        {error && <Text style={styles.message}>{error}</Text>}
-        {!loading && !error && books.length === 0 && (
-          <Text style={styles.message}>本棚にはまだ本がありません。</Text>
+        {error && (
+          <View>
+            <Text accessibilityRole="alert" style={styles.message}>{error}</Text>
+            <ActionButton label="再試行" onPress={() => {
+              setLoading(true);
+              setError(null);
+              setRequestVersion((version) => version + 1);
+            }} />
+          </View>
+        )}
+        {!loading && !error && filteredBooks.length === 0 && (
+          <Text style={styles.message}>{emptyMessage}</Text>
         )}
         <View style={styles.grid}>
-          {books.map((book) => (
+          {filteredBooks.map((book) => (
             <Pressable key={book.id} onPress={() => onNavigate({ name: 'book-detail', bookId: book.id })} style={styles.book}>
               <BookCover grid title={book.title} author={book.author ?? '著者不明'} />
               <Text numberOfLines={1} style={styles.bookTitle}>{book.title}</Text>
