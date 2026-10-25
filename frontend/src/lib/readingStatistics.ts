@@ -19,7 +19,7 @@ export async function loadReadingStatistics(isActive: () => boolean): Promise<Re
   let pages = 0;
   for (const book of books) {
     if (!Number.isSafeInteger(book.id) || book.id < 1 || ids.has(book.id)) {
-      throw new Error('読書の概要を確認できません。再度読み込んでください。');
+      throw new Error('読書の概要を確認できません\n再度読み込んでください');
     }
     ids.add(book.id);
     const iterations = await getIterations(book.id);
@@ -32,13 +32,13 @@ export async function loadReadingStatistics(isActive: () => boolean): Promise<Re
         !Number.isSafeInteger(iteration.current_page) || iteration.current_page < 0
       ))
     ) {
-      throw new Error('読書の記録を確認できません。再度読み込んでください。');
+      throw new Error('読書の記録を確認できません\n再度読み込んでください');
     }
     if (book.reading_status === 'reading') reading += 1;
     for (const iteration of iterations) {
       pages += iteration.current_page;
       if (!Number.isSafeInteger(pages)) {
-        throw new Error('読んだページ数を確認できません。再度読み込んでください。');
+        throw new Error('読んだページ数を確認できません\n再度読み込んでください');
       }
     }
   }
@@ -56,7 +56,7 @@ export function useReadingStatistics() {
     loadReadingStatistics(() => active).then((value) => {
       if (active && value) setStatistics(value);
     }).catch((reason: unknown) => {
-      if (active) setError(reason instanceof Error ? reason.message : '読書の概要の取得に失敗しました。');
+      if (active) setError(reason instanceof Error ? reason.message : '読書の概要の取得に失敗しました');
     });
     return () => { active = false; };
   }, [version]);

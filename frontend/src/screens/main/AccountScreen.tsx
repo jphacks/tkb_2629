@@ -24,7 +24,7 @@ export function AccountScreen({ onNavigate }: { onNavigate: Navigate }) {
     getPublicProfile().then((result) => {
       if (active) setProfile({ status: 'ready', name: result.public_display_name });
     }).catch((reason: unknown) => {
-      if (active) setProfile({ status: 'error', message: reason instanceof Error ? reason.message : '名前の取得に失敗しました。' });
+      if (active) setProfile({ status: 'error', message: reason instanceof Error ? reason.message : '名前の取得に失敗しました' });
     });
     return () => { active = false; };
   }, [version]);
@@ -50,7 +50,7 @@ export function AccountScreen({ onNavigate }: { onNavigate: Navigate }) {
           <Stat value={statistics === null ? '—' : String(statistics.reading)} label="読書中" />
           <Stat value={statistics === null ? '—' : String(statistics.pages)} label="読んだページ" />
         </GlassSurface>
-        <Text style={styles.statisticsNote}>再読も含めた記録です。ページ数は、しおりの保存や読了時に記録した進捗の合計です。</Text>
+        <Text style={styles.statisticsNote}>{"再読も含めた記録です\nページ数は、しおりの保存や読了時に記録した進捗の合計です"}</Text>
         {!statistics && !statisticsError && <Text style={styles.statisticsNote}>読書の概要を読み込み中…</Text>}
         {statisticsError && <View><Text accessibilityRole="alert" style={styles.error}>{statisticsError}</Text><ActionButton label="読書の概要を再読み込み" onPress={retryStatistics} /></View>}
         <Text style={styles.section}>アカウントメニュー</Text><GlassSurface style={styles.menu}><SettingsRow icon="♙" label="名前を設定・変更" onPress={() => onNavigate('public-profile')} /><SettingsRow icon="⚙" label="アカウント設定" onPress={() => onNavigate('account-settings')} /></GlassSurface>

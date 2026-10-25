@@ -146,9 +146,9 @@ export function BookmarkCard(props: BookmarkCardProps) {
               editable={!busy}
               value={page}
             />
-            {!loaded && !error && <Text style={styles.note}>{page.trim() ? 'ページの感想を確認しています。' : 'ページを入力すると、保存済みの感想を自動で読み込みます。'}</Text>}
+            {!loaded && !error && <Text style={styles.note}>{page.trim() ? 'ページの感想を確認しています' : 'ページを入力すると、保存済みの感想を自動で読み込みます'}</Text>}
             <ThoughtsField fillAvailableSpace onChangeText={onThoughtsChange} editable={loaded && !busy && !readOnly} value={thoughts} />
-            {loaded && readOnly && !updating && <Text style={styles.note}>このページにはしおりがありません。</Text>}
+            {loaded && readOnly && !updating && <Text style={styles.note}>{"このページにはしおりがありません"}</Text>}
             {analysisLabel && <Text style={styles.note}>{analysisLabel}</Text>}
             {loaded && !readOnly && (
               <>

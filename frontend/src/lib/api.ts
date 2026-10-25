@@ -40,7 +40,7 @@ export async function getEmotionRecommendations(): Promise<EmotionRecommendation
     !payload.items.every(isGoogleBook) ||
     new Set(payload.items.map((book) => book.google_books_id)).size !== payload.items.length
   ) {
-    throw new Error("おすすめの本の応答形式が正しくありません。");
+    throw new Error("おすすめの本の応答形式が正しくありません");
   }
   return payload;
 }
@@ -59,7 +59,7 @@ export async function getPopularBooks(): Promise<PopularBook[]> {
     )) ||
     new Set(payload.items.map((item) => item.book.google_books_id)).size !== payload.items.length
   ) {
-    throw new Error("人気の本の応答形式が正しくありません。");
+    throw new Error("人気の本の応答形式が正しくありません");
   }
   return payload.items;
 }
@@ -127,7 +127,7 @@ async function requestReviewReactions(
     (result.my_reaction !== null && result.counts[result.my_reaction] < 1) ||
     (changing && result.my_reaction !== kind)
   ) {
-    throw new Error("リアクションの取得結果を確認できません。再度読み込んでください。");
+    throw new Error("リアクションの取得結果を確認できません\n再度読み込んでください");
   }
   return result;
 }
@@ -161,7 +161,7 @@ export async function getPublicReviewDistribution(googleBooksId: string): Promis
     ) ||
     result.items.reduce((sum, item) => sum + item.review_count, 0) !== result.total_count
   ) {
-    throw new Error("しおりの分布の取得結果を確認できません。再度読み込んでください。");
+    throw new Error("しおりの分布の取得結果を確認できません\n再度読み込んでください");
   }
   return result;
 }
@@ -196,7 +196,7 @@ export async function getPublicReviews(googleBooksId: string, offset = 0, range?
       typeof item.created_at === "string" && typeof item.updated_at === "string"
     )
   ) {
-    throw new Error("公開感想の取得結果を確認できません。再度読み込んでください。");
+    throw new Error("公開感想の取得結果を確認できません\n再度読み込んでください");
   }
   return result;
 }
@@ -213,7 +213,7 @@ export async function getPublicProfile(): Promise<PublicProfile> {
     result.public_display_name.trim().length === 0 ||
     Array.from(result.public_display_name).length > 100
   ))) {
-    throw new Error("名前の取得結果を確認できません。再度読み込んでください。");
+    throw new Error("名前の取得結果を確認できません\n再度読み込んでください");
   }
   return result;
 }
@@ -226,7 +226,7 @@ export async function savePublicDisplayName(name: string): Promise<PublicProfile
   });
   const result = await parseResponse<PublicProfile>(response, "名前の保存に失敗しました");
   if (!result || result.public_display_name !== name.trim()) {
-    throw new Error("名前の保存結果が一致しません。再度確認してください。");
+    throw new Error("名前の保存結果が一致しません\n再度確認してください");
   }
   return result;
 }
@@ -264,7 +264,7 @@ export async function getEmotionComparison(bookId: number): Promise<EmotionCompa
         const value = summary.emotion_scores[key];
         return typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1;
       }))) {
-      throw new Error("感情分析の応答形式が正しくありません。");
+      throw new Error("感情分析の応答形式が正しくありません");
     }
   }
   return result;
@@ -312,8 +312,8 @@ async function parseResponse<T>(
 
   if (!isJson) {
     const reason = response.status >= 500
-      ? "APIサーバーでエラーが発生しました。"
-      : "JSONではない応答です。API接続先を確認してください。";
+      ? "APIサーバーでエラーが発生しました"
+      : "JSONではない応答です\nAPI接続先を確認してください";
     throw new Error(
       `${message}：${reason}\n${context}`,
     );
@@ -327,7 +327,7 @@ async function parseResponse<T>(
       throw error;
     }
     throw new Error(
-      `${message}：応答をJSONとして読み取れませんでした。\n${context}`,
+      `${message}：応答をJSONとして読み取れませんでした\n\n${context}`,
     );
   }
 
@@ -406,7 +406,7 @@ export async function getContinueReadingBooks(): Promise<Book[]> {
       (book.last_read_at !== null && (typeof book.last_read_at !== "string" || !Number.isFinite(Date.parse(book.last_read_at))))
     ))
   ) {
-    throw new Error("続きを読むの応答形式が正しくありません。");
+    throw new Error("続きを読むの応答形式が正しくありません");
   }
   return payload.items;
 }
@@ -503,7 +503,7 @@ export async function setReviewVisibility(
     response, "公開設定の保存に失敗しました",
   );
   if (result.visibility !== visibility) {
-    throw new Error("公開設定の保存結果が一致しません。再試行してください。");
+    throw new Error("公開設定の保存結果が一致しません\n再試行してください");
   }
 
 }
@@ -526,7 +526,7 @@ export async function setReviewSpoilers(
     response, "ネタバレ設定の保存に失敗しました",
   );
   if (result.contains_spoilers !== containsSpoilers) {
-    throw new Error("ネタバレ設定の保存結果が一致しません。再試行してください。");
+    throw new Error("ネタバレ設定の保存結果が一致しません\n再試行してください");
   }
 }
 

@@ -6,11 +6,11 @@ export function completedReadCount(books: Book[]): number {
       !Number.isSafeInteger(book.latest_iteration) || book.latest_iteration < 1 ||
       !['reading', 'completed'].includes(book.reading_status)
     ) {
-      throw new Error('読了冊数を確認できません。再度読み込んでください。');
+      throw new Error('読了冊数を確認できません\n再度読み込んでください');
     }
     const count = total + book.latest_iteration - (book.reading_status === 'reading' ? 1 : 0);
     if (!Number.isSafeInteger(count)) {
-      throw new Error('読了冊数を確認できません。再度読み込んでください。');
+      throw new Error('読了冊数を確認できません\n再度読み込んでください');
     }
     return count;
   }, 0);

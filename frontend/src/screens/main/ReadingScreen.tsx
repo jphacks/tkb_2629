@@ -30,7 +30,7 @@ export function ReadingScreen({ onNavigate }: { onNavigate: Navigate }) {
         if (active) {
           setState({
             status: 'error',
-            message: reason instanceof Error ? reason.message : '読書中の本の取得に失敗しました。',
+            message: reason instanceof Error ? reason.message : '読書中の本の取得に失敗しました',
           });
         }
       });
@@ -66,7 +66,7 @@ export function ReadingScreen({ onNavigate }: { onNavigate: Navigate }) {
         )}
         {state.status === 'success' && state.books.length === 0 && (
           <View style={styles.notice}>
-            <Text style={styles.message}>読書中の本はありません。本を追加すると、しおりを挟めます。</Text>
+            <Text style={styles.message}>{"読書中の本はありません\n本を追加すると、しおりを挟めます"}</Text>
             <ActionButton label="本を追加する" onPress={() => onNavigate('search')} />
           </View>
         )}

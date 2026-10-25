@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { BookmarkTimeline } from '../molecules/BookmarkTimeline';
+import { ReviewDistributionChart } from './ReviewDistributionChart';
 
 import { ActionButton } from '../molecules/ActionButton';
 import { getBook, getPublicReviewDistribution, type Book, type PublicReviewDistribution, type ReviewPageRange } from '../../lib/api';
@@ -34,7 +34,7 @@ export function CommunityBookmarks({ bookId, initialPage }: { bookId: number; in
         reviewBins(book.total_pages, 1, distribution);
         if (active) setState({ status: 'ready', book, distribution });
       } catch (reason: unknown) {
-        if (active) setState({ status: 'error', message: reason instanceof Error ? reason.message : 'しおりの分布の取得に失敗しました。' });
+        if (active) setState({ status: 'error', message: reason instanceof Error ? reason.message : 'しおりの分布の取得に失敗しました' });
       }
     }
     void load();
@@ -46,11 +46,6 @@ export function CommunityBookmarks({ bookId, initialPage }: { bookId: number; in
     setVersion((value) => value + 1);
   }
 
-  const bookmarks = state.status === 'ready' ? state.distribution.items.map((point) => ({
-    id: String(point.page_number), page: point.page_number, position: 0,
-    count: point.review_count, title: `${point.page_number}ページ`, note: '', date: '', author: '',
-  })) : [];
-
   return (
     <View style={styles.content}>
       {state.status === 'loading' && <Text style={styles.description}>しおりの分布を読み込んでいます…</Text>}
@@ -61,7 +56,7 @@ export function CommunityBookmarks({ bookId, initialPage }: { bookId: number; in
         </>
       )}
       {state.status === 'ready' && (
-        !state.book.google_books_id ? <Text style={styles.description}>手動登録の本はみんなのしおりに対応していません。</Text> : (
+        !state.book.google_books_id ? <Text style={styles.description}>{"手動登録の本はみんなのしおりに対応していません"}</Text> : (
           <>
             <Text style={styles.heading}><Text style={styles.pageNumber}>{state.distribution.total_count}</Text>件の公開しおり</Text>
             <View style={styles.searchGroup}>
@@ -74,7 +69,7 @@ export function CommunityBookmarks({ bookId, initialPage }: { bookId: number; in
                 <ActionButton label="感想を読む" secondary onPress={() => {
                   const value = Number(pageInput);
                   if (!/^\d+$/.test(pageInput) || !Number.isSafeInteger(value) || value < 1 || value > state.book.total_pages) {
-                    setPageError(`1〜${state.book.total_pages}の整数を入力してください。`);
+                    setPageError(`1〜${state.book.total_pages}の整数を入力してください`);
                     return;
                   }
                   setPageError(null);
@@ -84,13 +79,16 @@ export function CommunityBookmarks({ bookId, initialPage }: { bookId: number; in
             </View>
             {pageError && <Text accessibilityRole="alert" style={styles.error}>{pageError}</Text>}
             </View>
-            <BookmarkTimeline currentPage={state.book.total_pages} bookmarks={bookmarks}
-              accessibilityLabel="みんなのしおりの数直線"
-              selectedBookmark={selected?.start === selected?.end ? bookmarks.find((item) => item.page === selected?.start) : undefined}
-              onSelect={(id) => { const page = Number(id); setPageInput(id); setSelected({ start: page, end: page }); }} />
-            {state.distribution.total_count === 0 && <Text style={styles.description}>公開しおりはまだありません。</Text>}
+            <ReviewDistributionChart totalPages={state.book.total_pages} distribution={state.distribution}
+              range={selected ?? undefined}
+              onSelect={(range) => {
+                setSelected(range);
+                setPageInput(range.start === range.end ? String(range.start) : '');
+                setPageError(null);
+              }} />
+            {state.distribution.total_count === 0 && <Text style={styles.description}>{"公開しおりはまだありません"}</Text>}
             {selected && (
-              <ActionButton label="全ページのしおりを表示" secondary onPress={() => { setSelected(null); setPageInput(''); }} />
+              <ActionButton label="本全体に戻る" secondary onPress={() => { setSelected(null); setPageInput(''); setPageError(null); }} />
             )}
             <PublicReviewList key={`${version}:${selected?.start ?? 'all'}:${selected?.end ?? 'all'}`}
               bookId={bookId} range={selected ?? undefined} bookmarkLayout />

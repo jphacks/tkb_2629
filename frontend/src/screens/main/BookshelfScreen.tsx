@@ -35,7 +35,7 @@ export function BookshelfScreen({ onNavigate }: { onNavigate: Navigate }) {
     loadCompletedShelf(() => active).then((items) => {
       if (active && items) setEntries(items);
     }).catch((reason: unknown) => {
-      if (active) setError(reason instanceof Error ? reason.message : '本棚の取得に失敗しました。');
+      if (active) setError(reason instanceof Error ? reason.message : '本棚の取得に失敗しました');
     }).finally(() => {
       if (active) setLoading(false);
     });
@@ -95,12 +95,12 @@ export function BookshelfScreen({ onNavigate }: { onNavigate: Navigate }) {
         )}
         {!loading && !error && entries.length === 0 && (
           <View>
-            <Text style={styles.message}>読み終えた本はまだありません。</Text>
+            <Text style={styles.message}>{"読み終えた本はまだありません"}</Text>
             <ActionButton label="今読んでいる本へ" onPress={() => onNavigate('reading')} />
           </View>
         )}
         {!loading && !error && entries.length > 0 && groups.size === 0 && (
-          <Text style={styles.message}>キーワードに一致する本はありません。</Text>
+          <Text style={styles.message}>{"キーワードに一致する本はありません"}</Text>
         )}
         {Array.from(groups, ([month, items]) => (
           <View key={month}>

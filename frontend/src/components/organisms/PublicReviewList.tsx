@@ -62,7 +62,7 @@ export function PublicReviewList({ bookId, range, compact = false, bookmarkLayou
         setState({ status: 'ready', book, items: result.items, offset: result.items.length, hasMore: result.items.length === result.limit });
       } catch (reason: unknown) {
         if (epoch.current === request) {
-          setState({ status: 'error', message: reason instanceof Error ? reason.message : '公開感想の取得に失敗しました。' });
+          setState({ status: 'error', message: reason instanceof Error ? reason.message : '公開感想の取得に失敗しました' });
         }
       }
     }
@@ -98,7 +98,7 @@ export function PublicReviewList({ bookId, range, compact = false, bookmarkLayou
       });
     } catch (reason: unknown) {
       if (epoch.current === request) {
-        setMoreError(reason instanceof Error ? reason.message : '公開感想の追加取得に失敗しました。');
+        setMoreError(reason instanceof Error ? reason.message : '公開感想の追加取得に失敗しました');
       }
     } finally {
       if (epoch.current === request) {
@@ -188,9 +188,9 @@ export function PublicReviewList({ bookId, range, compact = false, bookmarkLayou
           <>
             {!compact && !bookmarkLayout && <ActionButton label="最新の情報に更新" onPress={refresh} secondary />}
             {!state.book.google_books_id ? (
-              <Text style={styles.description}>手動登録の本は公開感想の一覧に対応していません。</Text>
+              <Text style={styles.description}>{"手動登録の本は公開感想の一覧に対応していません"}</Text>
             ) : state.items.length === 0 ? (
-              <Text style={styles.description}>{range ? 'この範囲には公開感想がありません。' : '公開感想はまだありません。'}</Text>
+              <Text style={styles.description}>{range ? 'この範囲には公開感想がありません' : '公開感想はまだありません'}</Text>
             ) : null}
             {cards(false)}
             {bookmarkLayout && state.items.length > 0 && (

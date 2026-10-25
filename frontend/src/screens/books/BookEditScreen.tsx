@@ -10,7 +10,7 @@ export function BookEditScreen({ bookId, onNavigate }: { bookId: number; onNavig
     <ScreenFrame activeRoute="bookshelf" onNavigate={onNavigate} title="本の編集">
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>本の編集は準備中です</Text>
-        <Text style={styles.body}>書名・著者名などの変更と保存には、まだ対応していません。</Text>
+        <Text style={styles.body}>{"書名・著者名などの変更と保存には、まだ対応していません"}</Text>
         <ActionButton label="本の詳細へ戻る" onPress={() => onNavigate({ name: 'book-detail', bookId })} secondary />
       </ScrollView>
     </ScreenFrame>

@@ -35,14 +35,12 @@ export function BookPreviewScreen({
         <Text style={styles.body}>{book.author ?? '著者不明'}</Text>
         <Text style={styles.body}>{book.total_pages}ページ</Text>
         {owned && <Text style={styles.body}>{shelfStatusLabel(owned)}</Text>}
-        <Text style={styles.body}>
-          他の人が感想を書いたページの表示は準備中です。
-        </Text>
+        <Text style={styles.body}>{"他の人が感想を書いたページの表示は準備中です"}</Text>
         {message && <Text accessibilityRole="alert" style={styles.body}>{message}</Text>}
         {owned ? (
           <ActionButton label="追加済みの本を開く" onPress={() => onNavigate({ name: 'book-detail', bookId: owned.id })} />
         ) : (
-          <ActionButton label={adding ? '追加中…' : '本棚に追加する'} onPress={adding ? undefined : onAdd} />
+          <ActionButton bookAdd label={adding ? '追加中…' : '本棚に追加する'} onPress={adding ? undefined : onAdd} />
         )}
       </ScrollView>
     </ScreenFrame>

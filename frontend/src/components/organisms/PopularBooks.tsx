@@ -20,7 +20,7 @@ export function PopularBooks({ onSelect }: { onSelect: (book: GoogleBook) => voi
     getPopularBooks().then((books) => {
       if (active) setItems(books);
     }).catch((reason: unknown) => {
-      if (active) setError(reason instanceof Error ? reason.message : '人気の本を読み込めませんでした。');
+      if (active) setError(reason instanceof Error ? reason.message : '人気の本を読み込めませんでした');
     }).finally(() => {
       if (active) setLoading(false);
     });
@@ -38,7 +38,7 @@ export function PopularBooks({ onSelect }: { onSelect: (book: GoogleBook) => voi
           </Pressable>
         </View>
       ) : items.length === 0 ? (
-        <Text style={styles.hint}>まだ人気の本はありません。気になる本を検索して本棚に追加してみましょう。</Text>
+        <Text style={styles.hint}>{"まだ人気の本はありません\n気になる本を検索して本棚に追加してみましょう"}</Text>
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.list}>
           {items.map(({ book, reader_count }, index) => (

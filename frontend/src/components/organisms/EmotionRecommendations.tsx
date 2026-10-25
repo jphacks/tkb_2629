@@ -17,7 +17,7 @@ export function EmotionRecommendations({ onSelect }: { onSelect: (book: GoogleBo
     getEmotionRecommendations().then((value) => {
       if (active) setResult(value);
     }).catch((reason: unknown) => {
-      if (active) setError(reason instanceof Error ? reason.message : 'おすすめの本を読み込めませんでした。');
+      if (active) setError(reason instanceof Error ? reason.message : 'おすすめの本を読み込めませんでした');
     }).finally(() => {
       if (active) setLoading(false);
     });
@@ -35,9 +35,9 @@ export function EmotionRecommendations({ onSelect }: { onSelect: (book: GoogleBo
           </Pressable>
         </View>
       ) : result?.status === 'needs_reviews' ? (
-        <Text style={styles.hint}>感想を残すと、読書中の感情に近い本が見つかります。まずはジャンルや人気の本から探してみましょう。</Text>
+        <Text style={styles.hint}>{"感想を残すと、読書中の感情に近い本が見つかります\nまずはジャンルや人気の本から探してみましょう"}</Text>
       ) : result?.status === 'no_candidates' ? (
-        <Text style={styles.hint}>まだ感情の近い本が見つかりません。ジャンルや人気の本から探してみましょう。</Text>
+        <Text style={styles.hint}>{"まだ感情の近い本が見つかりません\nジャンルや人気の本から探してみましょう"}</Text>
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.list}>
           {result?.items.map((book) => (

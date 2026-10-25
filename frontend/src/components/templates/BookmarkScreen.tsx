@@ -19,7 +19,7 @@ export function BookmarkScreen({ bookId, iteration, initialPage, onNavigate, onB
     return (
       <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title="しおりを追加">
         <View style={styles.messageState}>
-          <Text style={styles.message}>「今読んでいる本」で本を選び、しおりボタンから記録してください。</Text>
+          <Text style={styles.message}>{"「今読んでいる本」で本を選び、しおりボタンから記録してください"}</Text>
           <ActionButton label="今読んでいる本を開く" onPress={() => onNavigate('reading')} />
         </View>
       </ScreenFrame>
@@ -73,7 +73,7 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
       if (active) {
         setBookState({
           status: 'error',
-          message: reason instanceof Error ? reason.message : '本の取得に失敗しました。',
+          message: reason instanceof Error ? reason.message : '本の取得に失敗しました',
         });
       }
     });
@@ -101,7 +101,7 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
     if (!page.trim()) return;
     const pageNumber = Number(page.trim());
     if (!/^\d+$/.test(page.trim()) || !Number.isSafeInteger(pageNumber) || pageNumber < 1 || pageNumber > book.total_pages) {
-      setError(`ページは1〜${book.total_pages}の整数を入力してください。`);
+      setError(`ページは1〜${book.total_pages}の整数を入力してください`);
       return;
     }
     const timer = setTimeout(() => {
@@ -117,7 +117,7 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
         }
       }).catch((reason: unknown) => {
         if (active) {
-          setError(reason instanceof Error ? reason.message : 'しおりの取得に失敗しました。');
+          setError(reason instanceof Error ? reason.message : 'しおりの取得に失敗しました');
         }
       });
     }, 350);
@@ -133,7 +133,7 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
     }
     const text = thoughts.trim();
     if (Array.from(text).length < 1 || Array.from(text).length > 140) {
-      setError('感想は前後の空白を除いて1〜140文字で入力してください。');
+      setError('感想は前後の空白を除いて1〜140文字で入力してください');
       return;
     }
     locked.current = true;
@@ -150,8 +150,8 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
         try {
           await setReviewSpoilers(bookId, Number(page), iteration, containsSpoilers);
         } catch (reason) {
-          const detail = reason instanceof Error ? reason.message : 'ネタバレ設定の保存に失敗しました。';
-          throw new Error(`感想本文は保存済みですが、ネタバレ設定を保存できませんでした。設定を確認してもう一度保存してください。\n${detail}`);
+          const detail = reason instanceof Error ? reason.message : 'ネタバレ設定の保存に失敗しました';
+          throw new Error(`感想本文は保存済みですが、ネタバレ設定を保存できませんでした\n設定を確認してもう一度保存してください\n\n${detail}`);
         }
         saved = { ...saved, contains_spoilers: containsSpoilers };
         savedDraft.current = saved;
@@ -160,8 +160,8 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
         try {
           await setReviewVisibility(bookId, Number(page), iteration, visibility);
         } catch (reason) {
-          const detail = reason instanceof Error ? reason.message : '公開設定の保存に失敗しました。';
-          throw new Error(`感想本文は保存済みですが、公開設定を保存できませんでした。設定を確認してもう一度保存してください。\n${detail}`);
+          const detail = reason instanceof Error ? reason.message : '公開設定の保存に失敗しました';
+          throw new Error(`感想本文は保存済みですが、公開設定を保存できませんでした\n設定を確認してもう一度保存してください\n\n${detail}`);
         }
         saved = { ...saved, visibility };
         savedDraft.current = saved;
@@ -178,7 +178,7 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
       });
     } catch (reason) {
       if (mounted.current) {
-        setError(reason instanceof Error ? reason.message : 'しおりの保存に失敗しました。');
+        setError(reason instanceof Error ? reason.message : 'しおりの保存に失敗しました');
         Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
         setBusy(false);
       }
@@ -253,7 +253,7 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
                   <Switch style={styles.settingSwitch} accessibilityLabel="ネタバレを含む" value={containsSpoilers}
                     disabled={busy || !canEdit} onValueChange={setContainsSpoilers} />
                 </View>
-                <Text style={styles.settingsNote}>{canEdit ? '設定はしおりの保存時に反映されます。' : '閲覧専用（編集不可）'}</Text>
+                <Text style={styles.settingsNote}>{canEdit ? '設定はしおりの保存時に反映されます' : '閲覧専用（編集不可）'}</Text>
                 <ActionButton label="閉じる" onPress={() => setSettingsOpen(false)} />
               </View>
             </View>

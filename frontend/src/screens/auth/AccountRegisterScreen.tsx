@@ -2,7 +2,7 @@ import { AuthForm } from './AuthForm';
 import { authPost } from '../../lib/auth';
 import type { Navigate } from '../types';
 export function AccountRegisterScreen({ onNavigate }: { onNavigate: Navigate }) {
-  return <AuthForm title="アカウント登録" description="名前はアカウントと公開した感想に使い、他の読者にも表示されます。本名でなくても構いません。パスワードは12〜128文字で設定してください。登録後にメール確認が必要です。"
+  return <AuthForm title="アカウント登録" description="名前はアカウントと公開した感想に使い、他の読者にも表示されます\n本名でなくても構いません\nパスワードは12〜128文字で設定してください\n登録後にメール確認が必要です"
     fields={[{ key: 'name', label: '名前（他の読者にも表示）' }, { key: 'email', label: 'メールアドレス', email: true },
       { key: 'password', label: 'パスワード', password: true }, { key: 'confirmation', label: 'パスワード（確認）', password: true }]}
     submitLabel="確認メールを送信" submit={async values => {

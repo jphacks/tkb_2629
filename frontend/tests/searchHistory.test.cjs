@@ -240,7 +240,7 @@ test('all genre buttons perform real keyword searches, populate the input and re
     assert.equal(h.remembered.at(-1), genre);
     h.requests.at(-1).resolve([]);
     await flush();
-    assert.ok(nodes(h.render()).some((node) => node.props?.children === 'ページ数を確認できる書籍が見つかりませんでした。'));
+    assert.ok(nodes(h.render()).some((node) => node.props?.children === 'ページ数を確認できる書籍が見つかりませんでした'));
   }
   h.input().props.onChangeText('自由なタイトル');
   h.input().props.onSubmitEditing();

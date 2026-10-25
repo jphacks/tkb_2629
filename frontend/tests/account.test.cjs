@@ -58,6 +58,23 @@ function hooks() {
 const native = { StyleSheet: { create: (x) => x }, Text: 'Text', View: 'View', ScrollView: 'ScrollView' };
 const status = load('src/lib/readingStatus.ts', {});
 
+test('shared buttons use navigation purple while book addition keeps its red variant', () => {
+  const palette = { navAccent: '#C17AED', accent: '#FF7171', background: '#FFFFFF' };
+  const { ActionButton } = load('src/components/molecules/ActionButton.tsx', {
+    'react/jsx-runtime': { jsx, jsxs: jsx }, 'react-native': { ...native, Pressable: 'Pressable' },
+    '../../theme/colors': { colors: palette },
+  });
+  const normal = ActionButton({ label: '保存' });
+  assert.equal(normal.props.style[0].backgroundColor, palette.navAccent);
+  const stops = nodes(normal).filter((node) => node.type === 'Stop' && node.props.stopColor !== palette.background);
+  assert.ok(stops.length > 0);
+  assert.ok(stops.every((node) => node.props.stopColor === palette.navAccent));
+  const secondary = ActionButton({ label: '戻る', secondary: true });
+  assert.equal(secondary.props.style[2].borderColor, palette.navAccent);
+  const add = ActionButton({ label: '本棚に追加する', bookAdd: true });
+  assert.equal(add.props.style[1].backgroundColor, palette.accent);
+});
+
 function statistics(api, react = {}) {
   const readingBooks = load('src/lib/readingBooks.ts', { './api': api });
   return load('src/lib/readingStatistics.ts', {
