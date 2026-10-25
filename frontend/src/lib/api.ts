@@ -138,6 +138,11 @@ export async function getBook(bookId: number): Promise<Book> {
   return parseResponse<Book>(response, '本の詳細の取得に失敗しました');
 }
 
+export async function completeIteration(bookId: number, iteration: number): Promise<void> {
+  const response = await fetch(`${API_URL}/books/${bookId}/iterations/${iteration}/complete`, { method: 'POST' });
+  await parseResponse<unknown>(response, '読了の記録に失敗しました');
+}
+
 export async function getPageReview(bookId: number, page: number, iteration: number): Promise<PageReview | null> {
   const response = await fetch(`${API_URL}/books/${bookId}/pages/${page}/review?iteration=${iteration}`);
   try {
