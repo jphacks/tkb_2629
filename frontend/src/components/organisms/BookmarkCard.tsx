@@ -1,5 +1,7 @@
-import { useRef } from 'react';
-import { Animated, PanResponder, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import type { ComponentRef } from 'react';
+import { Animated, Keyboard, PanResponder, ScrollView, StyleSheet, Text, View } from 'react-native';
+import type { PanResponderCallbacks } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { colors } from '../../theme/colors';
@@ -32,8 +34,30 @@ export function BookmarkCard(props: BookmarkCardProps) {
   } = props;
   const latest = useRef(props);
   latest.current = props;
-  const panResponder = useRef(
-    PanResponder.create({
+  const scroll = useRef({ offset: 0, viewport: 0, content: 0 });
+  const scrollView = useRef<ComponentRef<typeof ScrollView>>(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(Keyboard.isVisible());
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+      scroll.current.offset = 0;
+      scrollView.current?.scrollTo({ y: 0, animated: false });
+    });
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+  const bottomSwipe = useRef(false);
+  const touch = useRef({ x: 0, y: 0, dy: 0 });
+  function finishSwipe(dy: number, vy = 0) {
+    if (!latest.current.loaded || latest.current.busy || latest.current.readOnly) return;
+    const reached = dy <= -64 || (dy <= -24 && vy <= -0.6);
+    const length = Array.from(latest.current.thoughts.trim()).length;
+    if (!reached || length < 1 || length > 140) {
+      Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
+    }
+    if (reached) latest.current.onSubmit();
+  }
+  const gestures: PanResponderCallbacks = {
       onMoveShouldSetPanResponder: (_, gestureState) =>
         latest.current.loaded && !latest.current.busy && !latest.current.readOnly &&
         gestureState.dy < -8 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
@@ -41,28 +65,66 @@ export function BookmarkCard(props: BookmarkCardProps) {
         latest.current.loaded && !latest.current.busy && !latest.current.readOnly &&
         gestureState.dy < -8 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
       onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        bottomSwipe.current = false;
+        translateY.stopAnimation();
+      },
       onPanResponderMove: (_, gestureState) => {
         if (!latest.current.busy && !latest.current.readOnly && gestureState.dy < 0) {
           translateY.setValue(gestureState.dy);
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (latest.current.busy || latest.current.readOnly) {
-          return;
-        }
-        Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
-        if (gestureState.dy < -80 && latest.current.loaded) {
-          latest.current.onSubmit();
-        }
+        finishSwipe(gestureState.dy, gestureState.vy);
       },
       onPanResponderTerminate: () => {
         Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
       },
-    }),
-  ).current;
+  };
+  const panResponder = useRef(PanResponder.create(gestures)).current;
 
   return (
-    <Animated.View {...panResponder.panHandlers} style={[styles.bookmark, { transform: [{ translateY }] }]}>
+    <>
+      {!readOnly && (
+        <View
+          {...panResponder.panHandlers}
+          accessibilityLabel="しおりのスワイプ領域"
+          style={styles.swipeArea}
+        />
+      )}
+    <Animated.View
+      onTouchStartCapture={(event) => {
+        const { offset, viewport, content } = scroll.current;
+        // While typing, only a new gesture starting at the bottom may save.
+        bottomSwipe.current = latest.current.loaded && !latest.current.busy && !latest.current.readOnly &&
+          (!keyboardVisible || (viewport > 0 && content > 0 && offset + viewport >= content - 2));
+        touch.current = { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY, dy: 0 };
+      }}
+      onTouchMoveCapture={(event) => {
+        if (!bottomSwipe.current || latest.current.busy || latest.current.readOnly) return;
+        const dx = event.nativeEvent.pageX - touch.current.x;
+        const dy = event.nativeEvent.pageY - touch.current.y;
+        if (dy < -8 && Math.abs(dy) > Math.abs(dx)) {
+          touch.current.dy = dy;
+          translateY.setValue(dy);
+        } else if (touch.current.dy !== 0) {
+          touch.current.dy = 0;
+          translateY.setValue(0);
+        }
+      }}
+      onTouchEndCapture={() => {
+        if (!bottomSwipe.current) return;
+        bottomSwipe.current = false;
+        if (touch.current.dy < 0) finishSwipe(touch.current.dy);
+      }}
+      onTouchCancelCapture={() => {
+        bottomSwipe.current = false;
+        if (touch.current.dy < 0 && !latest.current.busy) {
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
+        }
+      }}
+      style={[styles.bookmark, { transform: [{ translateY }] }]}
+    >
       <View style={[styles.content, color ? styles.savedContent : undefined]}>
         {color && <View pointerEvents="none" style={[styles.colorTint, { backgroundColor: color }]} />}
         {!color && (
@@ -87,8 +149,24 @@ export function BookmarkCard(props: BookmarkCardProps) {
             <Rect fill="url(#bookmarkMeshBlue)" height="100" width="100" />
           </Svg>
         )}
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.title}>「{title}」のしおり{readOnly ? 'を読む' : updating ? 'を更新' : 'を追加'}</Text>
+        <ScrollView
+          ref={scrollView}
+          scrollEnabled={keyboardVisible}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
+          scrollEventThrottle={16}
+          bounces={false}
+          overScrollMode="never"
+          onLayout={(event) => { scroll.current.viewport = event.nativeEvent.layout.height; }}
+          onContentSizeChange={(_, height) => { scroll.current.content = height; }}
+          onScroll={(event) => {
+            const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+            scroll.current = { offset: contentOffset.y, viewport: layoutMeasurement.height, content: contentSize.height };
+          }}
+        >
+          <View {...(!readOnly ? panResponder.panHandlers : {})} style={styles.dragHeading}>
+            <Text style={styles.title}>「{title}」のしおり{readOnly ? 'を読む' : updating ? 'を更新' : 'を追加'}</Text>
+          </View>
           <View style={styles.formFields}>
             <PageField
               onChangeText={onPageChange}
@@ -114,10 +192,13 @@ export function BookmarkCard(props: BookmarkCardProps) {
         </ScrollView>
       </View>
     </Animated.View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  swipeArea: { position: 'absolute', top: 0, left: 0, right: 0, height: 104, zIndex: 3 },
+  dragHeading: { minHeight: 64, justifyContent: 'center' },
   bookmark: {
     backgroundColor: '#C8D6FF',
     borderTopLeftRadius: 10,

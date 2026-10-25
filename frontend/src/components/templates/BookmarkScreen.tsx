@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Keyboard, StyleSheet, Text, View } from 'react-native';
+import { Animated, Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { getBook, getPageReview, reviewAnalysisLabel, savePageReview, type Book, type PageReview } from '../../lib/api';
@@ -47,6 +47,7 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
   const locked = useRef(false);
   const mounted = useRef(false);
   const translateY = useRef(new Animated.Value(0)).current;
+  const contentHeight = useRef(720);
 
   useEffect(() => {
     mounted.current = true;
@@ -133,7 +134,7 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
       }
       setResult(saved);
       setThoughts(saved.review_text);
-      Animated.timing(translateY, { duration: 600, toValue: -720, useNativeDriver: true }).start(() => {
+      Animated.timing(translateY, { duration: 320, toValue: -Math.max(720, contentHeight.current + 104), useNativeDriver: true }).start(() => {
         if (mounted.current) {
           setCompleted(true);
         }
@@ -181,10 +182,10 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
   }
 
   return (
-    <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title="しおりを追加" showNavigation={!busy || completed}
-      headerLeading={<BackButton onPress={onBack ?? (() => onNavigate('reading'))} disabled={busy && !completed} />}
+    <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title={completed ? undefined : 'しおりを追加'} showNavigation={!busy || completed}
+      headerLeading={!completed && <BackButton onPress={onBack ?? (() => onNavigate('reading'))} disabled={busy} />}
     >
-      <View style={styles.content}>
+      <View style={styles.content} onLayout={(event) => { contentHeight.current = event.nativeEvent.layout.height; }}>
         {!completed && (
           <>
             {canEdit && <BookmarkRibbon translateY={translateY} color={result?.color_code ?? existing?.color_code} />}
@@ -220,14 +221,16 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
           </>
         )}
         {completed && result && (
-          <View style={styles.successState}>
+          <ScrollView contentContainerStyle={styles.successState}>
             <Ionicons color={result.color_code} name="checkmark-circle" size={56} />
             <Text style={styles.successTitle}>しおりを{existing ? '更新' : '追加'}しました</Text>
             <Text style={styles.message}>「{book.title}」 {result.page_number}ページ・{iteration}回目</Text>
             <Text style={styles.message}>{reviewAnalysisLabel(result)}</Text>
-            <ActionButton label="本の詳細へ" onPress={() => onNavigate({ name: 'book-detail', bookId })} />
-            <ActionButton label="別のページに記録する" secondary onPress={choosePage} />
-          </View>
+            <View style={styles.successActions}>
+              <ActionButton label="本の詳細へ" onPress={() => onNavigate({ name: 'book-detail', bookId })} />
+              <ActionButton label="続けて他のページの感想も書く" secondary onPress={choosePage} />
+            </View>
+          </ScrollView>
         )}
       </View>
     </ScreenFrame>
@@ -239,6 +242,7 @@ const styles = StyleSheet.create({
   messageState: { gap: 16, padding: 24 },
   readOnlyHeader: { marginHorizontal: 24, marginTop: 8, gap: 4 },
   message: { color: colors.text, fontSize: 14, lineHeight: 22 },
-  successState: { alignItems: 'center', gap: 16, paddingTop: 120 },
+  successState: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 16, paddingVertical: 48 },
+  successActions: { width: '100%', maxWidth: 420, gap: 20, marginTop: 16 },
   successTitle: { color: colors.text, fontSize: 20, fontWeight: '700', marginTop: 14 },
 });

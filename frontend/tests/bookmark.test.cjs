@@ -322,7 +322,16 @@ test('create: wait for successful save before animation, use returned color, pre
   button(tree, '本の詳細へ').props.onPress();
   assert.equal(h.target.name, 'book-detail');
   assert.equal(h.target.bookId, 7);
-  button(tree, '別のページに記録する').props.onPress();
+  assert.equal(tree.props.title, undefined);
+  assert.equal(tree.props.headerLeading, false);
+  const successScroll = nodes(tree).find((node) => node.props?.contentContainerStyle?.justifyContent === 'center');
+  assert.ok(successScroll);
+  const actions = nodes(tree).find((node) => node.props?.style?.maxWidth === 420);
+  assert.equal(actions.props.style.width, '100%');
+  assert.equal(actions.props.style.gap, 20);
+  button(tree, '続けて他のページの感想も書く').props.onPress();
+  assert.equal(h.render().props.title, 'しおりを追加');
+  assert.equal(h.render().props.headerLeading.type, 'BackButton');
   card = find(h.render(), 'BookmarkCard');
   assert.equal(card.props.loaded, false);
   assert.equal(card.props.busy, false);
@@ -355,6 +364,13 @@ test('existing review is loaded for update; failed save retains text and can ret
   h.requests.at(-1).resolve(review(12));
   await flush();
   assert.equal(h.animations.length, 1);
+  h.animations[0].callback({ finished: true });
+  const success = h.render();
+  assert.equal(success.props.title, undefined);
+  assert.equal(success.props.headerLeading, false);
+  assert.ok(button(success, '本の詳細へ'));
+  assert.ok(button(success, '続けて他のページの感想も書く'));
+  assert.ok(nodes(success).some((node) => Array.isArray(node.props?.children) && node.props.children.join('') === 'しおりを更新しました'));
 });
 
 test('page and Unicode text boundaries match the API, and lookup failures do not allow saving', async () => {
@@ -432,9 +448,14 @@ test('completed and stale iterations allow reading but block saving; book fetch 
 
 test('swipe uses current form callbacks, is blocked while busy, and never performs a success animation itself', () => {
   const refs = [];
+  const responders = [];
+  const keyboardListeners = {};
+  let keyboardVisible = false;
   let cursor = 0, gestures, submitted = 0, springs = 0;
   const { BookmarkCard } = load('src/components/organisms/BookmarkCard.tsx', {
     react: {
+      useState() { return [keyboardVisible, (value) => { keyboardVisible = value; }]; },
+      useEffect(effect) { effect(); },
       useRef(initial) {
         const index = cursor++;
         return refs[index] ??= { current: initial };
@@ -446,15 +467,26 @@ test('swipe uses current form callbacks, is blocked while busy, and never perfor
       Fragment: 'Fragment',
     },
     'react-native': {
+      Keyboard: {
+        isVisible: () => keyboardVisible,
+        addListener: (name, callback) => {
+          keyboardListeners[name] = callback;
+          return { remove() {} };
+        },
+      },
       StyleSheet: { create: (value) => value },
       View: 'View', Text: 'Text', ScrollView: 'ScrollView',
       Animated: { View: 'AnimatedView', spring: () => ({ start: () => { springs += 1; } }) },
-      PanResponder: { create: (config) => { gestures = config; return { panHandlers: {} }; } },
+      PanResponder: { create: (config) => {
+        responders.push(config);
+        gestures ??= config;
+        return { panHandlers: { gestureMarker: true } };
+      } },
     },
   });
 
   let props = {
-    translateY: { setValue() {} }, title: 'Book', page: '42', thoughts: 'note',
+    translateY: { setValue() {}, stopAnimation() {} }, title: 'Book', page: '42', thoughts: 'note',
     loaded: false, updating: false, busy: false, error: null,
     onPageChange() {}, onThoughtsChange() {}, onRetry() {},
     onSubmit: () => { submitted += 1; },
@@ -466,13 +498,26 @@ test('swipe uses current form callbacks, is blocked while busy, and never perfor
   }
   render();
   assert.equal(gestures.onMoveShouldSetPanResponder(null, { dy: -130, dx: 0 }), false);
-  render({ loaded: true });
+  const ready = render({ loaded: true });
+  const swipeArea = nodes(ready).find((node) => node.props?.accessibilityLabel === 'しおりのスワイプ領域');
+  assert.equal(swipeArea.props.style.height, 104);
+  assert.equal(swipeArea.props.style.left, 0);
+  assert.equal(swipeArea.props.style.right, 0);
+  assert.equal(swipeArea.props.gestureMarker, true);
+  assert.equal(find(ready, 'AnimatedView').props.gestureMarker, undefined);
+  assert.equal(find(ready, 'ThoughtsField').props.gestureMarker, undefined);
+  assert.equal(find(ready, 'ScrollView').props.scrollEnabled, false);
   assert.equal(gestures.onMoveShouldSetPanResponder(null, { dy: -130, dx: 0 }), true);
   assert.equal(gestures.onMoveShouldSetPanResponderCapture(null, { dy: -130, dx: 0 }), true);
-  gestures.onPanResponderRelease(null, { dy: -79 });
+  assert.equal(gestures.onMoveShouldSetPanResponder(null, { dy: -10, dx: 30 }), false);
+  assert.equal(gestures.onMoveShouldSetPanResponder(null, { dy: 20, dx: 0 }), false);
+  gestures.onPanResponderGrant();
+  gestures.onPanResponderRelease(null, { dy: -63, vy: 0 });
   assert.equal(submitted, 0);
-  gestures.onPanResponderRelease(null, { dy: -81 });
+  assert.equal(springs, 1);
+  gestures.onPanResponderRelease(null, { dy: -64, vy: 0 });
   assert.equal(submitted, 1);
+  assert.equal(springs, 1);
   render({ busy: true });
   assert.equal(gestures.onMoveShouldSetPanResponder(null, { dy: -130, dx: 0 }), false);
   gestures.onPanResponderRelease(null, { dy: -150 });
@@ -482,13 +527,72 @@ test('swipe uses current form callbacks, is blocked while busy, and never perfor
   assert.equal(submitted, 11);
   button(tree, 'しおりを追加する').props.onPress();
   assert.equal(submitted, 21);
+  assert.equal(springs, 1);
+  gestures.onPanResponderRelease(null, { dy: -24, vy: -0.6 });
+  assert.equal(submitted, 31);
+  gestures.onPanResponderRelease(null, { dy: -23, vy: -1 });
+  assert.equal(submitted, 31);
+  assert.equal(springs, 2);
+  render({ thoughts: '' });
+  gestures.onPanResponderRelease(null, { dy: -80, vy: 0 });
   assert.equal(springs, 3);
+  assert.equal(submitted, 41);
   const readOnlyTree = render({ readOnly: true });
   assert.equal(gestures.onMoveShouldSetPanResponder(null, { dy: -130, dx: 0 }), false);
   gestures.onPanResponderRelease(null, { dy: -150 });
-  assert.equal(submitted, 21);
+  assert.equal(submitted, 41);
+  assert.equal(nodes(readOnlyTree).find((node) => node.props?.accessibilityLabel === 'しおりのスワイプ領域'), undefined);
   assert.equal(button(readOnlyTree, 'しおりを追加する'), undefined);
   assert.equal(find(readOnlyTree, 'ThoughtsField').props.editable, false);
+
+  keyboardListeners.keyboardDidShow();
+  const bottomTree = render({ readOnly: false, thoughts: 'note' });
+  assert.equal(find(bottomTree, 'ScrollView').props.scrollEnabled, true);
+  const outer = find(bottomTree, 'AnimatedView');
+  const scroll = find(bottomTree, 'ScrollView');
+  const start = () => outer.props.onTouchStartCapture({ nativeEvent: { pageX: 100, pageY: 400 } });
+  const move = (dy) => outer.props.onTouchMoveCapture({ nativeEvent: { pageX: 100, pageY: 400 + dy } });
+  const end = () => outer.props.onTouchEndCapture();
+  const sendScroll = (offset, content = 1000, viewport = 400) => scroll.props.onScroll({
+    nativeEvent: { contentOffset: { y: offset }, contentSize: { height: content }, layoutMeasurement: { height: viewport } },
+  });
+  start();
+  move(-80); end();
+  assert.equal(submitted, 41);
+  scroll.props.onLayout({ nativeEvent: { layout: { height: 400 } } });
+  scroll.props.onContentSizeChange(320, 1000);
+  sendScroll(200);
+  start();
+  sendScroll(600);
+  move(-80); end();
+  assert.equal(submitted, 41, 'scrolling to the bottom must not save');
+  start(); move(-80); end();
+  assert.equal(submitted, 51);
+  sendScroll(300);
+  start(); move(-80); end();
+  assert.equal(submitted, 51);
+  sendScroll(0, 300, 400);
+  start(); move(-80); end();
+  assert.equal(submitted, 61, 'content that fits is already at the bottom');
+  start(); move(-40); end();
+  assert.equal(submitted, 61, 'short swipes must not save');
+  start(); move(-80); outer.props.onTouchCancelCapture(); end();
+  assert.equal(submitted, 61, 'cancelled touches must not save');
+  render({ busy: true });
+  start(); move(-80); end();
+  assert.equal(submitted, 61);
+  render({ busy: false, readOnly: true });
+  start(); move(-80); end();
+  assert.equal(submitted, 61);
+  keyboardListeners.keyboardDidHide();
+  const fixed = render({ readOnly: false, busy: false });
+  assert.equal(find(fixed, 'ScrollView').props.scrollEnabled, false);
+  const fixedOuter = find(fixed, 'AnimatedView');
+  sendScroll(0, 1000, 400);
+  fixedOuter.props.onTouchStartCapture({ nativeEvent: { pageX: 100, pageY: 400 } });
+  fixedOuter.props.onTouchMoveCapture({ nativeEvent: { pageX: 100, pageY: 320 } });
+  fixedOuter.props.onTouchEndCapture();
+  assert.equal(submitted, 71, 'with keyboard hidden, the full card can swipe without internal scrolling');
 });
 
 test('automatic page lookup ignores stale responses and never copies another page into the editor', async () => {
