@@ -35,8 +35,8 @@ export function ScreenFrame({ children, activeRoute, onNavigate, title, subtitle
 }
 
 const styles = StyleSheet.create({
-  safeArea: { backgroundColor: colors.background, flex: 1 },
-  screen: { backgroundColor: colors.background, flex: 1 },
+  safeArea: { backgroundColor: '#F7F4FF', flex: 1 },
+  screen: { backgroundColor: '#F7F4FF', flex: 1 },
   heading: { marginHorizontal: 20, marginTop: 16, paddingBottom: 8, paddingHorizontal: 10, paddingTop: 16 },
   title: { color: colors.text, fontSize: 26, fontWeight: '700' },
   subtitle: { color: colors.placeholder, fontSize: 14, marginTop: 8 },

@@ -42,8 +42,8 @@ export function BookmarkScreen({ onNavigate }: BookmarkScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { backgroundColor: colors.background, flex: 1 },
-  screen: { backgroundColor: colors.background, flex: 1 },
+  safeArea: { backgroundColor: '#F7F4FF', flex: 1 },
+  screen: { backgroundColor: '#F7F4FF', flex: 1 },
   successState: { alignItems: 'center', left: 0, position: 'absolute', right: 0, top: 270 },
   successTitle: { color: colors.text, fontSize: 20, fontWeight: '700', marginTop: 14 },
   resetButton: { backgroundColor: colors.accent, borderRadius: 12, marginTop: 20, paddingHorizontal: 22, paddingVertical: 12 },

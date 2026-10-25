@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BookmarkAreaChart } from '../molecules/BookmarkAreaChart';
 import { SegmentedTabs } from '../molecules/SegmentedTabs';
 import { BookmarkTimeline } from '../molecules/BookmarkTimeline';
+import { GlassSurface } from '../atoms/GlassSurface';
 import type { Bookmark } from '../../types/bookmark';
 
 const myBookmarks: Bookmark[] = [
@@ -29,7 +30,7 @@ export function BookmarkListCard({ accentColor = '#FF7171', tintColor = '#FFF4F4
   const maxCount = Math.max(...otherBookmarks.map((bookmark) => bookmark.count));
 
   return (
-    <View style={styles.card}>
+    <GlassSurface style={styles.card}>
       <View style={styles.header}>
         <View>
           <Text style={styles.heading}>しおり一覧</Text>
@@ -47,12 +48,12 @@ export function BookmarkListCard({ accentColor = '#FF7171', tintColor = '#FFF4F4
         />
       </View>
       {view === 'mine' ? <BookmarkTimeline accentColor={accentColor} bookmarks={bookmarks} selectedBookmark={selectedBookmark} onSelect={setSelectedId} tintColor={tintColor} /> : <BookmarkAreaChart accentColor={accentColor} bookmarks={otherBookmarks} maxCount={maxCount} selectedBookmark={selectedBookmark} onSelect={setSelectedId} tintColor={tintColor} />}
-    </View>
+    </GlassSurface>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: '#FFFFFF', borderRadius: 16, elevation: 2, marginTop: 16, padding: 18, shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } },
+  card: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, elevation: 2, marginTop: 16, padding: 18, shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } },
   header: { gap: 14 },
   heading: { color: '#464646', fontSize: 16, fontWeight: '700', marginBottom: 4 },
   count: { color: '#9CA3AF', fontSize: 12 },

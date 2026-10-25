@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { GlassSurface } from '../atoms/GlassSurface';
 type ReadingProgressProps = {
   color?: string;
   currentPage: number;
@@ -12,9 +13,9 @@ export function ReadingProgress({ color = '#C17AED', currentPage, totalPages }: 
   return (
     <View>
       <Text style={styles.progress}>{currentPage} / {totalPages}ページ</Text>
-      <View style={styles.track}>
+      <GlassSurface intensity={16} style={styles.track}>
       <View style={[styles.fill, { backgroundColor: color, width: `${Math.min(100, Math.max(0, percentage))}%` }]} />
-      </View>
+      </GlassSurface>
       <Text style={[styles.percent, { color }]}>{percentage}% 読了</Text>
     </View>
   );
@@ -22,7 +23,7 @@ export function ReadingProgress({ color = '#C17AED', currentPage, totalPages }: 
 
 const styles = StyleSheet.create({
   progress: { color: '#464646', fontSize: 14, marginTop: 4 },
-  track: { backgroundColor: '#FFFFFF', borderRadius: 4, height: 7, marginTop: 9, overflow: 'hidden' },
+  track: { borderRadius: 6, height: 9, marginTop: 9, overflow: 'hidden', padding: 1 },
   fill: { backgroundColor: '#C17AED', borderRadius: 4, height: '100%' },
   percent: { color: '#C17AED', fontSize: 12, marginTop: 6 },
 });
