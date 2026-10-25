@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { FieldLabel } from '../../components/atoms/FieldLabel';
 import { ShadowInput } from '../../components/atoms/ShadowInput';
@@ -94,6 +95,15 @@ export function PublicProfileScreen({ onNavigate, onBack }: { onNavigate: Naviga
           )}
           {state.status === 'ready' && (
             <>
+              <View style={styles.preview}>
+                <View accessibilityRole="image" accessibilityLabel="本のデフォルトアイコン" style={styles.avatar}>
+                  <Ionicons accessible={false} name="book-outline" size={32} color={colors.navAccent} />
+                </View>
+                <View style={styles.previewCopy}>
+                  <Text style={styles.previewLabel}>公開プロフィールの表示イメージ</Text>
+                  <Text style={styles.displayName}>{state.savedName ?? '表示名は未設定'}</Text>
+                </View>
+              </View>
               <Text style={styles.description}>{state.savedName === null ? '公開用表示名は未設定です。' : `保存済みの表示名：${state.savedName}`}</Text>
               <View style={styles.field}>
                 <FieldLabel>公開用表示名</FieldLabel>
@@ -124,6 +134,11 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 24, paddingBottom: 110, gap: 20 },
   description: { color: colors.text, fontSize: 14, lineHeight: 22 },
+  preview: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#F0EAF2', alignItems: 'center', justifyContent: 'center' },
+  previewCopy: { flex: 1, gap: 6 },
+  previewLabel: { color: colors.textSecondary, fontSize: 12 },
+  displayName: { color: colors.text, fontSize: 20, fontWeight: '700', flexShrink: 1 },
   field: { gap: 8 },
   input: { minHeight: 54, width: '100%' },
   error: { color: '#B42318', fontSize: 14, lineHeight: 22 },
