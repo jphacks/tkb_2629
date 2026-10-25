@@ -1,23 +1,28 @@
 import { StyleSheet, View } from 'react-native';
 
+import { colors } from '../../theme/colors';
 import { FieldLabel } from '../atoms/FieldLabel';
 import { SegmentedTabs } from './SegmentedTabs';
 
 type SpoilerSelectorProps = {
+  accentColor?: string;
   hasSpoiler: boolean;
   onChange: (hasSpoiler: boolean) => void;
+  tintColor?: string;
 };
 
-export function SpoilerSelector({ hasSpoiler, onChange }: SpoilerSelectorProps) {
+export function SpoilerSelector({ accentColor = colors.accent, hasSpoiler, onChange, tintColor = '#FFF4F4' }: SpoilerSelectorProps) {
   return (
     <View style={styles.field}>
-      <FieldLabel>ネタバレ設定</FieldLabel>
+      <FieldLabel color={accentColor}>ネタバレ設定</FieldLabel>
       <SegmentedTabs
+        activeColor={accentColor}
         options={[
           { label: 'ネタバレなし', value: 'no-spoiler' },
           { label: 'ネタバレあり', value: 'spoiler' },
         ]}
         value={hasSpoiler ? 'spoiler' : 'no-spoiler'}
+        tintColor={tintColor}
         onChange={(value) => onChange(value === 'spoiler')}
       />
     </View>

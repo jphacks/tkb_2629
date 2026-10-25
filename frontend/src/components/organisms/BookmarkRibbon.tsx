@@ -27,8 +27,8 @@ const styles = StyleSheet.create({
     width: 111,
     zIndex: 2,
   },
-  arm: { backgroundColor: '#FF5D64', borderRadius: 8, height: 76, position: 'absolute', top: 2, width: 30 },
+  arm: { backgroundColor: '#8B5CF6', borderRadius: 8, height: 76, position: 'absolute', top: 2, width: 30 },
   left: { left: 23, transform: [{ rotate: '-31deg' }] },
   right: { right: 23, transform: [{ rotate: '31deg' }] },
-  center: { backgroundColor: '#FF6168', borderRadius: 20, bottom: 0, height: 40, left: 36, position: 'absolute', width: 40 },
+  center: { backgroundColor: '#7C3AED', borderRadius: 20, bottom: 0, height: 40, left: 36, position: 'absolute', width: 40 },
 });

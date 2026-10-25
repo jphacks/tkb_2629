@@ -1,19 +1,31 @@
 import { BlurView } from 'expo-blur';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import type { ReactNode } from 'react';
 
 type GlassSurfaceProps = {
+  accessibilityLabel?: string;
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   intensity?: number;
+  onPress?: () => void;
 };
 
-export function GlassSurface({ children, intensity = 28, style }: GlassSurfaceProps) {
-  return (
-    <View style={[styles.surface, style]}>
+export function GlassSurface({ accessibilityLabel, children, intensity = 28, onPress, style }: GlassSurfaceProps) {
+  const content = (
+    <>
       <BlurView intensity={intensity} tint="light" style={StyleSheet.absoluteFill} />
       <View pointerEvents="none" style={styles.highlight} />
       {children}
+    </>
+  );
+
+  if (onPress) {
+    return <Pressable accessibilityLabel={accessibilityLabel} onPress={onPress} style={[styles.surface, style]}>{content}</Pressable>;
+  }
+
+  return (
+    <View accessibilityLabel={accessibilityLabel} style={[styles.surface, style]}>
+      {content}
     </View>
   );
 }

@@ -5,9 +5,9 @@ import { BookmarkCallout } from './BookmarkCallout';
 import type { Bookmark } from '../../types/bookmark';
 
 type ChartPoint = { x: number; y: number };
-type BookmarkAreaChartProps = { bookmarks: Bookmark[]; maxCount: number; selectedBookmark?: Bookmark; onSelect: (id: string) => void };
+type BookmarkAreaChartProps = { accentColor?: string; bookmarks: Bookmark[]; maxCount: number; selectedBookmark?: Bookmark; onSelect: (id: string) => void; tintColor?: string };
 
-export function BookmarkAreaChart({ bookmarks, maxCount, selectedBookmark, onSelect }: BookmarkAreaChartProps) {
+export function BookmarkAreaChart({ accentColor = '#C17AED', bookmarks, maxCount, selectedBookmark, onSelect, tintColor = '#FF8C8C' }: BookmarkAreaChartProps) {
   const points: ChartPoint[] = bookmarks.map((bookmark) => ({ x: 12 + bookmark.position * 2.76, y: 132 - (bookmark.count / maxCount) * 96 }));
   const firstPoint = points[0];
   const lastPoint = points[points.length - 1];
@@ -24,16 +24,16 @@ export function BookmarkAreaChart({ bookmarks, maxCount, selectedBookmark, onSel
       <Svg height="178" preserveAspectRatio="none" viewBox="0 0 300 178" width="100%">
         <Defs>
           <LinearGradient id="bookmarkAreaGradient" x1="0" x2="0" y1="0" y2="1">
-            <Stop offset="0" stopColor="#FF8C8C" stopOpacity="0.7" />
-            <Stop offset="0.55" stopColor="#DE7ECD" stopOpacity="0.45" />
-            <Stop offset="1" stopColor="#C17AED" stopOpacity="0.08" />
+            <Stop offset="0" stopColor={tintColor} stopOpacity="0.7" />
+            <Stop offset="0.55" stopColor={accentColor} stopOpacity="0.45" />
+            <Stop offset="1" stopColor={accentColor} stopOpacity="0.08" />
           </LinearGradient>
         </Defs>
         <Path d={areaPath} fill="url(#bookmarkAreaGradient)" />
-        <Path d={linePath} fill="none" stroke="#D078D0" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
+        <Path d={linePath} fill="none" stroke={accentColor} strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
         {bookmarks.map((bookmark, index) => {
           const point = points[index];
-          return point ? <Circle key={bookmark.id} cx={point.x} cy={point.y} fill="#FFFFFF" r="5" stroke="#C17AED" strokeWidth="3" /> : null;
+          return point ? <Circle key={bookmark.id} cx={point.x} cy={point.y} fill="#FFFFFF" r="5" stroke={accentColor} strokeWidth="3" /> : null;
         })}
       </Svg>
       {bookmarks.map((bookmark, index) => {
@@ -50,7 +50,7 @@ export function BookmarkAreaChart({ bookmarks, maxCount, selectedBookmark, onSel
         );
       })}
       <View style={styles.labels}><Text>1ページ</Text><Text>180ページ</Text></View>
-      {selectedBookmark && selectedPoint && <BookmarkCallout bookmark={selectedBookmark} position={(selectedPoint.x / 300) * 100} />}
+      {selectedBookmark && selectedPoint && <BookmarkCallout accentColor={accentColor} bookmark={selectedBookmark} position={(selectedPoint.x / 300) * 100} tintColor={tintColor} />}
     </View>
   );
 }

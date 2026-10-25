@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../theme/colors';
+import { GlassSurface } from '../atoms/GlassSurface';
 import { BookCover } from './BookCover';
 
 type BookRowProps = {
@@ -17,20 +18,20 @@ export function BookRow({
   onPress,
 }: BookRowProps) {
   return (
-    <Pressable onPress={onPress} style={styles.row}>
-      <BookCover title={title} author={author ?? '著者不明'} />
+    <GlassSurface onPress={onPress} style={styles.row}>
+      <BookCover title={title} />
       <View style={styles.copy}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.description}>{author ?? '著者不明'}</Text>
         <Text style={styles.status}>{status}</Text>
       </View>
       <Text style={styles.chevron}>›</Text>
-    </Pressable>
+    </GlassSurface>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 16, flexDirection: 'row', marginBottom: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { height: 1, width: 0 } },
+  row: { alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, flexDirection: 'row', marginBottom: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { height: 1, width: 0 } },
   copy: { flex: 1, marginLeft: 16 },
   title: { color: colors.text, fontSize: 16, fontWeight: '700' },
   description: { color: colors.placeholder, fontSize: 13, marginTop: 7 },

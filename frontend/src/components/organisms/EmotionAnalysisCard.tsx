@@ -2,6 +2,7 @@ import Svg, { Circle, Line, Polygon, Text as SvgText } from 'react-native-svg';
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { Bookmark } from '../../types/bookmark';
+import { GlassSurface } from '../atoms/GlassSurface';
 
 type Emotion = {
   color: string;
@@ -31,7 +32,7 @@ export function EmotionAnalysisCard({ bookmarks }: { bookmarks: Bookmark[] }) {
   const aggregateColor = createAggregateColor(emotions);
 
   return (
-    <View style={styles.card}>
+    <GlassSurface style={styles.card}>
       <Text style={styles.heading}>感情の分析</Text>
       <Text style={styles.description}>全{totalBookmarks}件のしおりをまとめて分析</Text>
       <Text style={styles.description}>各感情の割合から全体の位置を計算</Text>
@@ -58,8 +59,20 @@ export function EmotionAnalysisCard({ bookmarks }: { bookmarks: Bookmark[] }) {
           </View>
         ))}
       </View>
-    </View>
+    </GlassSurface>
   );
+}
+
+export function getAggregateEmotionColor(bookmarks: Bookmark[]) {
+  return createAggregateColor(createEmotionSummary(bookmarks));
+}
+
+export function getEmotionTint(color: string) {
+  const red = Number.parseInt(color.slice(1, 3), 16);
+  const green = Number.parseInt(color.slice(3, 5), 16);
+  const blue = Number.parseInt(color.slice(5, 7), 16);
+  const mix = (channel: number) => Math.round(channel + (255 - channel) * 0.88).toString(16).padStart(2, '0');
+  return `#${mix(red)}${mix(green)}${mix(blue)}`;
 }
 
 function getPoint(index: number, scale: number) {
@@ -150,7 +163,7 @@ function hslToHex(hue: number, saturation: number, lightness: number) {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: '#FFFFFF', borderRadius: 16, elevation: 2, marginTop: 16, padding: 18, shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } },
+  card: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, elevation: 2, marginTop: 16, padding: 18, shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } },
   heading: { color: '#464646', fontSize: 16, fontWeight: '700' },
   description: { color: '#9CA3AF', fontSize: 12, marginTop: 5 },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: -4 },

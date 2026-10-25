@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Image, StyleSheet, Text, View } from 'react-native';
 
+import { GlassSurface } from '../atoms/GlassSurface';
+
 type BookStackProps = {
   count: number;
 };
@@ -34,7 +36,7 @@ export function BookStack({ count }: BookStackProps) {
   }, [backgroundBooks.length, fallingValues]);
 
   return (
-    <View accessibilityLabel={`読んだ本 ${count}冊`} style={styles.card}>
+    <GlassSurface accessibilityLabel={`読んだ本 ${count}冊`} style={styles.card}>
       <View pointerEvents="none" style={styles.backgroundBooks}>
         {backgroundBooks.map((_, index) => (
           <Animated.Image
@@ -75,13 +77,13 @@ export function BookStack({ count }: BookStackProps) {
 
 
       </View>
-    </View>
+    </GlassSurface>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#F7FAF5',
+    backgroundColor: 'rgba(255, 255, 255, 0.48)',
     borderRadius: 0,
     height: 400,
     overflow: 'hidden',
