@@ -15,6 +15,7 @@ type BookmarkCardProps = {
   loaded: boolean;
   updating: boolean;
   busy: boolean;
+  readOnly?: boolean;
   error: string | null;
   color?: string;
   analysisLabel?: string;
@@ -26,7 +27,7 @@ type BookmarkCardProps = {
 
 export function BookmarkCard(props: BookmarkCardProps) {
   const {
-    translateY, title, page, thoughts, loaded, updating, busy, error, color,
+    translateY, title, page, thoughts, loaded, updating, busy, error, color, readOnly = false,
     onPageChange, onThoughtsChange, onRetry, analysisLabel,
   } = props;
   const latest = useRef(props);
@@ -34,19 +35,19 @@ export function BookmarkCard(props: BookmarkCardProps) {
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gestureState) =>
-        latest.current.loaded && !latest.current.busy &&
+        latest.current.loaded && !latest.current.busy && !latest.current.readOnly &&
         gestureState.dy < -8 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
       onMoveShouldSetPanResponderCapture: (_, gestureState) =>
-        latest.current.loaded && !latest.current.busy &&
+        latest.current.loaded && !latest.current.busy && !latest.current.readOnly &&
         gestureState.dy < -8 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
       onPanResponderTerminationRequest: () => false,
       onPanResponderMove: (_, gestureState) => {
-        if (!latest.current.busy && gestureState.dy < 0) {
+        if (!latest.current.busy && !latest.current.readOnly && gestureState.dy < 0) {
           translateY.setValue(gestureState.dy);
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (latest.current.busy) {
+        if (latest.current.busy || latest.current.readOnly) {
           return;
         }
         Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
@@ -87,7 +88,7 @@ export function BookmarkCard(props: BookmarkCardProps) {
           </Svg>
         )}
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.title}>「{title}」のしおりを{updating ? '更新' : '追加'}</Text>
+          <Text style={styles.title}>「{title}」のしおり{readOnly ? 'を読む' : updating ? 'を更新' : 'を追加'}</Text>
           <View style={styles.formFields}>
             <PageField
               onChangeText={onPageChange}
@@ -95,10 +96,11 @@ export function BookmarkCard(props: BookmarkCardProps) {
               value={page}
             />
             {!loaded && !error && <Text style={styles.note}>{page.trim() ? 'ページの感想を確認しています。' : 'ページを入力すると、保存済みの感想を自動で読み込みます。'}</Text>}
-            <ThoughtsField onChangeText={onThoughtsChange} editable={loaded && !busy} value={thoughts} />
+            <ThoughtsField onChangeText={onThoughtsChange} editable={loaded && !busy && !readOnly} value={thoughts} />
+            {loaded && readOnly && !updating && <Text style={styles.note}>このページにはしおりがありません。</Text>}
             {color && <View style={[styles.savedColor, { backgroundColor: color }]} />}
             {analysisLabel && <Text style={styles.note}>{analysisLabel}</Text>}
-            {loaded && (
+            {loaded && !readOnly && (
               <>
                 <Text style={styles.note}>{Array.from(thoughts.trim()).length} / 140文字</Text>
                 <Text style={styles.note}>ネタバレ設定・他の人への公開は未対応です。</Text>

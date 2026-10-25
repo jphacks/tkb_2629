@@ -110,7 +110,16 @@ export function BookDetailScreen({ bookId, onNavigate }: BookDetailScreenProps) 
                 <ActionButton label="しおり一覧を再試行" onPress={() => setReviewVersion((version) => version + 1)} />
               </View>
             )}
-            {reviews && <BookmarkListCard key={`${bookId}:${book.latest_iteration}`} reviews={reviews} totalPages={book.total_pages} accentColor={emotionColor} tintColor={emotionTint} />}
+            {reviews && (
+              <BookmarkListCard
+                key={`${bookId}:${book.latest_iteration}`}
+                reviews={reviews}
+                currentPage={book.current_page}
+                onOpen={(page) => onNavigate({ name: 'bookmark', bookId, iteration: book.latest_iteration, page })}
+                accentColor={emotionColor}
+                tintColor={emotionTint}
+              />
+            )}
             <Text style={styles.message}>以下の感情分析・画面のアクセント色はサンプルです。自分のしおりには保存された色を表示します。</Text>
             <EmotionAnalysisCard bookmarks={allBookmarks} />
           </>

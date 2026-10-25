@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BookmarkAreaChart } from '../molecules/BookmarkAreaChart';
 import { SegmentedTabs } from '../molecules/SegmentedTabs';
@@ -23,12 +23,15 @@ const otherBookmarks: Bookmark[] = [
 export const allBookmarks = [...myBookmarks, ...otherBookmarks];
 
 export function BookmarkListCard({
-  accentColor = '#FF7171', tintColor = '#FFF4F4', reviews, totalPages = 180,
-}: { accentColor?: string; tintColor?: string; reviews: PageReview[]; totalPages?: number }) {
-  const ownBookmarks: Bookmark[] = reviews.map((review) => ({
+  accentColor = '#FF7171', tintColor = '#FFF4F4', reviews, currentPage, onOpen,
+}: {
+  accentColor?: string; tintColor?: string; reviews: PageReview[];
+  currentPage: number; onOpen: (page: number) => void;
+}) {
+  const ownBookmarks: Bookmark[] = [...reviews].sort((a, b) => a.page_number - b.page_number).map((review) => ({
     id: String(review.id),
     page: review.page_number,
-    position: totalPages > 1 ? ((review.page_number - 1) / (totalPages - 1)) * 100 : 0,
+    position: currentPage > 0 ? (review.page_number / currentPage) * 100 : 0,
     count: 1,
     title: `${review.page_number}ページ`,
     note: review.review_text,
@@ -39,6 +42,10 @@ export function BookmarkListCard({
   }));
   const [view, setView] = useState<'mine' | 'others'>('mine');
   const [selectedId, setSelectedId] = useState('');
+  const [listPage, setListPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(ownBookmarks.length / 5));
+  const visiblePage = Math.min(listPage, pageCount - 1);
+  const visibleBookmarks = ownBookmarks.slice(visiblePage * 5, visiblePage * 5 + 5);
   const bookmarks = view === 'mine' ? ownBookmarks : otherBookmarks;
   const selectedBookmark = bookmarks.find((bookmark) => bookmark.id === selectedId) ?? bookmarks[0];
   const total = view === 'mine' ? ownBookmarks.length : otherBookmarks.reduce((sum, bookmark) => sum + bookmark.count, 0);
@@ -65,17 +72,34 @@ export function BookmarkListCard({
       {view === 'mine' ? (
         <>
           {ownBookmarks.length === 0 && <Text style={styles.count}>まだしおりがありません。</Text>}
-          <BookmarkTimeline totalPages={totalPages} accentColor={accentColor} bookmarks={bookmarks} selectedBookmark={selectedBookmark} onSelect={setSelectedId} tintColor={tintColor} />
-          {ownBookmarks.map((bookmark) => (
-            <View key={bookmark.id} style={styles.review}>
+          <BookmarkTimeline currentPage={currentPage} accentColor={accentColor} bookmarks={bookmarks} selectedBookmark={selectedBookmark} onSelect={(id) => {
+            const bookmark = ownBookmarks.find((item) => item.id === id);
+            if (bookmark) {
+              setSelectedId(id);
+              onOpen(bookmark.page);
+            }
+          }} tintColor={tintColor} />
+          {visibleBookmarks.map((bookmark) => (
+            <Pressable key={bookmark.id} accessibilityRole="button" accessibilityLabel={`${bookmark.page}ページの感想を開く`} onPress={() => onOpen(bookmark.page)} style={styles.review}>
               <View style={[styles.swatch, { backgroundColor: bookmark.color }]} />
               <View style={styles.reviewText}>
                 <Text style={styles.heading}>{bookmark.page}ページ</Text>
                 <Text>{bookmark.note}</Text>
                 <Text style={styles.count}>{bookmark.analysisLabel}</Text>
               </View>
-            </View>
+            </Pressable>
           ))}
+          {ownBookmarks.length > 0 && (
+            <View style={styles.pagination}>
+              <Pressable accessibilityRole="button" disabled={visiblePage === 0} accessibilityState={{ disabled: visiblePage === 0 }} onPress={() => setListPage(visiblePage - 1)} style={styles.pageButton}>
+                <Text style={visiblePage === 0 ? styles.count : styles.heading}>前へ</Text>
+              </Pressable>
+              <Text accessibilityLiveRegion="polite">{`${visiblePage + 1}/${pageCount}`}</Text>
+              <Pressable accessibilityRole="button" disabled={visiblePage === pageCount - 1} accessibilityState={{ disabled: visiblePage === pageCount - 1 }} onPress={() => setListPage(visiblePage + 1)} style={styles.pageButton}>
+                <Text style={visiblePage === pageCount - 1 ? styles.count : styles.heading}>次へ</Text>
+              </Pressable>
+            </View>
+          )}
         </>
       ) : (
         <>
@@ -95,4 +119,6 @@ const styles = StyleSheet.create({
   review: { flexDirection: 'row', gap: 12, marginTop: 18 },
   swatch: { width: 14, minHeight: 48, borderBottomLeftRadius: 7, borderBottomRightRadius: 7 },
   reviewText: { flex: 1, gap: 6 },
+  pagination: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 18 },
+  pageButton: { minHeight: 44, minWidth: 64, justifyContent: 'center', alignItems: 'center' },
 });

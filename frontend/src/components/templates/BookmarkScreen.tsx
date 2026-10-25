@@ -12,9 +12,9 @@ import { BottomNavigation } from '../organisms/BottomNavigation';
 import { ScreenFrame } from '../organisms/ScreenFrame';
 import type { Navigate } from '../../screens/types';
 
-type BookmarkScreenProps = { bookId?: number; iteration?: number; onNavigate: Navigate };
+type BookmarkScreenProps = { bookId?: number; iteration?: number; initialPage?: number; onNavigate: Navigate };
 
-export function BookmarkScreen({ bookId, iteration, onNavigate }: BookmarkScreenProps) {
+export function BookmarkScreen({ bookId, iteration, initialPage, onNavigate }: BookmarkScreenProps) {
   if (bookId === undefined || iteration === undefined) {
     return (
       <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title="しおりを追加">
@@ -25,7 +25,7 @@ export function BookmarkScreen({ bookId, iteration, onNavigate }: BookmarkScreen
       </ScreenFrame>
     );
   }
-  return <SelectedBookmarkScreen key={`${bookId}:${iteration}`} bookId={bookId} iteration={iteration} onNavigate={onNavigate} />;
+  return <SelectedBookmarkScreen key={`${bookId}:${iteration}:${initialPage ?? ''}`} bookId={bookId} iteration={iteration} initialPage={initialPage} onNavigate={onNavigate} />;
 }
 
 type BookState =
@@ -33,11 +33,11 @@ type BookState =
   | { status: 'error'; message: string }
   | { status: 'success'; book: Book };
 
-function SelectedBookmarkScreen({ bookId, iteration, onNavigate }: Required<BookmarkScreenProps>) {
+function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate }: BookmarkScreenProps & { bookId: number; iteration: number }) {
   const [bookState, setBookState] = useState<BookState>({ status: 'loading' });
   const [requestVersion, setRequestVersion] = useState(0);
   const [pageVersion, setPageVersion] = useState(0);
-  const [page, setPage] = useState('');
+  const [page, setPage] = useState(initialPage === undefined ? '' : String(initialPage));
   const [thoughts, setThoughts] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [existing, setExisting] = useState<PageReview | null>(null);
@@ -81,7 +81,7 @@ function SelectedBookmarkScreen({ bookId, iteration, onNavigate }: Required<Book
   const canEdit = book?.reading_status === 'reading' && book.latest_iteration === iteration;
 
   useEffect(() => {
-    if (!book || !canEdit) {
+    if (!book) {
       return;
     }
     let active = true;
@@ -162,7 +162,7 @@ function SelectedBookmarkScreen({ bookId, iteration, onNavigate }: Required<Book
     translateY.setValue(0);
   }
 
-  if (!book || !canEdit) {
+  if (!book) {
     return (
       <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title="しおりを追加">
         <View style={styles.messageState}>
@@ -173,7 +173,6 @@ function SelectedBookmarkScreen({ bookId, iteration, onNavigate }: Required<Book
               <ActionButton label="再試行" onPress={() => setRequestVersion((version) => version + 1)} />
             </>
           )}
-          {book && <Text style={styles.message}>この読書回には記録できません。読了状態・最新の読書回を詳細で確認してください。</Text>}
           <ActionButton label="本の詳細へ" secondary onPress={() => onNavigate({ name: 'book-detail', bookId })} />
         </View>
       </ScreenFrame>
@@ -186,7 +185,7 @@ function SelectedBookmarkScreen({ bookId, iteration, onNavigate }: Required<Book
       <View style={styles.screen}>
         {!completed && (
           <>
-            <BookmarkRibbon translateY={translateY} color={result?.color_code ?? existing?.color_code} />
+            {canEdit && <BookmarkRibbon translateY={translateY} color={result?.color_code ?? existing?.color_code} />}
             <BookmarkCard
               translateY={translateY}
               title={book.title}
@@ -195,6 +194,7 @@ function SelectedBookmarkScreen({ bookId, iteration, onNavigate }: Required<Book
               loaded={loaded}
               updating={existing !== null}
               busy={busy}
+              readOnly={!canEdit}
               error={error}
               color={result?.color_code ?? existing?.color_code}
               analysisLabel={result ? reviewAnalysisLabel(result) : existing ? reviewAnalysisLabel(existing) : undefined}
@@ -209,6 +209,12 @@ function SelectedBookmarkScreen({ bookId, iteration, onNavigate }: Required<Book
               onRetry={() => setPageVersion((version) => version + 1)}
               onSubmit={save}
             />
+            {!canEdit && (
+              <View style={styles.readOnlyHeader}>
+                <Text style={styles.message}>閲覧専用（編集不可）</Text>
+                <ActionButton label="本の詳細へ" secondary onPress={() => onNavigate({ name: 'book-detail', bookId })} />
+              </View>
+            )}
           </>
         )}
         {completed && result && (
@@ -231,6 +237,7 @@ const styles = StyleSheet.create({
   safeArea: { backgroundColor: '#F7F4FF', flex: 1 },
   screen: { backgroundColor: '#F7F4FF', flex: 1 },
   messageState: { padding: 24, gap: 16 },
+  readOnlyHeader: { marginHorizontal: 24, marginTop: 8, gap: 4 },
   message: { color: colors.text, fontSize: 14, lineHeight: 22 },
   successState: { gap: 16, left: 24, position: 'absolute', right: 24, top: 160 },
   successTitle: { color: colors.text, fontSize: 20, fontWeight: '700' },
