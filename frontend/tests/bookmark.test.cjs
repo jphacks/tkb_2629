@@ -75,7 +75,7 @@ test('home renders with the current emotion helpers and uses the thought color o
   const samples = [{ note: 'Sample thought', color: '#123456' }];
   const { HomeScreen } = load('src/screens/main/HomeScreen.tsx', {
     'react-native': native,
-    react: { useState: (initial) => [initial, () => {}] },
+    react: { useState: (initial) => [initial, () => {}], useEffect() {} },
     'react/jsx-runtime': {
       jsx: (type, props) => ({ type, props }),
       jsxs: (type, props) => ({ type, props }),

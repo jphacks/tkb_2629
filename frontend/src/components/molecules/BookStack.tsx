@@ -1,7 +1,6 @@
 import { colors } from "../../theme/colors";
-import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import { StyleSheet, Text, View } from 'react-native';
+import Svg, { Defs, G, LinearGradient, Path, Stop } from 'react-native-svg';
 
 import { GlassSurface } from '../atoms/GlassSurface';
 
@@ -9,8 +8,10 @@ type BookStackProps = {
   count: number;
 };
 
-const MAX_STACKED_BOOKS = 16;
-const MAX_BACKGROUND_BOOKS = 24;
+export function bookStackLayers(count: number): number {
+  // Compress large counts so the tower grows without overflowing the card.
+  return count <= 10 ? count : Math.min(32, 10 + Math.floor(3 * Math.log2(count / 10)));
+}
 const bookGradients = [
   { end: '#DFA9F0', start: '#c07aef' },
   { end: '#AFC9F5', start: '#709deb' },
@@ -20,94 +21,79 @@ const bookGradients = [
   { end: '#F1B08D', start: '#D87544' },
 ];
 
-function BookSvg({ gradient }: { gradient: { end: string; start: string } }) {
+export function bookTowerGeometry(count: number, column: number) {
+  const layers = bookStackLayers(count);
+  const rear = Math.max(0, Math.floor((layers - 10) / 3));
+  const front = layers - rear * 2;
+  const size = column < 2 ? Math.floor(front / 2) + (column === 0 ? front % 2 : 0) : rear;
+  let bottom = 300;
+  return Array.from({ length: size }, (_, index) => {
+    const thickness = [12, 17, 10, 15, 13][(index + column) % 5]!;
+    const width = [114, 124, 106, 118, 110, 126][(index + column) % 6]!;
+    const left = (144 - width) / 2 + ((index % 3) - 1) * 2;
+    const book = { bottom, thickness, width, left };
+    bottom -= thickness;
+    return book;
+  });
+}
+
+function BookSvg({ gradient, id, width: w, thickness: t }: {
+  gradient: { end: string; start: string }; id: string; width: number; thickness: number;
+}) {
+  const b = 8 + t;
   return (
-    <Svg height="100%" viewBox="0 0 454 170" width="100%">
+    <G>
       <Defs>
-        <LinearGradient gradientUnits="userSpaceOnUse" id="bookGradient" x1="227" x2="227" y1="0" y2="170">
-          <Stop offset="0" stopColor={gradient.start} />
-          <Stop offset="1" stopColor={gradient.end} />
+        <LinearGradient id={`${id}-cover`} x1="0" x2="0" y1="0" y2="1">
+          <Stop offset="0" stopColor={gradient.end} />
+          <Stop offset="1" stopColor={gradient.start} />
+        </LinearGradient>
+        <LinearGradient id={`${id}-pages`} x1="0" x2="0" y1="0" y2="1">
+          <Stop offset="0" stopColor="#FFFCF4" />
+          <Stop offset="1" stopColor="#D6CDBD" />
         </LinearGradient>
       </Defs>
-      <Path d="M443 0.041C449.16 0.549 454 5.709 454 12c0 6.291-4.841 11.45-11 11.958V24H401.501v122H443v.041c6.16.508 11 5.668 11 11.959 0 6.291-4.841 11.45-11 11.958V170H30c-16.569 0-30-13.431-30-30V30C0 13.431 13.431 0 30 0h413v.041Z" fill="url(#bookGradient)" />
-      <Rect fill="#ebebeb" height="121" rx="20" width="400" x="43" y="24" />
-      <Path d="M43 40.5h400M43 54.5h400M43 68.5h400M43 82.5h400M43 96.5h400M43 110.5h400M43 124.5h400" stroke={colors.borderMuted} strokeWidth="5" />
-      <Circle cx="442" cy="12" fill="url(#bookGradient)" r="12" />
-      <Circle cx="442" cy="158" fill="url(#bookGradient)" r="12" />
-    </Svg>
+      <Path d={`M0 8 12 0H${w + 12}L${w} 8Z`} fill={gradient.end} />
+      <Path d={`M0 8 12 0H${w + 12}`} fill="none" stroke="#FFFFFF" strokeOpacity={0.6} strokeWidth={0.8} />
+      <Path d={`M${w} 8 ${w + 12} 0V${t}L${w} ${b}Z`} fill={gradient.start} />
+      <Path d={`M${w + 1} 9 ${w + 11} 2V${t - 1}L${w + 1} ${b - 2}Z`} fill={`url(#${id}-pages)`} />
+      <Path d={`M${w + 2} ${8 + t / 3} ${w + 10} ${2 + t / 3}M${w + 2} ${8 + t * 2 / 3} ${w + 10} ${2 + t * 2 / 3}`} stroke="#AA9D89" strokeOpacity={0.6} strokeWidth={0.6} />
+      <Path d={`M0 8H${w}V${b}H0Z`} fill={`url(#${id}-cover)`} />
+      <Path d={`M1 9H${w - 1}`} stroke="#FFFFFF" strokeOpacity={0.4} strokeWidth={0.7} />
+      <Path d={`M0 ${b - 0.5}H${w}L${w + 12} ${t - 0.5}`} fill="none" stroke="#47314B" strokeOpacity={0.35} strokeWidth={1} />
+      <Path d={`M8 9V${b - 1}M13 9V${b - 1}`} stroke="#FFFFFF" strokeOpacity={0.3} strokeWidth={1} />
+      <Path d={`M${w * 0.3} ${8 + t / 2}H${w * 0.7}`} stroke="#FFFFFF" strokeOpacity={0.5} strokeWidth={1.2} strokeLinecap="round" />
+    </G>
   );
 }
 
 export function BookStack({ count }: BookStackProps) {
-  const stackedBooks = Array.from({ length: Math.min(count, MAX_STACKED_BOOKS) });
-  const backgroundBooks = Array.from({ length: Math.min(Math.max(0, count - MAX_STACKED_BOOKS), MAX_BACKGROUND_BOOKS) });
-  const fallingValues = useRef<Animated.Value[]>([]).current;
-  const randomGradients = Array.from(
-    { length: stackedBooks.length + backgroundBooks.length },
-    () => bookGradients[Math.floor(Math.random() * bookGradients.length)]!,
-  );
-
-  while (fallingValues.length < backgroundBooks.length) {
-    fallingValues.push(new Animated.Value(0));
-  }
-
-  useEffect(() => {
-    backgroundBooks.forEach((_, index) => {
-      const initialTop = 40 + (index % 8) * 18;
-      const bottom = 8 + Math.floor(index / 3) * 20;
-      const fallDistance = Math.max(0, 400 - bottom - 38 - initialTop);
-
-      Animated.spring(fallingValues[index]!, {
-        damping: 12,
-        mass: 0.8,
-        stiffness: 90,
-        toValue: fallDistance,
-        useNativeDriver: true,
-      }).start();
-    });
-  }, [backgroundBooks.length, fallingValues]);
+  const layers = bookStackLayers(count);
 
   return (
-    <GlassSurface accessibilityLabel={`読んだ本 ${count}冊`} style={styles.card}>
-      <View pointerEvents="none" style={styles.backgroundBooks}>
-        {backgroundBooks.map((_, index) => (
-          <Animated.View
-            key={`background-book-${index}`}
-            style={[
-              styles.backgroundBook,
-              {
-                top: 40 + (index % 8) * 18,
-                left: `${12 + (index % 3) * 30}%`,
-                transform: [{ translateY: fallingValues[index]! }, { rotate: `${-10 + (index % 3) * 10}deg` }],
-              },
-            ]}
-          >
-            <BookSvg gradient={randomGradients[index]!} />
-          </Animated.View>
-        ))}
+    <GlassSurface accessibilityLabel={`読んだ本 ${count}冊、再読を含む`} style={styles.card}>
+      <View style={styles.summary}>
+        <Text style={styles.count}>読んだ本</Text>
+        <Text adjustsFontSizeToFit numberOfLines={1} style={styles.total}><Text style={styles.countNum}>{count.toLocaleString('ja-JP')}</Text> 冊</Text>
+        <Text style={styles.caption}>{count === 0 ? '最初の1冊を、ここから' : '再読も、あなたの積み重ねに'}</Text>
       </View>
-      <View style={styles.stackRow}>
-        <View style={styles.stack}>
-          {[0, 1].map((columnIndex) => (
-            <View key={`book-column-${columnIndex}`} style={styles.stackColumn}>
-              {stackedBooks.slice(columnIndex * 8, columnIndex * 8 + 8).map((_, index) => (
-                <View
-                  accessibilityLabel="本"
-                  key={`book-${columnIndex}-${index}`}
-                  style={[styles.book, { transform: [{ rotate: `${(index % 3) - 1}deg` }] }]}
-                >
-                  <BookSvg gradient={randomGradients[backgroundBooks.length + columnIndex * 8 + index]!} />
-                </View>
+      <View accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" style={styles.stack}>
+        {layers > 0 && <View style={styles.groundShadow} />}
+        {[2, 3, 0, 1].map((columnIndex) => (
+          <View key={`book-column-${columnIndex}`} style={[
+            styles.stackColumn,
+            columnIndex >= 2 ? styles.rearColumn : styles.frontColumn,
+            { left: columnIndex % 2 === 0 ? (columnIndex >= 2 ? '13%' : '0%') : (columnIndex >= 2 ? '49%' : '50%') },
+          ]}>
+            <Svg width="100%" height="100%" viewBox="0 0 160 300" preserveAspectRatio="xMidYMax meet">
+              {bookTowerGeometry(count, columnIndex).map((book, index) => (
+                <G key={index} transform={`translate(${book.left},${book.bottom - book.thickness - 8})`}>
+                  <BookSvg id={`tower-${columnIndex}-${index}`} width={book.width} thickness={book.thickness} gradient={bookGradients[(columnIndex + index) % bookGradients.length]!} />
+                </G>
               ))}
-            </View>
-          ))}
-        </View>
-        <View style={{ flex: 1 ,alignItems: 'center', justifyContent: 'center' }} >
-          <Text style={styles.count}>読んだ本:</Text>
-          <Text style={styles.count}><Text style={styles.countNum}> {count}</Text>冊</Text>
-        </View>
-
-
+            </Svg>
+          </View>
+        ))}
       </View>
     </GlassSurface>
   );
@@ -117,17 +103,18 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: 'rgba(255, 255, 255, 0.48)',
     borderRadius: 0,
-    height: 400,
     overflow: 'hidden',
     padding: 18,
     position: 'relative',
   },
-  stackRow: { alignItems: 'center', flex: 1, flexDirection: 'row' },
-  stack: { flex: 1, flexDirection: 'row', justifyContent: 'space-around', marginLeft: 10, marginTop: 12 },
-  stackColumn: { flex: 1, alignItems: 'center', justifyContent: 'flex-end' },
-  book: { height: 38, margin: 4, width: 100 },
-  count: { color: colors.text, fontSize: 30, fontWeight: '800'},
-  countNum: { color: colors.navAccent, fontSize: 80, fontWeight: '800'},
-  backgroundBooks: { ...StyleSheet.absoluteFill, opacity: 0.45 },
-  backgroundBook: { height: 38, position: 'absolute', width: 100 },
+  summary: { alignItems: 'center', gap: 6 },
+  total: { color: colors.text, fontSize: 20, fontWeight: '700', width: '100%', textAlign: 'center' },
+  stack: { height: 300, marginTop: 12, borderBottomWidth: 2, borderBottomColor: colors.borderMuted },
+  stackColumn: { position: 'absolute', width: '48%' },
+  frontColumn: { height: 300, bottom: 0 },
+  rearColumn: { height: 216, width: '35%', bottom: 30 },
+  groundShadow: { position: 'absolute', bottom: -4, left: '4%', right: '4%', height: 18, borderRadius: 100, backgroundColor: 'rgba(58,42,65,0.13)', transform: [{ scaleY: 0.45 }] },
+  count: { color: colors.text, fontSize: 20, fontWeight: '700' },
+  countNum: { color: colors.navAccent, fontSize: 56, fontWeight: '800' },
+  caption: { color: colors.textSecondary, fontSize: 13 },
 });
