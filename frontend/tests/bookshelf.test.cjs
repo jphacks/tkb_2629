@@ -6,171 +6,171 @@ const { test } = require('node:test');
 const ts = require('typescript');
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
-const book = (id, reading_status) => ({ id, title: `Book ${id}`, reading_status });
+const jsx = (type, props) => ({ type, props });
+const book = (id, reading_status = 'completed', latest_iteration = 1) => ({
+  id, title: `Book ${id}`, author: 'Author', reading_status, latest_iteration,
+});
+const iteration = (iteration_number, completed_at, status = 'completed') => ({ iteration_number, completed_at, status });
+const date = (month, day) => `2026-${month}-${day}T12:00:00`;
+const review = (text, n = 1) => ({ review_text: text, iteration_number: n, page_number: 42 });
+function load(file, dependencies) {
+  const exports = {};
+  const code = ts.transpileModule(fs.readFileSync(path.join(__dirname, '..', ...file.split('/')), 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2020 },
+  }).outputText;
+  vm.runInNewContext(code, {
+    exports, Error, Date,
+    require: (name) => dependencies[name] ?? new Proxy({}, { get: (_, key) => String(key) }),
+  });
+  return exports;
+}
+function library(api) {
+  const reading = load('src/lib/readingBooks.ts', { './api': api });
+  return load('src/lib/bookshelf.ts', { './api': api, './readingBooks': reading });
+}
+
+test('loads every book page, retains re-reads, searches every iteration, sorts by last completion', async () => {
+  const calls = [];
+  const lib = library({
+    getBooks: async (offset) => {
+      calls.push(['books', offset]);
+      return offset === 0
+        ? Array.from({ length: 100 }, (_, i) => book(i + 1, 'reading'))
+        : [book(101, 'reading', 2), book(102), book(103)];
+    },
+    getIterations: async (id) => {
+      calls.push(['iterations', id]);
+      if (id === 101) return [iteration(1, date('09', '15')), iteration(2, null, 'reading')];
+      return [iteration(1, id === 102 ? date('10', '20') : null)];
+    },
+    getBookReviews: async (id, n) => {
+      calls.push(['reviews', id, n]);
+      return [review(n === 1 ? '宇宙の描写' : '再読で発見', n)];
+    },
+  });
+  const entries = await lib.loadCompletedShelf(() => true);
+  assert.deepEqual(Array.from(entries, (entry) => entry.book.id), [102, 101, 103]);
+  assert.ok(calls.some((call) => call[0] === 'books' && call[1] === 100));
+  assert.deepEqual(calls.filter((call) => call[0] === 'iterations').map((call) => call[1]), [101, 102, 103]);
+  assert.ok(calls.some((call) => call[0] === 'reviews' && call[1] === 101 && call[2] === 2));
+  assert.equal(lib.matchesKeyword(entries[1], '宇宙'), true);
+  assert.equal(lib.matchingReview(entries[1], '宇宙').iteration_number, 1);
+  assert.equal(lib.shelfMonth(entries[1].completedAt), '2026年9月');
+  assert.equal(lib.shelfMonth(entries[2].completedAt), '読了日不明');
+});
+
+test('keyword supports title, author, old notes, width/case normalization and AND across fields', () => {
+  const lib = library({});
+  const entry = { book: { ...book(1), title: 'ＡＢＣの旅', author: '宮沢賢治' }, reviews: [review('宇宙の描写が印象的')] };
+  for (const query of ['', 'abc', '宮沢', '宇宙', 'ABC　宇宙']) assert.equal(lib.matchesKeyword(entry, query), true);
+  assert.equal(lib.matchesKeyword(entry, '宇宙 海'), false);
+  assert.equal(lib.matchingReview(entry, 'abc'), undefined);
+  assert.equal(lib.reviewExcerpt('あ'.repeat(90) + '宇宙' + 'い'.repeat(90), '宇宙').includes('宇宙'), true);
+});
+
+test('a completed re-read is one card in its latest completion month; invalid dates stay unknown', async () => {
+  const lib = library({
+    getBooks: async () => [book(1, 'completed', 3), book(2)],
+    getIterations: async (id) => id === 1
+      ? [iteration(1, date('08', '01')), iteration(2, date('09', '01')), iteration(3, date('10', '01'))]
+      : [iteration(1, 'invalid')],
+    getBookReviews: async () => [],
+  });
+  const entries = await lib.loadCompletedShelf(() => true);
+  assert.equal(entries.length, 2);
+  assert.equal(entries[0].book.id, 1);
+  assert.equal(lib.shelfMonth(entries[0].completedAt), '2026年10月');
+  assert.equal(entries[1].completedAt, null);
+});
+
+test('history or review errors reject rather than returning partial results; unmount stops next requests', async () => {
+  let active = true, reviewCalls = 0;
+  const api = {
+    getBooks: async () => [book(1)],
+    getIterations: async () => { active = false; return [iteration(1, null)]; },
+    getBookReviews: async () => { reviewCalls++; return []; },
+  };
+  assert.equal(await library(api).loadCompletedShelf(() => active), null);
+  assert.equal(reviewCalls, 0);
+  await assert.rejects(library({ ...api, getIterations: async () => { throw new Error('history failed'); } }).loadCompletedShelf(() => true), /history failed/);
+  await assert.rejects(library({
+    ...api, getIterations: async () => [iteration(1, null)],
+    getBookReviews: async () => { throw new Error('reviews failed'); },
+  }).loadCompletedShelf(() => true), /reviews failed/);
+});
 
 function nodes(node) {
   if (!node || typeof node !== 'object') return [];
-  return [node, ...[node.props?.children].flat(Infinity).flatMap(nodes)];
+  return [node, ...[node.props?.children, node.props?.headerAction].flat(Infinity).flatMap(nodes)];
 }
-
+const text = (tree) => nodes(tree).filter((node) => node.type === 'Text').map((node) => [node.props.children].flat().join('')).join('\n');
 function harness() {
   const state = [], effects = [], requests = [];
-  let cursor = 0, scheduled = [], target;
-  const code = ts.transpileModule(fs.readFileSync(
-    path.join(__dirname, '..', 'src', 'screens', 'main', 'BookshelfScreen.tsx'), 'utf8',
-  ), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
-  }).outputText;
-  const exports = {};
-  const dependencies = {
+  let cursor, scheduled, target;
+  const lib = library({});
+  const { BookshelfScreen } = load('src/screens/main/BookshelfScreen.tsx', {
     react: {
       useState(initial) {
         const index = cursor++;
         if (!(index in state)) state[index] = initial;
-        return [state[index], (value) => {
-          state[index] = typeof value === 'function' ? value(state[index]) : value;
-        }];
+        return [state[index], (value) => { state[index] = typeof value === 'function' ? value(state[index]) : value; }];
       },
       useEffect(effect, deps) {
         const index = cursor++;
-        const prior = effects[index];
-        if (!prior || deps.some((value, i) => value !== prior.deps[i])) {
-          scheduled.push(() => {
-            prior?.cleanup?.();
-            effects[index] = { deps, cleanup: effect() };
-          });
+        if (!effects[index] || deps.some((value, i) => effects[index].deps[i] !== value)) {
+          scheduled.push(() => { effects[index]?.cleanup?.(); effects[index] = { deps, cleanup: effect() }; });
         }
       },
     },
-    'react/jsx-runtime': {
-      jsx: (type, props) => ({ type, props }),
-      jsxs: (type, props) => ({ type, props }),
-    },
-    'react-native': {
-      StyleSheet: { create: (value) => value },
-      Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View',
-    },
-    '../../lib/api': {
-      getBooks(offset) {
-        return new Promise((resolve, reject) => { requests.push({ offset, resolve, reject }); });
-      },
-    },
-  };
-  vm.runInNewContext(code, {
-    exports, Error,
-    require: (name) => dependencies[name] ?? new Proxy({}, { get: (_, key) => String(key) }),
+    'react/jsx-runtime': { jsx, jsxs: jsx },
+    'react-native': { StyleSheet: { create: (value) => value }, Pressable: 'Pressable', View: 'View', Text: 'Text', ScrollView: 'ScrollView' },
+    '../../lib/bookshelf': { ...lib, loadCompletedShelf: () => new Promise((resolve, reject) => requests.push({ resolve, reject })) },
+    '../../lib/readingStatus': { formatDate: (value) => value ? value.slice(0, 10) : null },
   });
   return {
-    requests,
-    get target() { return target; },
+    requests, get target() { return target; },
     render() {
-      cursor = 0;
-      scheduled = [];
-      const tree = exports.BookshelfScreen({ onNavigate: (value) => { target = value; } });
+      cursor = 0; scheduled = [];
+      const tree = BookshelfScreen({ onNavigate: (value) => { target = value; } });
       scheduled.forEach((effect) => effect());
       return tree;
     },
-    unmount() { effects.forEach((effect) => effect?.cleanup?.()); },
   };
 }
-
-const covers = (tree) => nodes(tree).filter((node) => node.type === 'BookCover');
-const text = (tree) => nodes(tree).filter((node) => node.type === 'Text').map((node) => node.props.children).join('\n');
-const tab = (tree, label) => nodes(tree).find((node) =>
-  node.props?.accessibilityRole === 'tab' && node.props.children.props.children === label);
-const retry = (tree) => nodes(tree).find((node) => node.props?.label === '再試行');
-
-test('shelf plus opens the same search screen as the bottom tab', () => {
+const entry = (id, month, reviews = []) => ({ book: book(id), completedAt: date(month, '20'), reviews });
+test('UI groups months, searches old notes with excerpt, keeps detail and plus targets', async () => {
   const h = harness();
-  const tree = h.render();
-  assert.equal(tree.props.headerAction.props.accessibilityLabel, '本を追加');
+  assert.ok(text(h.render()).includes('読み込んでいます'));
+  h.requests[0].resolve([entry(2, '10'), { ...entry(1, '09', [review('宇宙が美しい')]), book: book(1, 'reading', 2) }]);
+  await flush();
+  let tree = h.render();
+  assert.ok(text(tree).includes('2026年10月'));
+  assert.ok(text(tree).includes('2回目を読書中'));
+  nodes(tree).find((node) => node.type === 'ShadowInput').props.onChangeText('宇宙');
+  tree = h.render();
+  assert.ok(!text(tree).includes('2026年10月'));
+  assert.ok(text(tree).includes('1回目・p.42：宇宙が美しい'));
+  nodes(tree).find((node) => node.props?.accessibilityLabel === 'Book 1の詳細を見る').props.onPress();
+  assert.equal(h.target.bookId, 1);
   tree.props.headerAction.props.onPress();
   assert.equal(h.target, 'search');
+  nodes(tree).find((node) => node.type === 'ShadowInput').props.onChangeText('missing');
+  assert.ok(text(h.render()).includes('キーワードに一致する本はありません'));
 });
 
-test('tabs filter by reading status, restore all books, and preserve detail targets', async () => {
+test('empty shelf differs from no matches, and failure exposes retry without partial books', async () => {
   const h = harness();
   h.render();
-  h.requests[0].resolve([book(7, 'reading'), book(9, 'completed')]);
+  h.requests[0].reject(new Error('取得失敗'));
   await flush();
   let tree = h.render();
-  assert.equal(covers(tree).length, 2);
-  for (const [label, title] of [['読書中', 'Book 7'], ['読了', 'Book 9']]) {
-    tab(tree, label).props.onPress();
-    tree = h.render();
-    assert.deepEqual(covers(tree).map((node) => node.props.title), [title]);
-    assert.equal(tab(tree, label).props.accessibilityState.selected, true);
-    assert.equal(tab(tree, 'すべて').props.accessibilityState.selected, false);
-  }
-  nodes(tree).find((node) => node.type === 'Pressable' && node.props.children?.[0]?.type === 'BookCover').props.onPress();
-  assert.equal(h.target.name, 'book-detail');
-  assert.equal(h.target.bookId, 9);
-  tab(tree, 'すべて').props.onPress();
-  assert.equal(covers(h.render()).length, 2);
-  assert.equal(h.requests.length, 1);
-});
-
-test('all pages are loaded before filtering, including a book beyond the first 100', async () => {
-  const h = harness();
-  let tree = h.render();
-  tab(tree, '読了').props.onPress();
-  h.requests[0].resolve(Array.from({ length: 100 }, (_, id) => book(id + 1, 'reading')));
-  await flush();
-  assert.equal(h.requests[0].offset, 0);
-  assert.equal(h.requests[1].offset, 100);
-  tree = h.render();
-  assert.equal(covers(tree).length, 0);
-  assert.ok(text(tree).includes('本棚を読み込んでいます'));
-  assert.ok(!text(tree).includes('読了した本はありません'));
-  h.requests[1].resolve([book(101, 'completed')]);
+  assert.ok(text(tree).includes('取得失敗'));
+  nodes(tree).find((node) => node.props?.label === '再試行').props.onPress();
+  h.render();
+  h.requests[1].resolve([]);
   await flush();
   tree = h.render();
-  assert.deepEqual(covers(tree).map((node) => node.props.title), ['Book 101']);
-});
-
-test('empty shelf and empty filters have distinct messages', async () => {
-  for (const [items, label, message] of [
-    [[], 'すべて', '本棚にはまだ本がありません。'],
-    [[book(1, 'completed')], '読書中', '読書中の本はありません。'],
-    [[book(1, 'reading')], '読了', '読了した本はありません。'],
-  ]) {
-    const h = harness();
-    h.render();
-    h.requests[0].resolve(items);
-    await flush();
-    tab(h.render(), label).props.onPress();
-    assert.ok(text(h.render()).includes(message));
-    assert.equal(covers(h.render()).length, 0);
-  }
-});
-
-test('later-page failure shows an error without partial results and retries from zero', async () => {
-  const h = harness();
-  h.render();
-  h.requests[0].resolve(Array.from({ length: 100 }, (_, id) => book(id + 1, 'reading')));
-  await flush();
-  h.requests[1].reject(new Error('Connection failed'));
-  await flush();
-  let tree = h.render();
-  assert.ok(text(tree).includes('Connection failed'));
-  assert.ok(!text(tree).includes('本棚にはまだ本がありません'));
-  assert.equal(covers(tree).length, 0);
-  retry(tree).props.onPress();
-  h.render();
-  assert.equal(h.requests[2].offset, 0);
-  h.requests[2].resolve([book(9, 'reading')]);
-  await flush();
-  tree = h.render();
-  assert.equal(retry(tree), undefined);
-  assert.equal(covers(tree).length, 1);
-});
-
-test('unmounting stops pagination after an in-flight request', async () => {
-  const h = harness();
-  h.render();
-  h.unmount();
-  h.requests[0].resolve(Array.from({ length: 100 }, (_, id) => book(id, 'reading')));
-  await flush();
-  assert.equal(h.requests.length, 1);
-  assert.equal(covers(h.render()).length, 0);
+  assert.ok(text(tree).includes('読み終えた本はまだありません'));
+  nodes(tree).find((node) => node.props?.label === '今読んでる本へ').props.onPress();
+  assert.equal(h.target, 'reading');
 });
