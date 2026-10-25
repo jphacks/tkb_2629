@@ -21,8 +21,13 @@ import { SearchScreen } from './src/screens/main/SearchScreen';
 import { AccountScreen } from './src/screens/main/AccountScreen';
 import { ReadingCompleteScreen } from './src/screens/reading/ReadingCompleteScreen';
 import type { Navigate, Route } from './src/screens/types';
+import { DemoScreen } from './src/screens/demo/DemoScreen';
 
 export default function App() {
+  return process.env.EXPO_PUBLIC_DEMO_MODE === 'true' ? <DemoScreen /> : <RegularApp />;
+}
+
+function RegularApp() {
   const [routes, setRoutes] = useState<Route[]>([{ name: 'login' }]);
   const route = routes[routes.length - 1]!;
   const [user, setUser] = useState(currentUser());
