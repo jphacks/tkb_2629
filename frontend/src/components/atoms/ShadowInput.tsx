@@ -1,12 +1,12 @@
-import { StyleSheet, TextInput, type TextInputProps } from 'react-native';
+import { StyleSheet, TextInput, type StyleProp, type ViewStyle, type TextInputProps } from 'react-native';
 
 import { GlassSurface } from './GlassSurface';
 
 import { colors } from '../../theme/colors';
 
-export function ShadowInput(props: TextInputProps) {
+export function ShadowInput({ surfaceStyle, ...props }: TextInputProps & { surfaceStyle?: StyleProp<ViewStyle> }) {
   return (
-    <GlassSurface style={styles.surface} intensity={22}>
+    <GlassSurface style={[styles.surface, surfaceStyle]} intensity={22}>
       <TextInput placeholderTextColor={colors.placeholder} {...props} style={[styles.input, props.style]} />
     </GlassSurface>
   );

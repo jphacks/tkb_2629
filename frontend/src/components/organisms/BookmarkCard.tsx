@@ -1,14 +1,12 @@
 import { useRef } from 'react';
-import { Animated, PanResponder, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Animated, PanResponder, StyleSheet, Text, View } from 'react-native';
 import type { PanResponderCallbacks } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { colors } from '../../theme/colors';
-import type { ReviewVisibility } from '../../lib/api';
 import { PageField } from '../molecules/PageField';
 import { ActionButton } from '../molecules/ActionButton';
 import { ThoughtsField } from '../molecules/ThoughtsField';
-import { FieldLabel } from '../atoms/FieldLabel';
 
 type BookmarkCardProps = {
   translateY: Animated.Value;
@@ -26,10 +24,6 @@ type BookmarkCardProps = {
   onThoughtsChange: (value: string) => void;
   onRetry: () => void;
   onSubmit: () => void;
-  visibility: ReviewVisibility;
-  onVisibilityChange: (value: ReviewVisibility) => void;
-  containsSpoilers: boolean;
-  onSpoilersChange: (value: boolean) => void;
 };
 
 const SWIPE_START_DISTANCE = 24;
@@ -42,7 +36,6 @@ export function BookmarkCard(props: BookmarkCardProps) {
   } = props;
   const latest = useRef(props);
   latest.current = props;
-  const scroll = useRef({ offset: 0, viewport: 0, content: 0 });
   const bottomSwipe = useRef(false);
   const touch = useRef({ x: 0, y: 0, dy: 0 });
   function finishSwipe(dy: number) {
@@ -91,10 +84,7 @@ export function BookmarkCard(props: BookmarkCardProps) {
       )}
     <Animated.View
       onTouchStartCapture={(event) => {
-        const { offset, viewport, content } = scroll.current;
-        // Scrolling to the bottom must finish before a new gesture can save.
-        bottomSwipe.current = latest.current.loaded && !latest.current.busy && !latest.current.readOnly &&
-          viewport > 0 && content > 0 && offset + viewport >= content - 2;
+        bottomSwipe.current = latest.current.loaded && !latest.current.busy && !latest.current.readOnly;
         touch.current = { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY, dy: 0 };
       }}
       onTouchMoveCapture={(event) => {
@@ -146,23 +136,9 @@ export function BookmarkCard(props: BookmarkCardProps) {
             <Rect fill="url(#bookmarkMeshBlue)" height="100" width="100" />
           </Svg>
         )}
-        <ScrollView
-          style={styles.scroll}
-          scrollEnabled={!busy}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.scrollContent}
-          scrollEventThrottle={16}
-          bounces={false}
-          overScrollMode="never"
-          onLayout={(event) => { scroll.current.viewport = event.nativeEvent.layout.height; }}
-          onContentSizeChange={(_, height) => { scroll.current.content = height; }}
-          onScroll={(event) => {
-            const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
-            scroll.current = { offset: contentOffset.y, viewport: layoutMeasurement.height, content: contentSize.height };
-          }}
-        >
+        <View style={styles.form}>
           <View style={styles.dragHeading}>
-            <Text style={styles.title}>「{title}」{readOnly ? 'のしおりを読む' : updating ? 'のしおりを更新' : 'にしおりを追加'}</Text>
+            <Text numberOfLines={2} style={styles.title}>「{title}」{readOnly ? 'のしおりを読む' : updating ? 'のしおりを更新' : 'にしおりを追加'}</Text>
           </View>
           <View style={styles.formFields}>
             <PageField
@@ -171,43 +147,18 @@ export function BookmarkCard(props: BookmarkCardProps) {
               value={page}
             />
             {!loaded && !error && <Text style={styles.note}>{page.trim() ? 'ページの感想を確認しています。' : 'ページを入力すると、保存済みの感想を自動で読み込みます。'}</Text>}
-            <ThoughtsField onChangeText={onThoughtsChange} editable={loaded && !busy && !readOnly} value={thoughts} />
-            {loaded && (!readOnly || updating) && (
-              <View style={styles.visibilityRow} onTouchStart={() => { bottomSwipe.current = false; }}>
-                <FieldLabel>他の読者に公開する</FieldLabel>
-                <Switch
-                  style={styles.visibilitySwitch}
-                  accessibilityLabel="他の読者に公開する"
-                  value={props.visibility === 'public'}
-                  disabled={busy || readOnly}
-                  onValueChange={(value) => props.onVisibilityChange(value ? 'public' : 'private')}
-                />
-              </View>
-            )}
-            {loaded && (!readOnly || updating) && (
-              <View style={styles.visibilityRow} onTouchStart={() => { bottomSwipe.current = false; }}>
-                <FieldLabel>ネタバレを含む</FieldLabel>
-                <Switch
-                  style={styles.visibilitySwitch}
-                  accessibilityLabel="ネタバレを含む"
-                  value={props.containsSpoilers}
-                  disabled={busy || readOnly}
-                  onValueChange={props.onSpoilersChange}
-                />
-              </View>
-            )}
+            <ThoughtsField fillAvailableSpace onChangeText={onThoughtsChange} editable={loaded && !busy && !readOnly} value={thoughts} />
             {loaded && readOnly && !updating && <Text style={styles.note}>このページにはしおりがありません。</Text>}
             {analysisLabel && <Text style={styles.note}>{analysisLabel}</Text>}
             {loaded && !readOnly && (
               <>
-                <Text style={styles.note}>公開への同意を保存します。他の読者への表示は準備中です。</Text>
                 <ActionButton label={busy ? '保存中…' : updating ? 'しおりを更新する' : 'しおりを追加する'} onPress={busy ? undefined : props.onSubmit} />
               </>
             )}
             {error && <Text accessibilityRole="alert" style={styles.validationError}>{error}</Text>}
             {error && !loaded && <ActionButton label="読み込みを再試行" onPress={onRetry} />}
           </View>
-        </ScrollView>
+        </View>
         {loaded && !readOnly && (
           <View
             {...panResponder.panHandlers}
@@ -252,14 +203,11 @@ const styles = StyleSheet.create({
   mesh: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
   savedContent: { backgroundColor: '#FFFFFF' },
   colorTint: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0, opacity: 0.2 },
-  scrollContent: { paddingBottom: 32 },
   note: { color: colors.text, fontSize: 13 },
-  visibilityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, gap: 12 },
-  visibilitySwitch: { transform: [{ scale: 1.2 }], marginHorizontal: 6 },
-  scroll: { flex: 1 },
+  form: { flex: 1, minHeight: 0 },
   bottomSwipeArea: { minHeight: 72, justifyContent: 'center', paddingVertical: 12 },
   title: { color: colors.text, fontSize: 24, fontWeight: '700', marginBottom: 12, marginTop: 12 },
-  formFields: { gap: 20 },
+  formFields: { flex: 1, minHeight: 0, gap: 12 },
   swipeHint: { color: colors.navAccent, fontSize: 24, fontWeight: '600', textAlign: 'center' },
   validationError: { color: '#B42318', fontSize: 13, fontWeight: '600', textAlign: 'center' },
 });

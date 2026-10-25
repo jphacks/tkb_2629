@@ -79,7 +79,7 @@ export function BookmarkListCard({
               <View style={styles.reviewText}>
                 <Text style={styles.heading}>{bookmark.page}ページ</Text>
                 <Text>{bookmark.note}</Text>
-                <Text style={styles.count}>{bookmark.analysisLabel}</Text>
+                {bookmark.analysisLabel && <Text style={styles.count}>{bookmark.analysisLabel}</Text>}
               </View>
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={`${bookmark.page}ページのみんなの感想を読む`} style={styles.samePage} onPress={() => { setCommunityPage(bookmark.page); setView('others'); }}>
