@@ -7,6 +7,8 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { ActionButton } from '../../components/molecules/ActionButton';
 import { BookCover } from '../../components/molecules/BookCover';
 import { ShadowInput } from '../../components/atoms/ShadowInput';
+import { SearchHistory } from '../../components/molecules/SearchHistory';
+import { useSearchHistory } from '../../lib/searchHistory';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
 import { BookmarkScreen } from '../../components/templates/BookmarkScreen';
 import {
@@ -44,6 +46,7 @@ export function AddBookScreen({
   const [detailBookId, setDetailBookId] = useState<number | null>(null);
   const [bookmark, setBookmark] = useState<Extract<Route, { name: 'bookmark' }> | null>(null);
   const searchRequestId = useRef(0);
+  const history = useSearchHistory('catalog');
 
   // Shelf status on results is supplementary, so a failure here only hides it.
   useEffect(() => {
@@ -63,8 +66,8 @@ export function AddBookScreen({
     };
   }, []);
 
-  async function search() {
-    const normalizedQuery = query.trim();
+  async function search(value = query) {
+    const normalizedQuery = value.trim();
     if (!normalizedQuery) {
       setMessage('検索するタイトルを入力してください。');
       return;
@@ -73,6 +76,8 @@ export function AddBookScreen({
     searchRequestId.current = requestId;
     setSearching(true);
     setMessage(null);
+    setQuery(normalizedQuery);
+    void history.remember(normalizedQuery);
     try {
       const books = await searchGoogleBooks(normalizedQuery);
       if (requestId !== searchRequestId.current) {
@@ -175,7 +180,7 @@ export function AddBookScreen({
         <View style={styles.searchRow}>
           <ShadowInput
             onChangeText={setQuery}
-            onSubmitEditing={search}
+            onSubmitEditing={() => { void search(); }}
             placeholder="本のタイトルを検索"
             returnKeyType="search"
             value={query}
@@ -185,7 +190,7 @@ export function AddBookScreen({
             accessibilityLabel="検索する"
             accessibilityRole="button"
             disabled={searching}
-            onPress={search}
+            onPress={() => { void search(); }}
             style={({ pressed }) => [styles.searchButton, pressed && styles.searchButtonPressed]}
           >
             <Svg height="100%" pointerEvents="none" preserveAspectRatio="none" style={styles.searchGradient} viewBox="0 0 100 100" width="100%">
@@ -201,6 +206,12 @@ export function AddBookScreen({
             <Ionicons color={colors.background} name="search" size={21} />
           </Pressable>
         </View>
+        <SearchHistory
+          items={history.items} error={history.error} loading={history.loading}
+          onSelect={(value) => { void search(value); }}
+          onRemove={(value) => { void history.remove(value); }}
+          onClear={() => { void history.clear(); }}
+        />
         {message && <Text style={styles.message}>{message}</Text>}
         {results.length > 0 && (
           <Text style={styles.resultCount}>検索結果 {results.length}件</Text>

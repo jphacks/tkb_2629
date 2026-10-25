@@ -126,6 +126,9 @@ function harness() {
     'react-native': { StyleSheet: { create: (value) => value }, Pressable: 'Pressable', View: 'View', Text: 'Text', ScrollView: 'ScrollView' },
     '../../lib/bookshelf': { ...lib, loadCompletedShelf: () => new Promise((resolve, reject) => requests.push({ resolve, reject })) },
     '../../lib/readingStatus': { formatDate: (value) => value ? value.slice(0, 10) : null },
+    '../../lib/searchHistory': { useSearchHistory: () => ({
+      items: [], error: null, loading: false, remember: async () => {}, remove: async () => {}, clear: async () => {},
+    }) },
   });
   return {
     requests, get target() { return target; },

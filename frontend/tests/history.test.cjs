@@ -112,6 +112,9 @@ function searchHarness({ shelf, failShelf = false } = {}) {
       loadAllBooks: async () => { if (failShelf) throw new Error('offline'); return shelf; },
     },
     '../../lib/readingStatus': status,
+    '../../lib/searchHistory': { useSearchHistory: () => ({
+      items: [], error: null, loading: false, remember: async () => {}, remove: async () => {}, clear: async () => {},
+    }) },
   });
   const render = () => h.render(() => AddBookScreen({ onNavigate: (value) => { target = value; } }));
   return {
