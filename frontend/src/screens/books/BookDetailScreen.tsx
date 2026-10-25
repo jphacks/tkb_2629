@@ -11,6 +11,7 @@ import { ReadingProgress } from '../../components/molecules/ReadingProgress';
 import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { EmotionAnalysisCard, getEmotionTint } from '../../components/organisms/EmotionAnalysisCard';
 import { BookmarkListCard } from '../../components/organisms/BookmarkListCard';
+import { CommunityBookmarks } from '../../components/organisms/CommunityBookmarks';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
 import { ApiError, completeIteration, startIteration, getBook, getBookEmotions, getBookReviews, getIterations, type Book, type BookEmotions, type PageReview, type ReadingIteration } from '../../lib/api';
 import { formatDate, iterationLabel } from '../../lib/readingStatus';
@@ -255,30 +256,21 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
                 ))}
               </GlassSurface>
             )}
-            <GlassSurface style={styles.card}>
-              {book.google_books_id ? (
-                <ActionButton label="みんなの公開感想を見る" onPress={() => onNavigate({ name: 'public-reviews', bookId })} secondary />
-              ) : (
-                <Text style={styles.historyRow}>手動登録の本は公開感想の一覧に対応していません。</Text>
-              )}
-            </GlassSurface>
-            {!reviews && !reviewError && <Text style={styles.message}>しおりを読み込んでいます…</Text>}
-            {reviewError && (
-              <View style={styles.error}>
-                <Text accessibilityRole="alert" style={styles.message}>{reviewError}</Text>
-                <ActionButton label="しおり一覧を再試行" onPress={() => setReviewVersion((version) => version + 1)} />
-              </View>
-            )}
-            {reviews && (
               <BookmarkListCard
                 key={`${bookId}:${book.latest_iteration}`}
-                reviews={reviews}
+                reviews={reviews ?? []}
+                ownFallback={!reviews ? reviewError ? (
+                  <View style={styles.error}>
+                    <Text accessibilityRole="alert" style={styles.message}>{reviewError}</Text>
+                    <ActionButton label="しおり一覧を再試行" onPress={() => setReviewVersion((version) => version + 1)} />
+                  </View>
+                ) : <Text style={styles.message}>しおりを読み込んでいます…</Text> : undefined}
+                community={(page) => <CommunityBookmarks key={`${bookId}:${page ?? 'all'}`} bookId={bookId} initialPage={page} />}
                 currentPage={book.current_page}
                 onOpen={(page) => onNavigate({ name: 'bookmark', bookId, iteration: book.latest_iteration, page })}
                 accentColor={emotionColor}
                 tintColor={emotionTint}
               />
-            )}
             {!emotions && !emotionError && <Text style={styles.message}>感情分析を読み込んでいます…</Text>}
             {emotionError && (
               <View style={styles.error}>
