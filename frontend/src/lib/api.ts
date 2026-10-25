@@ -28,6 +28,8 @@ export type Book = {
   completed_at: string | null;
 };
 
+export type ReviewVisibility = "private" | "public";
+
 export type PageReview = {
   id: number;
   book_id: number;
@@ -39,6 +41,7 @@ export type PageReview = {
   iteration_number: number;
   analysis_status: "pending" | "completed" | "failed";
   source: string | null;
+  visibility: ReviewVisibility;
 };
 
 export type BookEmotions = {
@@ -235,6 +238,28 @@ export async function savePageReview(
     },
   );
   return parseResponse<PageReview>(response, "しおりの保存に失敗しました");
+}
+
+export async function setReviewVisibility(
+  bookId: number,
+  page: number,
+  iteration: number,
+  visibility: ReviewVisibility,
+): Promise<void> {
+  const response = await authenticatedFetch(
+    `${API_URL}/books/${bookId}/pages/${page}/review/visibility?iteration=${iteration}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visibility }),
+    },
+  );
+  const result = await parseResponse<{ visibility: ReviewVisibility }>(
+    response, "公開設定の保存に失敗しました",
+  );
+  if (result.visibility !== visibility) {
+    throw new Error("公開設定の保存結果が一致しません。再試行してください。");
+  }
 }
 
 export async function getBookReviews(
