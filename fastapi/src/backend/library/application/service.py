@@ -3,7 +3,7 @@ from __future__ import annotations
 from ..domain.catalog import CatalogBook
 from ..domain.entities import BookshelfPolicy, Reading, StoredBook
 from ..domain.errors import InvalidInput
-from ..domain.values import BookDetails
+from ..domain.values import BookDetails, CoverStyle
 from .ports import BookCatalog, Clock, UnitOfWorkFactory
 from .results import BookView, PopularBook, ReadingKey, ReadingReference
 
@@ -13,6 +13,30 @@ class LibraryService:
         self.units = units
         self.catalog = catalog
         self.clock = clock
+
+    def save_cover(self, user_id: int, book_id: int, style: CoverStyle) -> CoverStyle:
+        with self.units() as unit:
+            unit.books.get(book_id, lock=True)
+            unit.readings.get(user_id, book_id)
+            unit.books.save_cover(user_id, book_id, style)
+            unit.commit()
+        return style
+
+    def get_memo(self, user_id: int, book_id: int) -> str:
+        with self.units() as unit:
+            unit.readings.get(user_id, book_id)
+            return unit.books.get_memo(user_id, book_id)
+
+    def save_memo(self, user_id: int, book_id: int, content: str) -> str:
+        if len(content) > 10_000:
+            raise InvalidInput("Memo must be at most 10000 characters")
+        with self.units() as unit:
+            # Serialize first writes as well as updates without tying the memo to a reread.
+            unit.books.get(book_id, lock=True)
+            unit.readings.get(user_id, book_id)
+            unit.books.save_memo(user_id, book_id, content)
+            unit.commit()
+        return content
 
     def search(self, query: str, limit: int) -> list[CatalogBook]:
         query = query.strip()
@@ -48,6 +72,8 @@ class LibraryService:
             if book.title is None or book.total_pages is None:
                 raise InvalidInput("Manual book metadata is incomplete")
             title, author, pages = book.title, book.author, book.total_pages
+        with self.units() as unit:
+            cover_style = unit.books.get_cover(reading.user_id, book.id)
         return BookView(
             id=book.id,
             title=title,
@@ -63,6 +89,7 @@ class LibraryService:
             started_at=reading.started_at,
             completed_at=reading.completed_at,
             last_read_at=reading.last_read_at,
+            cover_style=cover_style,
         )
 
     def register(

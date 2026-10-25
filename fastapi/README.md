@@ -24,6 +24,27 @@ history. Baseline stamping requires that review first.
 起動後は http://localhost:8000/docs でAPIを確認できます。
 Dockerfileの起動コマンドを変更した場合も、`--build` を付けてイメージを再ビルドしてください。
 
+## 本ごとの非公開メモ
+
+- 認証必須の `GET /books/{book_id}/memo` と `PUT /books/{book_id}/memo`
+- 応答は `{"book_id": 10, "content": "メモ"}`、更新リクエストは `{"content": "メモ"}`
+- 自分の本棚に登録した本だけが対象です。未登録・存在しない本は404、未ログインは401です
+- ユーザーと本の組み合わせごとに保存し、読書回・公開感想・感情解析とは独立します。読了後も編集できます
+- 内容は空白・改行・句読点をそのまま保存します。上限はUnicodeコードポイントで10,000文字、空文字で保存すると削除します
+- 未保存の本は空文字を返します。取得・保存の応答には `Cache-Control: no-store` を設定します
+- マイグレーション `0015_book_memos` が必要です。上記の `alembic upgrade head` を実行してください
+- 保存の同時実行は本の行ロックで直列化します。複数端末で編集した場合、最後に保存した内容を採用します
+
+## 本ごとの表紙設定
+
+- 認証必須の `PUT /books/{book_id}/cover` で自分の登録本の表紙を保存します。未登録は404、未ログインは401です
+- 本の詳細・一覧・続きを読むの `cover_style` に自分の設定を含めます。他ユーザーには共有しません
+- リクエストと応答：`{"color_mode": "palette", "palette": 0, "pattern": 2}`
+- `color_mode` は `auto` / `palette` / `mine` / `others`。`palette` はpaletteモードのみ0〜7、それ以外はnullです。`pattern` は0〜3またはnull（自動）です
+- 感情色はスナップショットではなく選択元を保存します。フロントエンドは既存の感情比較APIで最新の色を解決します。公開範囲や解析対象の条件は変更しません
+- `{"color_mode": "auto", "palette": null, "pattern": null}` でカスタマイズを解除します
+- 読書回やメモとは独立します。マイグレーション `0016_book_cover_styles` が必要です
+
 起動に失敗する場合は次のコマンドで状態とログを確認できます。
 
 ```bash

@@ -1,11 +1,12 @@
 import { colors } from "../../theme/colors";
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { ActionButton } from '../../components/molecules/ActionButton';
 import { BookCover } from '../../components/molecules/BookCover';
+import { OwnedBookCover } from '../../components/molecules/OwnedBookCover';
 import { ShadowInput } from '../../components/atoms/ShadowInput';
 import { SearchHistory } from '../../components/molecules/SearchHistory';
 import { useSearchHistory } from '../../lib/searchHistory';
@@ -45,11 +46,13 @@ export function AddBookScreen({
   const [searching, setSearching] = useState(false);
   const [importingId, setImportingId] = useState<string | null>(null);
   const [ownedBooks, setOwnedBooks] = useState<Record<string, Book>>({});
+  const [shelfVersion, setShelfVersion] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [preview, setPreview] = useState<GoogleBook | null>(null);
   const [detailBookId, setDetailBookId] = useState<number | null>(null);
   const [bookmark, setBookmark] = useState<Extract<Route, { name: 'bookmark' }> | null>(null);
   const searchRequestId = useRef(0);
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const history = useSearchHistory('catalog');
 
   // Shelf status on results is supplementary, so a failure here only hides it.
@@ -62,13 +65,15 @@ export function AddBookScreen({
         for (const book of books) {
           if (book.google_books_id) owned[book.google_books_id] = book;
         }
-        setOwnedBooks((current) => ({ ...owned, ...current }));
+        setOwnedBooks((current) => ({ ...current, ...owned }));
       })
-      .catch(() => {});
+      .catch((reason: unknown) => {
+        if (active) setMessage(reason instanceof Error ? reason.message : '本棚の取得に失敗しました');
+      });
     return () => {
       active = false;
     };
-  }, []);
+  }, [shelfVersion]);
 
   async function search(value = query) {
     const normalizedQuery = value.trim();
@@ -79,6 +84,8 @@ export function AddBookScreen({
     const requestId = searchRequestId.current + 1;
     searchRequestId.current = requestId;
     setSearching(true);
+    setResults([]);
+    scroll.current?.scrollTo({ y: 0, animated: false });
     setMessage(null);
     setQuery(normalizedQuery);
     void history.remember(normalizedQuery);
@@ -160,7 +167,10 @@ export function AddBookScreen({
       <BookDetailScreen
         bookId={detailBookId}
         onNavigate={navigate}
-        onBack={() => setDetailBookId(null)}
+        onBack={() => {
+          setDetailBookId(null);
+          setShelfVersion((value) => value + 1);
+        }}
       />
     );
   }
@@ -187,7 +197,7 @@ export function AddBookScreen({
       title={title}
       subtitle={subtitle}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.searchRow}>
           <ShadowInput
             onChangeText={setQuery}
@@ -217,31 +227,7 @@ export function AddBookScreen({
             <Ionicons color={colors.background} name="search" size={21} />
           </Pressable>
         </View>
-        <View style={styles.genres}>
-          <Text style={styles.genreHeading}>ジャンルから探す</Text>
-          <Text style={styles.genreHint}>ジャンル名でキーワード検索します</Text>
-          <View style={styles.genreList}>
-            {genres.map((genre) => (
-              <Pressable
-                key={genre}
-                accessibilityLabel={`${genre}の本を探す`}
-                accessibilityRole="button"
-                onPress={() => { void search(genre); }}
-                style={({ pressed }) => [styles.genreButton, pressed && styles.searchButtonPressed]}
-              >
-                <Text style={styles.genreLabel}>{genre}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-        <PopularBooks onSelect={openDiscoveredBook} />
-        <EmotionRecommendations onSelect={openDiscoveredBook} />
-        <SearchHistory
-          items={history.items} error={history.error} loading={history.loading}
-          onSelect={(value) => { void search(value); }}
-          onRemove={(value) => { void history.remove(value); }}
-          onClear={() => { void history.clear(); }}
-        />
+        {searching && <Text accessibilityRole="alert" style={styles.message}>検索中…</Text>}
         {message && <Text style={styles.message}>{message}</Text>}
         {results.length > 0 && (
           <Text style={styles.resultCount}>検索結果 {results.length}件</Text>
@@ -255,7 +241,7 @@ export function AddBookScreen({
               style={styles.result}
             >
               <View style={styles.book}>
-                <BookCover title={book.title} author={book.author ?? '著者不明'} />
+                {owned ? <OwnedBookCover book={owned} /> : <BookCover title={book.title} author={book.author ?? '著者不明'} />}
                 <View style={styles.bookDetails}>
                   <Text style={styles.title}>{book.title}</Text>
                   <Text style={styles.body}>{book.author ?? '著者不明'}</Text>
@@ -299,6 +285,31 @@ export function AddBookScreen({
         {message?.includes('追加しました') && (
           <ActionButton label="本棚へ戻る" onPress={() => onNavigate('bookshelf')} />
         )}
+        <View style={styles.genres}>
+          <Text style={styles.genreHeading}>ジャンルから探す</Text>
+          <Text style={styles.genreHint}>ジャンル名でキーワード検索します</Text>
+          <View style={styles.genreList}>
+            {genres.map((genre) => (
+              <Pressable
+                key={genre}
+                accessibilityLabel={`${genre}の本を探す`}
+                accessibilityRole="button"
+                onPress={() => { void search(genre); }}
+                style={({ pressed }) => [styles.genreButton, pressed && styles.searchButtonPressed]}
+              >
+                <Text style={styles.genreLabel}>{genre}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+        <PopularBooks onSelect={openDiscoveredBook} />
+        <EmotionRecommendations onSelect={openDiscoveredBook} />
+        <SearchHistory
+          items={history.items} error={history.error} loading={history.loading}
+          onSelect={(value) => { void search(value); }}
+          onRemove={(value) => { void history.remove(value); }}
+          onClear={() => { void history.clear(); }}
+        />
       </ScrollView>
     </ScreenFrame>
   );

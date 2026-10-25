@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -12,6 +13,25 @@ class BookCreate(BaseModel):
     title: str = Field(min_length=1, max_length=255)
     author: str | None = Field(default=None, max_length=255)
     total_pages: int = Field(ge=1, le=1_000_000)
+
+
+class BookMemoRequest(BaseModel):
+    content: str = Field(max_length=10_000)
+
+
+class BookMemoResponse(BaseModel):
+    book_id: int
+    content: str
+
+
+class CoverStyleRequest(BaseModel):
+    color_mode: Literal["auto", "palette", "mine", "others"] = "auto"
+    palette: int | None = Field(default=None, ge=0, le=7, strict=True)
+    pattern: int | None = Field(default=None, ge=0, le=3, strict=True)
+
+
+class CoverStyleResponse(CoverStyleRequest):
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BookResponse(BaseModel):
@@ -31,6 +51,7 @@ class BookResponse(BaseModel):
     started_at: datetime | None
     completed_at: datetime | None
     last_read_at: datetime | None = None
+    cover_style: CoverStyleResponse | None = None
 
 
 class BookListResponse(BaseModel):

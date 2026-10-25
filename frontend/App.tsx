@@ -13,7 +13,7 @@ import { PublicProfileScreen } from './src/screens/account/PublicProfileScreen';
 import { AddBookScreen } from './src/screens/books/AddBookScreen';
 import { BookDetailScreen } from './src/screens/books/BookDetailScreen';
 import { PublicReviewsScreen } from './src/screens/books/PublicReviewsScreen';
-import { BookEditScreen } from './src/screens/books/BookEditScreen';
+import { BookMemoScreen } from './src/screens/books/BookMemoScreen';
 import { BookshelfScreen } from './src/screens/main/BookshelfScreen';
 import { HomeScreen } from './src/screens/main/HomeScreen';
 import { ReadingScreen } from './src/screens/main/ReadingScreen';
@@ -79,7 +79,7 @@ export default function App() {
     case 'account': return <AccountScreen onNavigate={navigate} />;
     case 'book-detail': return <BookDetailScreen bookId={route.bookId} onNavigate={navigate} onBack={onBack} />;
     case 'public-reviews': return <PublicReviewsScreen key={route.bookId} bookId={route.bookId} onNavigate={navigate} onBack={onBack} />;
-    case 'book-edit': return <BookEditScreen bookId={route.bookId} onNavigate={navigate} />;
+    case 'book-memo': return <BookMemoScreen key={`${user?.id}:${route.bookId}`} bookId={route.bookId} onNavigate={navigate} onBack={onBack} />;
     case 'add-book': return <AddBookScreen onNavigate={navigate} />;
     case 'account-settings': return <AccountSettingsScreen onNavigate={navigate} />;
     case 'public-profile': return <PublicProfileScreen onNavigate={navigate} onBack={onBack} />;

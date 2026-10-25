@@ -10,11 +10,16 @@ from ..application.results import BookView
 from ..application.service import LibraryService
 from ..domain.catalog import CatalogBook
 from ..domain.entities import Reading
+from ..domain.values import CoverStyle
 from .dependencies import get_library_service
 from .schemas import (
     BookCreate,
     BookListResponse,
+    BookMemoRequest,
+    BookMemoResponse,
     BookResponse,
+    CoverStyleRequest,
+    CoverStyleResponse,
     GoogleBookImport,
     GoogleBookResponse,
     GoogleBookSearchResponse,
@@ -93,6 +98,42 @@ def continue_reading(
 @router.get("/books/{book_id}", response_model=BookResponse)
 def get_book(book_id: int, service: LibraryServiceDependency, user_id: CurrentUserId) -> BookView:
     return service.get(user_id, book_id)
+
+
+@router.get("/books/{book_id}/memo", response_model=BookMemoResponse)
+def get_book_memo(
+    book_id: int, service: LibraryServiceDependency, user_id: CurrentUserId, response: Response
+) -> BookMemoResponse:
+    response.headers["Cache-Control"] = "no-store"
+    return BookMemoResponse(book_id=book_id, content=service.get_memo(user_id, book_id))
+
+
+@router.put("/books/{book_id}/cover", response_model=CoverStyleResponse)
+def save_book_cover(
+    book_id: int,
+    request: CoverStyleRequest,
+    service: LibraryServiceDependency,
+    user_id: CurrentUserId,
+    response: Response,
+) -> CoverStyle:
+    response.headers["Cache-Control"] = "no-store"
+    return service.save_cover(
+        user_id, book_id, CoverStyle(request.color_mode, request.palette, request.pattern)
+    )
+
+
+@router.put("/books/{book_id}/memo", response_model=BookMemoResponse)
+def save_book_memo(
+    book_id: int,
+    request: BookMemoRequest,
+    service: LibraryServiceDependency,
+    user_id: CurrentUserId,
+    response: Response,
+) -> BookMemoResponse:
+    response.headers["Cache-Control"] = "no-store"
+    return BookMemoResponse(
+        book_id=book_id, content=service.save_memo(user_id, book_id, request.content)
+    )
 
 
 @router.get(

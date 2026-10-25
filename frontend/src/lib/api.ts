@@ -79,7 +79,75 @@ export type Book = {
   started_at: string | null;
   completed_at: string | null;
   last_read_at?: string | null;
+  cover_style?: CoverStyle | null;
 };
+
+export type CoverStyle = {
+  color_mode: "auto" | "palette" | "mine" | "others";
+  palette: number | null;
+  pattern: number | null;
+};
+
+export const AUTO_COVER: CoverStyle = { color_mode: "auto", palette: null, pattern: null };
+
+export function isCoverStyle(value: unknown): value is CoverStyle {
+  if (typeof value !== "object" || value === null ||
+    !("color_mode" in value) || !("palette" in value) || !("pattern" in value)) return false;
+  return typeof value.color_mode === "string" && ["auto", "palette", "mine", "others"].includes(value.color_mode) &&
+    (value.color_mode === "palette"
+      ? typeof value.palette === "number" && Number.isInteger(value.palette) && value.palette >= 0 && value.palette <= 7
+      : value.palette === null) &&
+    (value.pattern === null || typeof value.pattern === "number" && Number.isInteger(value.pattern) && value.pattern >= 0 && value.pattern <= 3);
+}
+
+function validateBookCover(book: Book): Book {
+  if (book.cover_style != null && !isCoverStyle(book.cover_style)) {
+    throw new Error("表紙の応答形式が正しくありません");
+  }
+  return book;
+}
+
+export async function saveBookCover(bookId: number, style: CoverStyle): Promise<CoverStyle> {
+  if (!Number.isSafeInteger(bookId) || bookId < 1 || !isCoverStyle(style)) throw new Error("表紙の設定が正しくありません");
+  const response = await authenticatedFetch(`${API_URL}/books/${bookId}/cover`, {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(style),
+  });
+  const result = await parseResponse<CoverStyle>(response, "表紙の保存に失敗しました");
+  if (!isCoverStyle(result) || result.color_mode !== style.color_mode ||
+    result.palette !== style.palette || result.pattern !== style.pattern) {
+    throw new Error("表紙の応答形式が正しくありません");
+  }
+  return result;
+}
+
+export type BookMemo = { book_id: number; content: string };
+export const BOOK_MEMO_LIMIT = 10_000;
+
+async function requestBookMemo(bookId: number, content?: string): Promise<BookMemo> {
+  if (!Number.isSafeInteger(bookId) || bookId < 1) throw new Error("本のIDが正しくありません");
+  if (content !== undefined && Array.from(content).length > BOOK_MEMO_LIMIT) {
+    throw new Error("メモは10,000文字以内で入力してください");
+  }
+  const response = await authenticatedFetch(`${API_URL}/books/${bookId}/memo`, content === undefined ? undefined : {
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content }),
+  });
+  const result = await parseResponse<BookMemo>(response, content === undefined
+    ? "メモの取得に失敗しました" : "メモの保存に失敗しました");
+  if (!result || result.book_id !== bookId || typeof result.content !== "string" ||
+    Array.from(result.content).length > BOOK_MEMO_LIMIT ||
+    (content !== undefined && result.content !== content)) {
+    throw new Error("メモの応答形式が正しくありません");
+  }
+  return result;
+}
+
+export function getBookMemo(bookId: number): Promise<BookMemo> {
+  return requestBookMemo(bookId);
+}
+
+export function saveBookMemo(bookId: number, content: string): Promise<BookMemo> {
+  return requestBookMemo(bookId, content);
+}
 
 export type ReviewVisibility = "private" | "public";
 
@@ -367,7 +435,7 @@ export async function importGoogleBook(googleBooksId: string): Promise<Book> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ google_books_id: googleBooksId }),
   });
-  return parseResponse<Book>(response, "本棚への追加に失敗しました");
+  return validateBookCover(await parseResponse<Book>(response, "本棚への追加に失敗しました"));
 }
 
 export async function getBooks(offset = 0): Promise<Book[]> {
@@ -378,12 +446,12 @@ export async function getBooks(offset = 0): Promise<Book[]> {
     response,
     "本棚の取得に失敗しました",
   );
-  return payload.items;
+  return payload.items.map(validateBookCover);
 }
 
 export async function getBook(bookId: number): Promise<Book> {
   const response = await authenticatedFetch(`${API_URL}/books/${bookId}`);
-  return parseResponse<Book>(response, "本の詳細の取得に失敗しました");
+  return validateBookCover(await parseResponse<Book>(response, "本の詳細の取得に失敗しました"));
 }
 
 export async function getContinueReadingBooks(): Promise<Book[]> {
@@ -408,7 +476,7 @@ export async function getContinueReadingBooks(): Promise<Book[]> {
   ) {
     throw new Error("続きを読むの応答形式が正しくありません");
   }
-  return payload.items;
+  return payload.items.map(validateBookCover);
 }
 
 export async function completeIteration(

@@ -10,7 +10,7 @@ export type ScreenKey =
   | 'search'
   | 'account'
   | 'book-detail'
-  | 'book-edit'
+  | 'book-memo'
   | 'add-book'
   | 'account-settings'
   | 'public-profile'
@@ -19,13 +19,13 @@ export type ScreenKey =
   | 'bookmark';
 
 export type Route =
-  | { name: Exclude<ScreenKey, 'book-detail' | 'book-edit' | 'bookmark' | 'public-reviews'> }
-  | { name: 'book-detail' | 'book-edit' | 'public-reviews'; bookId: number }
+  | { name: Exclude<ScreenKey, 'book-detail' | 'book-memo' | 'bookmark' | 'public-reviews'> }
+  | { name: 'book-detail' | 'book-memo' | 'public-reviews'; bookId: number }
   | { name: 'bookmark'; bookId?: never; iteration?: never; page?: never }
   | { name: 'bookmark'; bookId: number; iteration: number; page?: number };
 
 export type NavigationTarget =
-  | Exclude<ScreenKey, 'book-detail' | 'book-edit' | 'public-reviews'>
+  | Exclude<ScreenKey, 'book-detail' | 'book-memo' | 'public-reviews'>
   | Route;
 
 export type Navigate = (route: NavigationTarget) => void;

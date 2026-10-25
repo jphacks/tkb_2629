@@ -58,6 +58,31 @@ function hooks() {
 const native = { StyleSheet: { create: (x) => x }, Text: 'Text', View: 'View', ScrollView: 'ScrollView' };
 const status = load('src/lib/readingStatus.ts', {});
 
+test('brand header uses the supplied logo image instead of the V placeholder', () => {
+  const source = { uri: 'brand-logo.png' };
+  const wordmark = { uri: 'brand-wordmark.png' };
+  const { BrandHeader } = load('src/components/molecules/BrandHeader.tsx', {
+    'react/jsx-runtime': { jsx, jsxs: jsx }, 'react-native': { ...native, Image: 'Image' },
+    '../../assets/brand-logo.png': source, '../../assets/brand-wordmark.png': wordmark,
+  });
+  const tree = BrandHeader();
+  const logo = nodes(tree).find((node) => node.type === 'Image');
+  assert.equal(logo.props.source, source);
+  assert.equal(logo.props.accessibilityLabel, 'Re:Readのロゴ');
+  assert.equal(logo.props.style.width, 50);
+  assert.equal(logo.props.style.height, 50);
+  assert.equal(logo.props.resizeMode, 'contain');
+  assert.ok(!nodes(tree).some((node) => node.type === 'Text' && node.props.children === 'V'));
+  const name = nodes(tree).find((node) => node.type === 'Image' && node.props.accessibilityLabel === 'Re:Read');
+  assert.equal(name.props.source, wordmark);
+  assert.equal(name.props.resizeMode, 'contain');
+  assert.equal(name.props.style.height, 32);
+  assert.equal(name.props.style.width, '100%');
+  const wordmarkContainer = nodes(tree).find((node) => node.props?.children === name);
+  assert.equal(wordmarkContainer.props.style.width, 32 * 960 / 220);
+  assert.doesNotMatch(text(tree), /読書を記録する/);
+});
+
 test('shared buttons use navigation purple while book addition keeps its red variant', () => {
   const palette = { navAccent: '#C17AED', accent: '#FF7171', background: '#FFFFFF' };
   const { ActionButton } = load('src/components/molecules/ActionButton.tsx', {
