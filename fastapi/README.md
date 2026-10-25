@@ -123,8 +123,7 @@ Repositoryの `complete()` はその結果を `emotion_analyses` に保存しま
 0002はvalence/arousalとパレット版、0003は8感情、0004は投影座標を追加します。
 現在の8感情解析ではvalence/arousalは未使用のためNULLになります。
 APIを使う前に `uv run alembic upgrade head`（Dockerでは上記のexecコマンド）で
-0007まで適用してください。0007は既存の読書記録を1回目として扱い、同じ本の再読履歴、
-読了状態、最新の読書回だけを使うページ別集計を追加します。アプリ起動時の `create_all()` は行いません。
+0006まで適用してください。アプリ起動時の `create_all()` は行いません。
 既存DBでAlembic履歴がない場合は、冒頭のスキーマ確認・バックアップ手順に従ってください。
 
 DBマイグレーションはinfrastructure層に配置しています。
