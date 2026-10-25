@@ -9,7 +9,7 @@ import { ReadingProgress } from './ReadingProgress';
 
 type ReadingBookCardProps = {
   book: Book;
-  onBookmark: () => void;
+  onBookmark?: () => void;
   onPress: () => void;
 };
 
@@ -26,14 +26,16 @@ export function ReadingBookCard({ book, onBookmark, onPress }: ReadingBookCardPr
         <Text numberOfLines={1} style={styles.title}>{book.title}</Text>
         <Text numberOfLines={1} style={styles.author}>{author}</Text>
         <ReadingProgress currentPage={book.current_page} totalPages={book.total_pages}>
-          <Pressable
-            accessibilityLabel={`${book.title}にしおりを追加`}
-            accessibilityRole="button"
-            onPress={onBookmark}
-            style={({ pressed }) => [styles.bookmarkButton, pressed && styles.pressed]}
-          >
-            <BookmarkAddIcon height={28} width={26} />
-          </Pressable>
+          {onBookmark && (
+            <Pressable
+              accessibilityLabel={`${book.title}にしおりを追加`}
+              accessibilityRole="button"
+              onPress={onBookmark}
+              style={({ pressed }) => [styles.bookmarkButton, pressed && styles.pressed]}
+            >
+              <BookmarkAddIcon height={28} width={26} />
+            </Pressable>
+          )}
         </ReadingProgress>
       </View>
     </GlassSurface>

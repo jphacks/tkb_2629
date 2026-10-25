@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BookStack } from '../../components/molecules/BookStack';
+import { FloatingActionButton } from '../../components/molecules/FloatingActionButton';
 import { ReadingBookCard } from '../../components/molecules/ReadingBookCard';
 import { ActionButton } from '../../components/molecules/ActionButton';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
@@ -107,6 +108,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: Navigate }) {
             <ActionButton label="今読んでいる本をすべて見る" onPress={() => onNavigate('reading')} secondary />
           </View>
         </ScrollView>
+        <FloatingActionButton onPress={() => onNavigate('bookmark-book-select')} />
       </View>
     </ScreenFrame>
   );
