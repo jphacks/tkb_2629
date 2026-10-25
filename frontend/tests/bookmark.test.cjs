@@ -117,9 +117,9 @@ function screenHarness() {
       }
     },
     get target() { return target; },
-    mount(id = 7, iteration = 2) {
+    mount(id = 7, iteration = 2, initialPage) {
       const element = BookmarkScreen({
-        bookId: id, iteration, onNavigate: (value) => { target = value; },
+        bookId: id, iteration, initialPage, onNavigate: (value) => { target = value; },
       });
       component = element.type;
       props = element.props;
@@ -190,7 +190,7 @@ test('no selected book shows a bookshelf link and never loads or saves', () => {
 });
 
 test('app keeps bookmark target and iteration together and also allows the book selection entry', () => {
-  let route = { name: 'bookmark', bookId: 12, iteration: 3 };
+  let route = { name: 'bookmark', bookId: 12, iteration: 3, page: 42 };
   const { default: App } = load('App.tsx', {
     react: { useState: () => [route, (next) => { route = next; }] },
     'react/jsx-runtime': { jsx: (type, props) => ({ type, props }) },
@@ -199,6 +199,7 @@ test('app keeps bookmark target and iteration together and also allows the book 
   assert.equal(tree.type, 'BookmarkScreen');
   assert.equal(tree.props.bookId, 12);
   assert.equal(tree.props.iteration, 3);
+  assert.equal(tree.props.initialPage, 42);
   tree.props.onNavigate('bookmark');
   tree = App();
   assert.equal(tree.props.bookId, undefined);
@@ -310,13 +311,22 @@ test('page and Unicode text boundaries match the API, and lookup failures do not
   await flush();
 });
 
-test('completed and stale iterations are blocked; book fetch has retry; unmounted requests have no animation', async () => {
+test('completed and stale iterations allow reading but block saving; book fetch has retry; unmounted requests have no animation', async () => {
   for (const change of [{ reading_status: 'completed' }, { latest_iteration: 3 }]) {
     const h = screenHarness();
-    h.mount();
+    h.mount(7, 2, 42);
     h.requests[0].resolve({ ...book(), ...change });
     await flush();
-    assert.equal(find(h.render(), 'BookmarkCard'), undefined);
+    h.render();
+    h.runTimers();
+    h.requests.at(-1).resolve(review());
+    await flush();
+    const card = find(h.render(), 'BookmarkCard');
+    assert.equal(card.props.page, '42');
+    assert.equal(card.props.readOnly, true);
+    assert.equal(card.props.thoughts, 'Saved text');
+    card.props.onSubmit();
+    assert.equal(h.requests.filter((request) => request.kind === 'put').length, 0);
     assert.ok(button(h.render(), '本の詳細へ'));
   }
   const h = screenHarness();
@@ -389,6 +399,12 @@ test('swipe uses current form callbacks, is blocked while busy, and never perfor
   button(tree, 'しおりを追加する').props.onPress();
   assert.equal(submitted, 21);
   assert.equal(springs, 3);
+  const readOnlyTree = render({ readOnly: true });
+  assert.equal(gestures.onMoveShouldSetPanResponder(null, { dy: -130, dx: 0 }), false);
+  gestures.onPanResponderRelease(null, { dy: -150 });
+  assert.equal(submitted, 21);
+  assert.equal(button(readOnlyTree, 'しおりを追加する'), undefined);
+  assert.equal(find(readOnlyTree, 'ThoughtsField').props.editable, false);
 });
 
 test('automatic page lookup ignores stale responses and never copies another page into the editor', async () => {
@@ -435,7 +451,7 @@ test('automatic page lookup ignores stale responses and never copies another pag
     assert.match(api.reviewAnalysisLabel({ ...review(), analysis_status: 'failed', source: null }), /失敗/);
   });
 
-  test('own bookmarks map real text, per-review colors and total pages instead of sample bookmarks', () => {
+  test('own bookmarks map real text, per-review colors and current page instead of sample bookmarks', () => {
     const { BookmarkListCard } = load('src/components/organisms/BookmarkListCard.tsx', {
       react: { useState: (initial) => [initial, () => {}] },
       'react/jsx-runtime': {
@@ -447,13 +463,120 @@ test('automatic page lookup ignores stale responses and never copies another pag
     });
     const tree = BookmarkListCard({
       reviews: [review(), { ...review(7, 150), id: 2, review_text: 'Second', color_code: '#00CC00' }],
-      totalPages: 300,
+      currentPage: 150, onOpen() {},
     });
     const timeline = find(tree, 'BookmarkTimeline');
-    assert.equal(timeline.props.totalPages, 300);
+    assert.equal(timeline.props.currentPage, 150);
     assert.equal(timeline.props.bookmarks.length, 2);
     assert.equal(timeline.props.bookmarks[0].color, '#123456');
     assert.equal(timeline.props.bookmarks[1].color, '#00CC00');
     assert.equal(timeline.props.bookmarks[1].note, 'Second');
-    assert.equal(find(BookmarkListCard({ reviews: [], totalPages: 300 }), 'BookmarkTimeline').props.bookmarks.length, 0);
+    assert.equal(find(BookmarkListCard({ reviews: [], currentPage: 0, onOpen() {} }), 'BookmarkTimeline').props.bookmarks.length, 0);
   });
+
+test('timeline expands only crowded intervals, preserves all markers and ends at the read page', () => {
+  const { createTimelineLayout, BookmarkTimeline } = load('src/components/molecules/BookmarkTimeline.tsx', {
+    react: { useState: (value) => [value, () => {}] },
+    'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
+    'react-native': { StyleSheet: { create: (value) => value }, View: 'View', Text: 'Text', Pressable: 'Pressable', ScrollView: 'ScrollView' },
+  });
+  const bookmarks = [42, 43, 44, 120].map((page) => ({ id: String(page), page }));
+  const layout = createTimelineLayout(bookmarks, 120, 300);
+  assert.equal(layout.markers.length, 4);
+  for (let i = 1; i < layout.markers.length; i++) {
+    assert.ok(layout.markers[i - 1].x - layout.markers[i].x >= 56);
+  }
+  assert.equal(layout.markers.at(-1).x, 32);
+  assert.ok(layout.markers[0].x > layout.markers.at(-1).x);
+  assert.ok(layout.width > 300);
+  const trailing = createTimelineLayout(bookmarks.slice(0, 3), 120, 300);
+  assert.ok(trailing.markers.at(-1).x > 32);
+  const empty = createTimelineLayout([], 0, 300);
+  assert.ok(Number.isFinite(empty.endX));
+  assert.equal(empty.width, 300);
+  const dense = createTimelineLayout(Array.from({ length: 100 }, (_, i) => ({ id: String(i), page: i + 1 })), 100, 300);
+  assert.equal(dense.markers.length, 100);
+  assert.ok(dense.width >= 100 * 56);
+  assert.ok(dense.markers.every((marker) => marker.x >= 32 && marker.x <= dense.endX));
+  let selected;
+  const tree = BookmarkTimeline({ bookmarks, currentPage: 120, onSelect: (id) => { selected = id; } });
+  assert.equal(find(tree, 'ScrollView').props.horizontal, true);
+  assert.equal(nodes(tree).filter((node) => node.type === 'Pressable').length, 4);
+  nodes(tree).find((node) => node.props?.accessibilityLabel === '43ページのしおりを開く').props.onPress();
+  assert.equal(selected, '43');
+  assert.ok(nodes(tree).some((node) => Array.isArray(node.props?.children) && node.props.children.join('') === '120ページ'));
+  const endpoints = nodes(tree).filter((node) => node.type === 'Text' && Array.isArray(node.props?.style));
+  const farthest = endpoints.find((node) => Array.isArray(node.props.children) && node.props.children.join('') === '120ページ');
+  const zero = endpoints.find((node) => node.props.children === '0ページ');
+  assert.ok(farthest.props.style[1].left < zero.props.style[1].left);
+});
+
+test('nine reviews paginate as five then four, while all timeline points remain selectable', () => {
+  let states = [], cursor = 0, opened;
+  const { BookmarkListCard } = load('src/components/organisms/BookmarkListCard.tsx', {
+    react: { useState: (initial) => {
+      const index = cursor++;
+      if (!(index in states)) states[index] = initial;
+      return [states[index], (value) => { states[index] = value; }];
+    } },
+    'react/jsx-runtime': {
+      jsx: (type, props) => ({ type, props }),
+      jsxs: (type, props) => ({ type, props }),
+    },
+    'react-native': { StyleSheet: { create: (value) => value }, Text: 'Text', View: 'View', Pressable: 'Pressable' },
+    '../../lib/api': { reviewAnalysisLabel: () => 'AI' },
+  });
+  let reviews = Array.from({ length: 9 }, (_, i) => ({ ...review(7, i + 1), id: i + 1 }));
+  function render() {
+    cursor = 0;
+    return BookmarkListCard({ reviews, currentPage: 9, onOpen: (page) => { opened = page; } });
+  }
+  const rows = (tree) => nodes(tree).filter((node) => node.props?.accessibilityLabel?.endsWith('ページの感想を開く'));
+  const pager = (tree, text) => nodes(tree).find((node) => node.type === 'Pressable' && node.props.children?.props?.children === text);
+  let tree = render();
+  assert.equal(rows(tree).length, 5);
+  assert.ok(nodes(tree).some((node) => node.props?.children === '1/2'));
+  assert.equal(pager(tree, '前へ').props.disabled, true);
+  assert.equal(find(tree, 'BookmarkTimeline').props.bookmarks.length, 9);
+  rows(tree)[0].props.onPress();
+  assert.equal(opened, 1);
+  find(tree, 'BookmarkTimeline').props.onSelect('9');
+  assert.equal(opened, 9);
+  pager(tree, '次へ').props.onPress();
+  tree = render();
+  assert.equal(rows(tree).length, 4);
+  assert.ok(nodes(tree).some((node) => node.props?.children === '2/2'));
+  assert.equal(pager(tree, '次へ').props.disabled, true);
+  rows(tree)[0].props.onPress();
+  assert.equal(opened, 6);
+  pager(tree, '前へ').props.onPress();
+  assert.equal(rows(render()).length, 5);
+  reviews = [];
+  tree = render();
+  assert.equal(rows(tree).length, 0);
+  assert.equal(pager(tree, '次へ'), undefined);
+  for (const count of [1, 5, 6, 10, 11]) {
+    states = [];
+    reviews = Array.from({ length: count }, (_, i) => ({ ...review(7, i + 1), id: i + 1 }));
+    tree = render();
+    assert.equal(rows(tree).length, Math.min(5, count));
+    assert.ok(nodes(tree).some((node) => node.props?.children === `1/${Math.ceil(count / 5)}`));
+  }
+});
+
+test('selected page opens directly and loads its existing note without retyping the page', async () => {
+  const h = screenHarness();
+  h.mount(12, 2, 150);
+  h.requests[0].resolve(book(12));
+  await flush();
+  h.render();
+  h.runTimers();
+  assert.deepEqual(h.requests.at(-1).args, [12, 150, 2]);
+  h.requests.at(-1).resolve(review(12, 150));
+  await flush();
+  const card = find(h.render(), 'BookmarkCard');
+  assert.equal(card.props.page, '150');
+  assert.equal(card.props.thoughts, 'Saved text');
+  assert.equal(card.props.color, '#123456');
+  assert.equal(card.props.readOnly, false);
+});

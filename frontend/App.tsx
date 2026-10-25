@@ -45,7 +45,7 @@ export default function App() {
     case 'add-book': return <AddBookScreen onNavigate={navigate} />;
     case 'account-settings': return <AccountSettingsScreen onNavigate={navigate} />;
     case 'reading-complete': return <ReadingCompleteScreen onNavigate={navigate} />;
-    case 'bookmark': return <BookmarkScreen bookId={route.bookId} iteration={route.iteration} onNavigate={navigate} />;
+    case 'bookmark': return <BookmarkScreen bookId={route.bookId} iteration={route.iteration} initialPage={route.page} onNavigate={navigate} />;
     case 'bookmark-book-select': return <BookmarkBookSelectScreen onNavigate={navigate} />;
   }
 }
