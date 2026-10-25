@@ -346,6 +346,24 @@ export async function getBookEmotions(bookId: number): Promise<BookEmotions> {
   return parseResponse<BookEmotions>(response, "感情分析の取得に失敗しました");
 }
 
+export async function getBookmarkGradientSvg(bookId: number): Promise<string> {
+  const response = await authenticatedFetch(
+    `${API_URL}/books/${bookId}/bookmark-gradient.svg`,
+  );
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new ApiError(
+      detail || `しおりのグラデーション取得に失敗しました (${response.status})`,
+      response.status,
+    );
+  }
+  const svg = await response.text();
+  if (!svg.trim().startsWith("<svg")) {
+    throw new Error("しおりのグラデーションをSVGとして読み取れませんでした。");
+  }
+  return svg;
+}
+
 export function reviewAnalysisLabel(review: Pick<PageReview, "analysis_status" | "source">): string | undefined {
   if (review.analysis_status === "failed")
     return "感想は保存済み・色の取得に失敗しました";

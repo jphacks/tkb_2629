@@ -2,6 +2,7 @@ import { colors } from "../../theme/colors";
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SvgXml } from 'react-native-svg';
 
 import { ActionButton } from '../../components/molecules/ActionButton';
 import { BackButton } from '../../components/molecules/BackButton';
@@ -14,7 +15,7 @@ import { EmotionAnalysisCard, getEmotionTint } from '../../components/organisms/
 import { BookmarkListCard } from '../../components/organisms/BookmarkListCard';
 import { CommunityBookmarks } from '../../components/organisms/CommunityBookmarks';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import { ApiError, completeIteration, startIteration, getBook, getEmotionComparison, getBookReviews, getIterations, type Book, type EmotionComparison, type PageReview, type ReadingIteration } from '../../lib/api';
+import { ApiError, completeIteration, startIteration, getBook, getBookmarkGradientSvg, getEmotionComparison, getBookReviews, getIterations, type Book, type EmotionComparison, type PageReview, type ReadingIteration } from '../../lib/api';
 import { formatDate, iterationLabel } from '../../lib/readingStatus';
 import type { Navigate } from '../types';
 
@@ -38,6 +39,7 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
   const [reviewVersion, setReviewVersion] = useState(0);
   const [emotions, setEmotions] = useState<EmotionComparison | null>(null);
   const [emotionError, setEmotionError] = useState<string | null>(null);
+  const [bookmarkGradientSvg, setBookmarkGradientSvg] = useState<string | null>(null);
   const [completing, setCompleting] = useState(false);
   const [completeError, setCompleteError] = useState<string | null>(null);
   const [iterations, setIterations] = useState<ReadingIteration[] | null>(null);
@@ -96,6 +98,21 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
       if (active) setReviewError(reason instanceof Error ? reason.message : 'しおり一覧の取得に失敗しました');
     });
     return () => { active = false; };
+  }, [book, bookId, reviewVersion]);
+  useEffect(() => {
+    let active = true;
+    setBookmarkGradientSvg(null);
+    if (!book) return;
+    getBookmarkGradientSvg(bookId)
+      .then((svg) => {
+        if (active) setBookmarkGradientSvg(svg);
+      })
+      .catch(() => {
+        if (active) setBookmarkGradientSvg(null);
+      });
+    return () => {
+      active = false;
+    };
   }, [book, bookId, reviewVersion]);
   useEffect(() => {
     let active = true;
@@ -208,6 +225,11 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
         {book && (
           <>
             <GlassSurface style={styles.hero}>
+              {bookmarkGradientSvg && (
+                <View pointerEvents="none" style={styles.heroGradient}>
+                  <SvgXml height="100%" preserveAspectRatio="none" width="100%" xml={bookmarkGradientSvg} />
+                </View>
+              )}
               <Pressable accessibilityLabel="本のメモを開く" accessibilityRole="button" onPress={() => onNavigate({ name: 'book-memo', bookId })} style={styles.editButton}>
                 <Ionicons color={colors.navAccent} name="pencil" size={22} />
               </Pressable>
@@ -309,6 +331,7 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
 const styles = StyleSheet.create({
   content: { padding: 24, paddingBottom: 110 },
   hero: { alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 20, flexDirection: 'row', marginTop: 8, padding: 18, position: 'relative' },
+  heroGradient: { bottom: 0, left: 0, opacity: 0.14, position: 'absolute', right: 0, top: 0 },
   info: { flex: 1, marginLeft: 18, paddingRight: 48, justifyContent: 'center' },
   editButton: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 22, elevation: 2, height: 44, justifyContent: 'center', position: 'absolute', right: 14, top: 14, width: 44 },
   coverButton: { alignItems: 'center', backgroundColor: colors.backgroundSoft, borderColor: colors.navAccent, borderWidth: 1, borderRadius: 22, height: 44, justifyContent: 'center', position: 'absolute', right: 14, top: 66, width: 44 },

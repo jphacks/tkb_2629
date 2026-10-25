@@ -147,10 +147,13 @@ test('recent-reading API rejects malformed, excessive, duplicate or non-reading 
 test('the card shows real book fields and separates detail and bookmark actions', () => {
   const { ReadingBookCard } = compile('src/components/molecules/ReadingBookCard.tsx', {
     'react/jsx-runtime': jsxRuntime,
+    react: { useEffect() {}, useState: (value) => [value, () => {}] },
     'react-native': {
       StyleSheet: { create: (value) => value }, Pressable: 'Pressable', Text: 'Text', View: 'View',
       Image: { resolveAssetSource: () => ({ uri: 'bookmark-icon' }) },
     },
+    '../../theme/gradients': { gradients: { button: { start: '#000', middle: '#000', end: '#000' } } },
+    '../../lib/api': { getBookmarkGradientSvg: () => new Promise(() => {}) },
   });
   const calls = [];
   const tree = ReadingBookCard({
