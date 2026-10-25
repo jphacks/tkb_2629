@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { ShadowInput } from '../../components/atoms/ShadowInput';
 import { ActionButton } from '../../components/molecules/ActionButton';
 import { BrandHeader } from '../../components/molecules/BrandHeader';
@@ -15,6 +16,7 @@ export function AuthForm<Key extends string>({ title, description, fields, submi
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState(false);
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
   async function handleSubmit() {
     if (busy) return;
     if (fields.some(field => !(values[field.key] ?? '').trim())) {
@@ -34,11 +36,25 @@ export function AuthForm<Key extends string>({ title, description, fields, submi
         {description && <Text style={styles.description}>{description}</Text>}
         <View style={styles.form}>{fields.map(field => <View key={field.key}>
           <Text style={styles.label}>{field.label}</Text>
-          <ShadowInput value={values[field.key] ?? ''} secureTextEntry={field.password}
+          <View style={styles.inputContainer}>
+          <ShadowInput value={values[field.key] ?? ''} secureTextEntry={field.password ? !visiblePasswords[field.key] : false}
             autoCapitalize="none" autoCorrect={false} keyboardType={field.email ? 'email-address' : 'default'}
             editable={!busy} accessibilityLabel={field.label}
             onChangeText={value => setValues(previous => ({ ...previous, [field.key]: value }))}
-            style={styles.input} />
+            style={[styles.input, field.password && styles.passwordInput]} />
+          {field.password && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${field.label}を${visiblePasswords[field.key] ? '隠す' : '表示する'}`}
+              accessibilityState={{ disabled: busy }}
+              disabled={busy}
+              onPress={() => setVisiblePasswords(previous => ({ ...previous, [field.key]: !previous[field.key] }))}
+              style={({ pressed }) => [styles.visibilityButton, (pressed || busy) && styles.dimmed]}
+            >
+              <Ionicons name={visiblePasswords[field.key] ? 'eye-off-outline' : 'eye-outline'} size={24} color={colors.textSecondary} />
+            </Pressable>
+          )}
+          </View>
         </View>)}</View>
         {!!message && <Text accessibilityRole="alert" style={[styles.message, error && styles.error]}>{message}</Text>}
         <ActionButton disabled={busy} label={busy ? '処理中…' : submitLabel} onPress={() => { void handleSubmit(); }} />
@@ -54,6 +70,10 @@ const styles = StyleSheet.create({
   form: { gap: 16, marginVertical: 24 },
   label: { color: colors.text, fontSize: 14, marginBottom: 8 },
   input: { height: 54, width: '100%' },
+  inputContainer: { position: 'relative' },
+  passwordInput: { paddingRight: 56 },
+  visibilityButton: { position: 'absolute', right: 3, top: 3, width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
+  dimmed: { opacity: 0.5 },
   message: { color: colors.text, marginBottom: 16, lineHeight: 22 },
   error: { color: '#B42318' }, link: { marginTop: 16 },
 });
