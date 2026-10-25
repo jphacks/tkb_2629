@@ -30,7 +30,7 @@ export function ReadingProgress({ color = colors.navAccent, currentPage, totalPa
 
 const styles = StyleSheet.create({
   heading: { alignItems: 'center', flexDirection: 'row', marginTop: 4 },
-  action: { alignItems: 'center', flex: 1, minWidth: 44 },
+  action: { alignItems: 'flex-end', flex: 1, minWidth: 44 },
   progress: { color: colors.text, fontSize: 14, flexShrink: 1 },
   track: { borderRadius: 6, height: 9, marginTop: 9, overflow: 'hidden', padding: 1 },
   fill: { backgroundColor: colors.navAccent, borderRadius: 4, height: '100%' },
