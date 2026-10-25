@@ -30,6 +30,28 @@ export type Book = {
 
 export type ReviewVisibility = "private" | "public";
 
+export type PublicProfile = {
+  public_display_name: string | null;
+};
+
+export async function getPublicProfile(): Promise<PublicProfile> {
+  const response = await authenticatedFetch(`${API_URL}/users/me/public-profile`);
+  return parseResponse<PublicProfile>(response, "公開プロフィールの取得に失敗しました");
+}
+
+export async function savePublicDisplayName(name: string): Promise<PublicProfile> {
+  const response = await authenticatedFetch(`${API_URL}/users/me/public-profile`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ public_display_name: name.trim() }),
+  });
+  const result = await parseResponse<PublicProfile>(response, "公開用表示名の保存に失敗しました");
+  if (result.public_display_name !== name.trim()) {
+    throw new Error("公開用表示名の保存結果が一致しません。再度確認してください。");
+  }
+  return result;
+}
+
 export type PageReview = {
   id: number;
   book_id: number;

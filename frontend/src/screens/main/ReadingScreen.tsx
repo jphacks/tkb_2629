@@ -54,7 +54,7 @@ export function ReadingScreen({ onNavigate }: { onNavigate: Navigate }) {
       )}
       onNavigate={onNavigate}
       subtitle="読書の続きを記録しましょう"
-      title="今読んでる本"
+      title="今読んでいる本"
     >
       <ScrollView contentContainerStyle={styles.content}>
         {state.status === 'loading' && <Text style={styles.message}>読書中の本を読み込んでいます…</Text>}

@@ -75,7 +75,7 @@ export function BookshelfScreen({ onNavigate }: { onNavigate: Navigate }) {
         {!loading && !error && entries.length === 0 && (
           <View>
             <Text style={styles.message}>読み終えた本はまだありません。</Text>
-            <ActionButton label="今読んでる本へ" onPress={() => onNavigate('reading')} />
+            <ActionButton label="今読んでいる本へ" onPress={() => onNavigate('reading')} />
           </View>
         )}
         {!loading && !error && entries.length > 0 && groups.size === 0 && (

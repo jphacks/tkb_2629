@@ -171,6 +171,6 @@ test('empty shelf differs from no matches, and failure exposes retry without par
   await flush();
   tree = h.render();
   assert.ok(text(tree).includes('読み終えた本はまだありません'));
-  nodes(tree).find((node) => node.props?.label === '今読んでる本へ').props.onPress();
+  nodes(tree).find((node) => node.props?.label === '今読んでいる本へ').props.onPress();
   assert.equal(h.target, 'reading');
 });

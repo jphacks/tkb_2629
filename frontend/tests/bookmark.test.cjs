@@ -255,7 +255,7 @@ test('no selected book links to the reading list and never loads or saves', () =
   const h = screenHarness();
   const tree = h.unselected();
   assert.equal(find(tree, 'BookmarkCard'), undefined);
-  button(tree, '今読んでる本を開く').props.onPress();
+  button(tree, '今読んでいる本を開く').props.onPress();
   assert.equal(h.target, 'reading');
   assert.equal(h.requests.length, 0);
 });

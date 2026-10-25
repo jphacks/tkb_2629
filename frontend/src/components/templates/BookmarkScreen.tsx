@@ -18,8 +18,8 @@ export function BookmarkScreen({ bookId, iteration, initialPage, onNavigate, onB
     return (
       <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title="しおりを追加">
         <View style={styles.messageState}>
-          <Text style={styles.message}>「今読んでる本」で本を選び、しおりボタンから記録してください。</Text>
-          <ActionButton label="今読んでる本を開く" onPress={() => onNavigate('reading')} />
+          <Text style={styles.message}>「今読んでいる本」で本を選び、しおりボタンから記録してください。</Text>
+          <ActionButton label="今読んでいる本を開く" onPress={() => onNavigate('reading')} />
         </View>
       </ScreenFrame>
     );

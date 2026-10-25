@@ -17,7 +17,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: Navigate }) {
   const emotionTint = getEmotionTint(emotionColor);
   const [opening, setOpening] = useState(false);
 
-  // One reading book: open its bookmark input directly. Otherwise let the user choose on 今読んでる本.
+  // One reading book: open its bookmark input directly. Otherwise let the user choose on 今読んでいる本.
   async function openBookmark() {
     if (opening) return;
     setOpening(true);

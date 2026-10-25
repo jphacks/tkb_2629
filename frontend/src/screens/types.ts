@@ -13,6 +13,7 @@ export type ScreenKey =
   | 'book-edit'
   | 'add-book'
   | 'account-settings'
+  | 'public-profile'
   | 'reading-complete'
   | 'bookmark';
 

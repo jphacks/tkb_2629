@@ -8,7 +8,7 @@ import { GlassSurface } from '../atoms/GlassSurface';
 const items = [
   { label: 'ホーム', icon: 'home' as const, route: 'home' as const },
   { label: '本棚', icon: 'library' as const, route: 'bookshelf' as const },
-  { label: '今読んでる本', icon: 'book' as const, route: 'reading' as const },
+  { label: '今読んでいる本', icon: 'book' as const, route: 'reading' as const },
   { label: '本を探す', icon: 'search' as const, route: 'search' as const },
   { label: 'アカウント', icon: 'person' as const, route: 'account' as const },
 ];
