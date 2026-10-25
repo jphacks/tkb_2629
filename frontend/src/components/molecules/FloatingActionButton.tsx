@@ -1,11 +1,12 @@
-import { Pressable, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-
+import { Image, Pressable, StyleSheet } from 'react-native';
+import { SvgUri } from 'react-native-svg';
 import { colors } from '../../theme/colors';
 
 type FloatingActionButtonProps = {
   onPress: () => void;
 };
+
+const addBookmarkSvgUri = Image.resolveAssetSource(require('../../assets/addBookmark.svg'))?.uri ?? '';
 
 export function FloatingActionButton({ onPress }: FloatingActionButtonProps) {
   return (
@@ -15,7 +16,7 @@ export function FloatingActionButton({ onPress }: FloatingActionButtonProps) {
       onPress={onPress}
       style={({ pressed }) => [styles.button, pressed && styles.pressed]}
     >
-      <Ionicons color={colors.background} name="bookmark" size={24} />
+      <SvgUri height={38} uri={addBookmarkSvgUri} width={35} />
     </Pressable>
   );
 }
