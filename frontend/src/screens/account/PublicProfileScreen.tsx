@@ -85,7 +85,7 @@ export function PublicProfileScreen({ onNavigate, onBack }: { onNavigate: Naviga
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={styles.description}>他の読者への表示に使う名前です。登録時のユーザー名とは別に設定し、登録名やメールアドレスは自動で使いません。</Text>
-          <Text style={styles.description}>現在は表示名を保存する段階です。他の読者へのプロフィール・感想の表示は準備中です。</Text>
+          <Text style={styles.description}>公開した感想には、この表示名が表示されます。表示名が未設定の場合、公開感想の一覧には掲載されません。</Text>
           {state.status === 'loading' && <Text style={styles.description}>公開プロフィールを読み込んでいます…</Text>}
           {state.status === 'error' && (
             <>

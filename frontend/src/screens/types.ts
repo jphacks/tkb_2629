@@ -14,17 +14,18 @@ export type ScreenKey =
   | 'add-book'
   | 'account-settings'
   | 'public-profile'
+  | 'public-reviews'
   | 'reading-complete'
   | 'bookmark';
 
 export type Route =
-  | { name: Exclude<ScreenKey, 'book-detail' | 'book-edit' | 'bookmark'> }
-  | { name: 'book-detail' | 'book-edit'; bookId: number }
+  | { name: Exclude<ScreenKey, 'book-detail' | 'book-edit' | 'bookmark' | 'public-reviews'> }
+  | { name: 'book-detail' | 'book-edit' | 'public-reviews'; bookId: number }
   | { name: 'bookmark'; bookId?: never; iteration?: never; page?: never }
   | { name: 'bookmark'; bookId: number; iteration: number; page?: number };
 
 export type NavigationTarget =
-  | Exclude<ScreenKey, 'book-detail' | 'book-edit'>
+  | Exclude<ScreenKey, 'book-detail' | 'book-edit' | 'public-reviews'>
   | Route;
 
 export type Navigate = (route: NavigationTarget) => void;

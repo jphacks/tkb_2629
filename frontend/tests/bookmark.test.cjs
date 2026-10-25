@@ -706,8 +706,8 @@ test('automatic page lookup ignores stale responses and never copies another pag
     assert.equal(items.length, 101);
     assert.ok(urls[0].endsWith('/books/7/reviews?iteration=2&limit=100&offset=0'));
     assert.ok(urls[1].endsWith('offset=100'));
-    assert.equal(api.reviewAnalysisLabel(review()), 'AIが決めた色');
-    assert.equal(api.reviewAnalysisLabel({ ...review(), source: 'mock' }), 'AI未接続・仮の色');
+    assert.equal(api.reviewAnalysisLabel(review()), '感想の色');
+    assert.equal(api.reviewAnalysisLabel({ ...review(), source: 'mock' }), '感想の色（仮）');
     assert.match(api.reviewAnalysisLabel({ ...review(), analysis_status: 'failed', source: null }), /失敗/);
   });
 

@@ -30,6 +30,80 @@ export type Book = {
 
 export type ReviewVisibility = "private" | "public";
 
+export type PublicReview = {
+  id: number;
+  public_display_name: string;
+  page_number: number;
+  iteration_number: number;
+  review_text: string;
+  contains_spoilers: boolean;
+  created_at: string;
+  updated_at: string;
+  color_code: string;
+  analysis_status: "pending" | "completed" | "failed";
+  source: "jev" | "mock" | null;
+};
+
+export type ReviewPageRange = { start: number; end: number };
+export type PublicReviewDistribution = {
+  items: { page_number: number; review_count: number }[];
+  total_count: number;
+};
+
+export async function getPublicReviewDistribution(googleBooksId: string): Promise<PublicReviewDistribution> {
+  const response = await authenticatedFetch(
+    `${API_URL}/catalog/books/${encodeURIComponent(googleBooksId)}/reviews/distribution`,
+  );
+  const result = await parseResponse<PublicReviewDistribution>(response, "しおりの分布の取得に失敗しました");
+  if (
+    !result || !Array.isArray(result.items) || !Number.isSafeInteger(result.total_count) || result.total_count < 0 ||
+    !result.items.every((item, index, items) =>
+      item && Number.isSafeInteger(item.page_number) && item.page_number > 0 &&
+      Number.isSafeInteger(item.review_count) && item.review_count > 0 &&
+      (index === 0 || item.page_number > items[index - 1]!.page_number)
+    ) ||
+    result.items.reduce((sum, item) => sum + item.review_count, 0) !== result.total_count
+  ) {
+    throw new Error("しおりの分布の取得結果を確認できません。再度読み込んでください。");
+  }
+  return result;
+}
+
+export type PublicReviews = {
+  items: PublicReview[];
+  limit: number;
+  offset: number;
+};
+
+export async function getPublicReviews(googleBooksId: string, offset = 0, range?: ReviewPageRange): Promise<PublicReviews> {
+  const params = new URLSearchParams({ limit: "20", offset: String(offset) });
+  if (range) {
+    params.set("page_start", String(range.start));
+    params.set("page_end", String(range.end));
+  }
+  const response = await authenticatedFetch(
+    `${API_URL}/catalog/books/${encodeURIComponent(googleBooksId)}/reviews?${params}`,
+  );
+  const result = await parseResponse<PublicReviews>(response, "公開感想の取得に失敗しました");
+  if (
+    !result || !Array.isArray(result.items) || result.limit !== 20 || result.offset !== offset ||
+    !result.items.every((item) =>
+      item && Number.isInteger(item.id) && item.id > 0 &&
+      typeof item.public_display_name === "string" && item.public_display_name.trim().length > 0 &&
+      Number.isInteger(item.page_number) && item.page_number > 0 &&
+      Number.isInteger(item.iteration_number) && item.iteration_number > 0 &&
+      typeof item.review_text === "string" && typeof item.contains_spoilers === "boolean" &&
+      typeof item.color_code === "string" && /^#[0-9a-f]{6}$/i.test(item.color_code) &&
+      ["pending", "completed", "failed"].includes(item.analysis_status) &&
+      (item.source === null || item.source === "jev" || item.source === "mock") &&
+      typeof item.created_at === "string" && typeof item.updated_at === "string"
+    )
+  ) {
+    throw new Error("公開感想の取得結果を確認できません。再度読み込んでください。");
+  }
+  return result;
+}
+
 export type PublicProfile = {
   public_display_name: string | null;
 };
@@ -80,13 +154,13 @@ export async function getBookEmotions(bookId: number): Promise<BookEmotions> {
   return parseResponse<BookEmotions>(response, "感情分析の取得に失敗しました");
 }
 
-export function reviewAnalysisLabel(review: PageReview): string {
+export function reviewAnalysisLabel(review: Pick<PageReview, "analysis_status" | "source">): string {
   if (review.analysis_status === "failed")
-    return "感想は保存済み・AI解析に失敗しました";
-  if (review.analysis_status === "pending") return "感想は保存済み・解析待ち";
-  if (review.source === "mock") return "AI未接続・仮の色";
-  if (review.source === "jev") return "AIが決めた色";
-  return "解析結果を確認できません";
+    return "感想は保存済み・色の取得に失敗しました";
+  if (review.analysis_status === "pending") return "感想は保存済み・感想の色を準備中";
+  if (review.source === "mock") return "感想の色（仮）";
+  if (review.source === "jev") return "感想の色";
+  return "感想の色を確認できません";
 }
 
 export class ApiError extends Error {

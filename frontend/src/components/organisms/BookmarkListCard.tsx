@@ -1,8 +1,7 @@
 import { colors } from "../../theme/colors";
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { BookmarkAreaChart } from '../molecules/BookmarkAreaChart';
 import { SegmentedTabs } from '../molecules/SegmentedTabs';
 import { BookmarkTimeline } from '../molecules/BookmarkTimeline';
 import { GlassSurface } from '../atoms/GlassSurface';
@@ -15,19 +14,12 @@ export const myBookmarks: Bookmark[] = [
   { id: 'mine-3', page: 142, position: 79, count: 1, title: '次に読むところ', note: '大きな決断をする直前で一度休憩。', date: '6月18日', author: 'あなた' },
 ];
 
-const otherBookmarks: Bookmark[] = [
-  { id: 'other-1', page: 28, position: 15, count: 4, title: 'お気に入りの場面', note: '二人が初めて出会うシーン。', date: '6月10日', author: 'みさきさん' },
-  { id: 'other-2', page: 74, position: 41, count: 8, title: '共感したところ', note: '旅に出る理由が語られるページ。', date: '6月14日', author: 'ゆうたさん' },
-  { id: 'other-3', page: 125, position: 69, count: 5, title: 'ここから面白い', note: '物語が一気に動き出します。', date: '6月17日', author: 'あかりさん' },
-];
-
-export const allBookmarks = [...myBookmarks, ...otherBookmarks];
-
 export function BookmarkListCard({
-  accentColor = colors.accent, tintColor = '#FFF4F4', reviews, currentPage, onOpen,
+  accentColor = colors.accent, tintColor = '#FFF4F4', reviews, currentPage, onOpen, community, ownFallback,
 }: {
   accentColor?: string; tintColor?: string; reviews: PageReview[];
   currentPage: number; onOpen: (page: number) => void;
+  community?: ReactNode | ((page?: number) => ReactNode); ownFallback?: ReactNode;
 }) {
   const ownBookmarks: Bookmark[] = [...reviews].sort((a, b) => a.page_number - b.page_number).map((review) => ({
     id: String(review.id),
@@ -44,34 +36,33 @@ export function BookmarkListCard({
   const [view, setView] = useState<'mine' | 'others'>('mine');
   const [selectedId, setSelectedId] = useState('');
   const [listPage, setListPage] = useState(0);
+  const [communityPage, setCommunityPage] = useState<number | undefined>(undefined);
   const pageCount = Math.max(1, Math.ceil(ownBookmarks.length / 5));
   const visiblePage = Math.min(listPage, pageCount - 1);
   const visibleBookmarks = ownBookmarks.slice(visiblePage * 5, visiblePage * 5 + 5);
-  const bookmarks = view === 'mine' ? ownBookmarks : otherBookmarks;
+  const bookmarks = ownBookmarks;
   const selectedBookmark = bookmarks.find((bookmark) => bookmark.id === selectedId) ?? bookmarks[0];
-  const total = view === 'mine' ? ownBookmarks.length : otherBookmarks.reduce((sum, bookmark) => sum + bookmark.count, 0);
-  const maxCount = Math.max(...otherBookmarks.map((bookmark) => bookmark.count));
 
   return (
     <GlassSurface style={styles.card}>
       <View style={styles.header}>
         <View>
           <Text style={styles.heading}>しおり一覧</Text>
-          <Text style={styles.count}>{total}件のしおり</Text>
+          {view === 'mine' && !ownFallback && <Text style={styles.count}>{ownBookmarks.length}件のしおり</Text>}
         </View>
         <SegmentedTabs
           activeColor={accentColor}
           options={[
             { label: '自分のしおり', value: 'mine' },
-            { label: '他の人のしおり', value: 'others' },
+            { label: 'みんなのしおり', value: 'others' },
           ]}
           value={view}
           tintColor={tintColor}
-          onChange={(value) => setView(value as 'mine' | 'others')}
+          onChange={(value) => { if (value === 'mine' || value === 'others') { setCommunityPage(undefined); setView(value); } }}
         />
       </View>
       {view === 'mine' ? (
-        <>
+        ownFallback ?? <>
           {ownBookmarks.length === 0 && <Text style={styles.count}>まだしおりがありません。</Text>}
           <BookmarkTimeline currentPage={currentPage} accentColor={accentColor} bookmarks={bookmarks} selectedBookmark={selectedBookmark} onSelect={(id) => {
             const bookmark = ownBookmarks.find((item) => item.id === id);
@@ -81,7 +72,8 @@ export function BookmarkListCard({
             }
           }} tintColor={tintColor} />
           {visibleBookmarks.map((bookmark) => (
-            <Pressable key={bookmark.id} accessibilityRole="button" accessibilityLabel={`${bookmark.page}ページの感想を開く`} onPress={() => onOpen(bookmark.page)} style={styles.review}>
+            <View key={bookmark.id}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`${bookmark.page}ページの感想を開く`} onPress={() => onOpen(bookmark.page)} style={styles.review}>
               <View style={[styles.swatch, { backgroundColor: bookmark.color }]} />
               <View style={styles.reviewText}>
                 <Text style={styles.heading}>{bookmark.page}ページ</Text>
@@ -89,6 +81,10 @@ export function BookmarkListCard({
                 <Text style={styles.count}>{bookmark.analysisLabel}</Text>
               </View>
             </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={`${bookmark.page}ページのみんなのしおりを見る`} style={styles.samePage} onPress={() => { setCommunityPage(bookmark.page); setView('others'); }}>
+              <Text style={styles.heading}>同じページのみんなのしおりを見る ›</Text>
+            </Pressable>
+            </View>
           ))}
           {ownBookmarks.length > 0 && (
             <View style={styles.pagination}>
@@ -103,10 +99,7 @@ export function BookmarkListCard({
           )}
         </>
       ) : (
-        <>
-          <Text style={styles.count}>他の人のしおりはサンプルです。</Text>
-          <BookmarkAreaChart accentColor={accentColor} bookmarks={otherBookmarks} maxCount={maxCount} selectedBookmark={selectedBookmark} onSelect={setSelectedId} tintColor={tintColor} />
-        </>
+        (typeof community === 'function' ? community(communityPage) : community) ?? <Text style={styles.count}>この本のみんなのしおりは表示できません。</Text>
       )}
     </GlassSurface>
   );
@@ -118,6 +111,7 @@ const styles = StyleSheet.create({
   heading: { color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 4 },
   count: { color: colors.placeholder, fontSize: 12 },
   review: { flexDirection: 'row', gap: 12, marginTop: 18 },
+  samePage: { minHeight: 48, justifyContent: 'center', marginTop: 8 },
   swatch: { width: 14, minHeight: 48, borderBottomLeftRadius: 7, borderBottomRightRadius: 7 },
   reviewText: { flex: 1, gap: 6 },
   pagination: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 18 },
