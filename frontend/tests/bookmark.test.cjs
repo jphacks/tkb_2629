@@ -56,6 +56,7 @@ test('home renders with the current emotion helpers and uses the thought color o
   const samples = [{ note: 'Sample thought', color: '#123456' }];
   const { HomeScreen } = load('src/screens/main/HomeScreen.tsx', {
     'react-native': native,
+    react: { useState: (initial) => [initial, () => {}] },
     'react/jsx-runtime': {
       jsx: (type, props) => ({ type, props }),
       jsxs: (type, props) => ({ type, props }),
@@ -210,12 +211,12 @@ test('API sends explicit book/page/iteration, trims text, and only treats JSON 4
   await assert.rejects(api.getPageReview(7, 42, 2), /JSON/);
 });
 
-test('no selected book shows a bookshelf link and never loads or saves', () => {
+test('no selected book links to the reading list and never loads or saves', () => {
   const h = screenHarness();
   const tree = h.unselected();
   assert.equal(find(tree, 'BookmarkCard'), undefined);
-  button(tree, '本棚で本を選ぶ').props.onPress();
-  assert.equal(h.target, 'bookshelf');
+  button(tree, '今読んでる本を開く').props.onPress();
+  assert.equal(h.target, 'reading');
   assert.equal(h.requests.length, 0);
 });
 

@@ -17,8 +17,8 @@ export function BookmarkScreen({ bookId, iteration, initialPage, onNavigate }: B
     return (
       <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title="しおりを追加">
         <View style={styles.messageState}>
-          <Text style={styles.message}>本棚で本を選び、詳細のしおりボタンから記録してください。</Text>
-          <ActionButton label="本棚で本を選ぶ" onPress={() => onNavigate('bookshelf')} />
+          <Text style={styles.message}>「今読んでる本」で本を選び、しおりボタンから記録してください。</Text>
+          <ActionButton label="今読んでる本を開く" onPress={() => onNavigate('reading')} />
         </View>
       </ScreenFrame>
     );
@@ -181,9 +181,9 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate }: 
     <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title="しおりを追加" showNavigation={!busy || completed}>
       <View style={styles.content}>
         <Pressable
-          accessibilityLabel="本の選択画面に戻る"
+          accessibilityLabel="今読んでる本に戻る"
           accessibilityRole="button"
-          onPress={() => onNavigate('bookmark-book-select')}
+          onPress={() => onNavigate('reading')}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
           <Ionicons color={colors.text} name="arrow-back" size={22} />

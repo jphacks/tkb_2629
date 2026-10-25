@@ -13,8 +13,7 @@ export type ScreenKey =
   | 'add-book'
   | 'account-settings'
   | 'reading-complete'
-  | 'bookmark'
-  | 'bookmark-book-select';
+  | 'bookmark';
 
 export type Route =
   | { name: Exclude<ScreenKey, 'book-detail' | 'book-edit' | 'bookmark'> }
