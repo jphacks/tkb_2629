@@ -12,6 +12,32 @@ export type GoogleBook = {
   thumbnail_url: string | null;
 };
 
+export type PopularBook = { book: GoogleBook; reader_count: number };
+
+export async function getPopularBooks(): Promise<PopularBook[]> {
+  const response = await authenticatedFetch(`${API_URL}/catalog/books/popular?limit=5`);
+  const payload = await parseResponse<{ items: PopularBook[]; limit: number }>(
+    response, "人気の本の取得に失敗しました",
+  );
+  if (
+    !payload || payload.limit !== 5 || !Array.isArray(payload.items) || payload.items.length > 5 ||
+    payload.items.some((item, index, items) => (
+      !item || !Number.isSafeInteger(item.reader_count) || item.reader_count < 1 ||
+      (index > 0 && item.reader_count > items[index - 1]!.reader_count) ||
+      !item.book || typeof item.book.google_books_id !== "string" || !item.book.google_books_id.trim() ||
+      typeof item.book.title !== "string" || !item.book.title.trim() ||
+      (item.book.author !== null && typeof item.book.author !== "string") ||
+      !Number.isSafeInteger(item.book.total_pages) || item.book.total_pages < 1 ||
+      (item.book.isbn_13 !== null && typeof item.book.isbn_13 !== "string") ||
+      (item.book.thumbnail_url !== null && typeof item.book.thumbnail_url !== "string")
+    )) ||
+    new Set(payload.items.map((item) => item.book.google_books_id)).size !== payload.items.length
+  ) {
+    throw new Error("人気の本の応答形式が正しくありません。");
+  }
+  return payload.items;
+}
+
 export type Book = {
   id: number;
   title: string;

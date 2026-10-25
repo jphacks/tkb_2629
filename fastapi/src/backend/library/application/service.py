@@ -5,7 +5,7 @@ from ..domain.entities import BookshelfPolicy, Reading, StoredBook
 from ..domain.errors import InvalidInput
 from ..domain.values import BookDetails
 from .ports import BookCatalog, Clock, UnitOfWorkFactory
-from .results import BookView, ReadingKey, ReadingReference
+from .results import BookView, PopularBook, ReadingKey, ReadingReference
 
 
 class LibraryService:
@@ -19,6 +19,13 @@ class LibraryService:
         if not query:
             raise InvalidInput("query must not be empty")
         return self.catalog.search(query, limit)
+
+    def popular(self, limit: int = 5) -> list[PopularBook]:
+        if not 1 <= limit <= 20:
+            raise InvalidInput("limit must be between 1 and 20")
+        with self.units() as unit:
+            rows = unit.books.list_popular(limit)
+        return [PopularBook(self.catalog.get(catalog_id), count) for catalog_id, count in rows]
 
     def _view(
         self, book: StoredBook, reading: Reading, metadata: CatalogBook | None = None

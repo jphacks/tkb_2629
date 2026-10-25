@@ -38,6 +38,18 @@ class SqlBookRepository:
         row = self.db.scalar(select(Book).where(Book.google_books_id == google_books_id))
         return stored_book(row) if row is not None else None
 
+    def list_popular(self, limit: int) -> list[tuple[str, int]]:
+        readers = func.count(func.distinct(UserBook.user_id))
+        rows = self.db.execute(
+            select(Book.google_books_id, readers)
+            .join(UserBook, UserBook.book_id == Book.id)
+            .where(Book.google_books_id.is_not(None))
+            .group_by(Book.id, Book.google_books_id)
+            .order_by(readers.desc(), Book.id.asc())
+            .limit(limit)
+        )
+        return [(catalog_id, count) for catalog_id, count in rows]
+
     def get(self, book_id: int, *, lock: bool = False) -> StoredBook:
         statement = select(Book).where(Book.id == book_id)
         if lock:

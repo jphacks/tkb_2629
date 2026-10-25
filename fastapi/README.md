@@ -87,6 +87,20 @@ URLのバージョン番号と外部API通信の有無は独立した事項で�
 `books` 行を再利用するため、タイトルの表記揺れによる重複を防ぎます。
 検索自体に認証やDB接続は不要ですが、本棚への追加には認証とDB接続が必要です。
 
+### 本棚で人気の本
+
+認証付き `GET /catalog/books/popular?limit=5` は、Google Booksに紐づく書籍を
+本棚に登録している人数の多い順に返します。期間指定なし、読了済みを含み、
+`COUNT(DISTINCT user_id)` で再読を重複させません。同数なら書籍ID昇順です。
+`limit` は1〜20（既定5）。レスポンスは
+`{ "items": [{ "book": <GoogleBookResponse>, "reader_count": 2 }], "limit": 5 }`。
+個人のID・名前・進捗・しおり本文は返さず、手入力書籍と読者のいない書籍は対象外です。
+集計は現在DBに残っている本棚の記録に基づくため、記録やアカウントの削除で人数は減ることがあります。
+選出した本だけ既存のGoogle Booksキャッシュ/APIから書誌を取得し、書誌の永続化は増やしません。
+DB障害・外部API障害は既存の503・502応答にし、空リストや架空の順位に置き換えません。
+レスポンスは `Cache-Control: no-store`。DBマイグレーションは不要です。
+検証: `uv run --no-sync pytest --noconftest tests/reviews/test_popular_books.py -q`。
+
 Google Books由来のタイトル・著者・ページ数・ISBN・表紙URLはDBへ保存しません。
 `books` へ永続化する外部書誌情報は `google_books_id` のみです。本棚表示、書籍詳細、
 感想のページ範囲検証ではIDを使ってGoogle Books APIから書誌情報を取得します。

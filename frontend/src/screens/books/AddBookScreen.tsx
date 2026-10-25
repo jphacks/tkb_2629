@@ -10,6 +10,7 @@ import { ShadowInput } from '../../components/atoms/ShadowInput';
 import { SearchHistory } from '../../components/molecules/SearchHistory';
 import { useSearchHistory } from '../../lib/searchHistory';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
+import { PopularBooks } from '../../components/organisms/PopularBooks';
 import { BookmarkScreen } from '../../components/templates/BookmarkScreen';
 import {
   importGoogleBook,
@@ -225,6 +226,12 @@ export function AddBookScreen({
             ))}
           </View>
         </View>
+        <PopularBooks onSelect={(book) => {
+          const owned = ownedBooks[book.google_books_id];
+          setMessage(null);
+          if (owned) setDetailBookId(owned.id);
+          else setPreview(book);
+        }} />
         <SearchHistory
           items={history.items} error={history.error} loading={history.loading}
           onSelect={(value) => { void search(value); }}

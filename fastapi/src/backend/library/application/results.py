@@ -3,6 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from ..domain.catalog import CatalogBook
+
+
+@dataclass(frozen=True)
+class PopularBook:
+    book: CatalogBook
+    reader_count: int
+
 
 @dataclass
 class BookView:

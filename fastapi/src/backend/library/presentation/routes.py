@@ -18,12 +18,28 @@ from .schemas import (
     GoogleBookImport,
     GoogleBookResponse,
     GoogleBookSearchResponse,
+    PopularBookListResponse,
+    PopularBookResponse,
     ReadingIterationResponse,
 )
 
 router = APIRouter(tags=["library"])
 LibraryServiceDependency = Annotated[LibraryService, Depends(get_library_service)]
 CurrentUserId = Annotated[int, Depends(get_current_user_id)]
+
+
+@router.get("/catalog/books/popular", response_model=PopularBookListResponse)
+def popular_books(
+    service: LibraryServiceDependency,
+    _user_id: CurrentUserId,
+    response: Response,
+    limit: int = Query(default=5, ge=1, le=20),
+) -> PopularBookListResponse:
+    response.headers["Cache-Control"] = "no-store"
+    return PopularBookListResponse(
+        items=[PopularBookResponse.model_validate(item) for item in service.popular(limit)],
+        limit=limit,
+    )
 
 
 @router.post("/books", response_model=BookResponse, status_code=201)
