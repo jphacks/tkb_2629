@@ -67,6 +67,7 @@ function harness(file = 'src/screens/account/PublicProfileScreen.tsx') {
       savePublicDisplayName: (...args) => request('put', args),
     },
     '../../lib/auth': { currentUser: () => ({ name: 'PRIVATE LEGACY NAME', email: 'private@example.test' }) },
+    '../../lib/readingStatistics': { useReadingStatistics: () => ({ statistics: null, error: null, retry() {} }) },
   });
   return {
     requests,
@@ -121,7 +122,7 @@ test('default book avatar accompanies only the saved public name, never the unsa
 test('settings opens dedicated public profile screen', () => {
   let target;
   const { AccountSettingsScreen } = load('src/screens/account/AccountSettingsScreen.tsx', {
-    react: { useState: (initial) => [initial, () => {}] },
+    react: { useState: (initial) => [initial, () => {}], useRef: (current) => ({ current }) },
     'react/jsx-runtime': { jsx: (type, props) => ({ type, props }), jsxs: (type, props) => ({ type, props }) },
     'react-native': { StyleSheet: { create: (value) => value } },
     '../../lib/auth': { currentUser: () => ({ name: 'Private', email: 'private@example.test' }) },
