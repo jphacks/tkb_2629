@@ -21,6 +21,7 @@ def review_entity(row: PageReview) -> ReviewEntity:
         row.analysis_status,
         row.created_at,
         row.updated_at,
+        row.visibility,
     )
 
 
@@ -59,6 +60,7 @@ class SqlReviewRepository:
             user_book_id=review.reading_id,
             page_number=review.page_number,
             review_text=review.text.value,
+            visibility=review.visibility,
             analysis_revision=review.revision,
             analysis_status=review.analysis_status,
             created_at=review.created_at,
@@ -96,6 +98,13 @@ class SqlReviewRepository:
                 )
             )
         return references
+
+    def save_visibility(self, review: ReviewEntity) -> None:
+        self.db.execute(
+            update(PageReview)
+            .where(PageReview.id == review.id)
+            .values(visibility=review.visibility, updated_at=review.updated_at)
+        )
 
     def page_popularity(self, reading_ids: Sequence[int]) -> list[PagePopularity]:
         if not reading_ids:

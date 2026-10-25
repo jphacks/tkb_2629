@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 from .errors import InvalidInput
+
+ReviewVisibility = Literal["private", "public"]
 
 
 @dataclass(init=False)

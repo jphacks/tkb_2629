@@ -15,6 +15,7 @@ from .schemas import (
     PagePopularityResponse,
     PageReviewResponse,
     ReviewSave,
+    ReviewVisibilityUpdate,
 )
 
 router = APIRouter(tags=["reviews"])
@@ -86,3 +87,19 @@ def save_review(
     else:
         response.status_code = 200
     return result.review
+
+
+@router.patch(
+    "/books/{book_id}/pages/{page_number}/review/visibility",
+    response_model=ReviewVisibilityUpdate,
+)
+def update_review_visibility(
+    book_id: int,
+    page_number: PageNumber,
+    request: ReviewVisibilityUpdate,
+    service: ReviewServiceDependency,
+    user_id: CurrentUserId,
+    iteration: int | None = Query(default=None, ge=1),
+) -> ReviewVisibilityUpdate:
+    service.set_visibility(user_id, book_id, page_number, request.visibility, iteration)
+    return request
