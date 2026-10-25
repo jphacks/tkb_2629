@@ -20,7 +20,7 @@ const otherBookmarks: Bookmark[] = [
 
 export const allBookmarks = [...myBookmarks, ...otherBookmarks];
 
-export function BookmarkListCard() {
+export function BookmarkListCard({ accentColor = '#FF7171', tintColor = '#FFF4F4' }: { accentColor?: string; tintColor?: string }) {
   const [view, setView] = useState<'mine' | 'others'>('mine');
   const [selectedId, setSelectedId] = useState('mine-1');
   const bookmarks = view === 'mine' ? myBookmarks : otherBookmarks;
@@ -36,15 +36,17 @@ export function BookmarkListCard() {
           <Text style={styles.count}>{total}件のしおり</Text>
         </View>
         <SegmentedTabs
+          activeColor={accentColor}
           options={[
             { label: '自分のしおり', value: 'mine' },
             { label: '他の人のしおり', value: 'others' },
           ]}
           value={view}
+          tintColor={tintColor}
           onChange={(value) => setView(value as 'mine' | 'others')}
         />
       </View>
-      {view === 'mine' ? <BookmarkTimeline bookmarks={bookmarks} selectedBookmark={selectedBookmark} onSelect={setSelectedId} /> : <BookmarkAreaChart bookmarks={otherBookmarks} maxCount={maxCount} selectedBookmark={selectedBookmark} onSelect={setSelectedId} />}
+      {view === 'mine' ? <BookmarkTimeline accentColor={accentColor} bookmarks={bookmarks} selectedBookmark={selectedBookmark} onSelect={setSelectedId} tintColor={tintColor} /> : <BookmarkAreaChart accentColor={accentColor} bookmarks={otherBookmarks} maxCount={maxCount} selectedBookmark={selectedBookmark} onSelect={setSelectedId} tintColor={tintColor} />}
     </View>
   );
 }

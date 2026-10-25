@@ -6,14 +6,16 @@ type SegmentedTabOption = {
 };
 
 type SegmentedTabsProps = {
+  activeColor?: string;
+  tintColor?: string;
   onChange: (value: string) => void;
   options: SegmentedTabOption[];
   value: string;
 };
 
-export function SegmentedTabs({ onChange, options, value }: SegmentedTabsProps) {
+export function SegmentedTabs({ activeColor = '#FF7171', onChange, options, tintColor = '#FFF4F4', value }: SegmentedTabsProps) {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: tintColor }]}>
       {options.map((option) => {
         const isSelected = value === option.value;
 
@@ -25,7 +27,7 @@ export function SegmentedTabs({ onChange, options, value }: SegmentedTabsProps) 
             onPress={() => onChange(option.value)}
             style={[styles.tab, isSelected && styles.activeTab]}
           >
-            <Text style={[styles.label, isSelected && styles.activeLabel]}>{option.label}</Text>
+            <Text style={[styles.label, isSelected && { color: activeColor }]}>{option.label}</Text>
           </Pressable>
         );
       })}

@@ -2,14 +2,14 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import type { Bookmark } from '../../types/bookmark';
 
-type BookmarkCalloutProps = { bookmark: Bookmark; position: number };
+type BookmarkCalloutProps = { accentColor?: string; bookmark: Bookmark; position: number; tintColor?: string };
 
-export function BookmarkCallout({ bookmark, position }: BookmarkCalloutProps) {
+export function BookmarkCallout({ accentColor = '#FF7171', bookmark, position, tintColor = '#FFE0E0' }: BookmarkCalloutProps) {
   return (
-    <View pointerEvents="none" style={[styles.container, { left: `${Math.max(0, Math.min(68, position - 12))}%` }]}>
-      <View style={styles.pointer} />
+    <View pointerEvents="none" style={[styles.container, { borderColor: tintColor, left: `${Math.max(0, Math.min(68, position - 12))}%` }]}> 
+      <View style={[styles.pointer, { borderBottomColor: tintColor, borderRightColor: tintColor }]} />
       <Text style={styles.body}>{bookmark.note}</Text>
-      <Text style={styles.meta}>{bookmark.page}ページ ・ {bookmark.date}</Text>
+      <Text style={[styles.meta, { color: accentColor }]}>{bookmark.page}ページ ・ {bookmark.date}</Text>
       <Text style={styles.author}>{bookmark.author}</Text>
     </View>
   );

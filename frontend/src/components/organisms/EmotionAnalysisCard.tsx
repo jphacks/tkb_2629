@@ -62,6 +62,18 @@ export function EmotionAnalysisCard({ bookmarks }: { bookmarks: Bookmark[] }) {
   );
 }
 
+export function getAggregateEmotionColor(bookmarks: Bookmark[]) {
+  return createAggregateColor(createEmotionSummary(bookmarks));
+}
+
+export function getEmotionTint(color: string) {
+  const red = Number.parseInt(color.slice(1, 3), 16);
+  const green = Number.parseInt(color.slice(3, 5), 16);
+  const blue = Number.parseInt(color.slice(5, 7), 16);
+  const mix = (channel: number) => Math.round(channel + (255 - channel) * 0.88).toString(16).padStart(2, '0');
+  return `#${mix(red)}${mix(green)}${mix(blue)}`;
+}
+
 function getPoint(index: number, scale: number) {
   const angle = -Math.PI / 2 + (index * Math.PI) / 4;
   return {

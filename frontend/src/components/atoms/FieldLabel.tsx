@@ -4,10 +4,11 @@ import { colors } from '../../theme/colors';
 
 type FieldLabelProps = {
   children: string;
+  color?: string;
 };
 
-export function FieldLabel({ children }: FieldLabelProps) {
-  return <Text style={styles.label}>{children}</Text>;
+export function FieldLabel({ children, color = colors.text }: FieldLabelProps) {
+  return <Text style={[styles.label, { color }]}>{children}</Text>;
 }
 
 const styles = StyleSheet.create({

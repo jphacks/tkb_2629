@@ -3,18 +3,21 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BookCover } from '../../components/molecules/BookCover';
 import { ReadingProgress } from '../../components/molecules/ReadingProgress';
-import { EmotionAnalysisCard } from '../../components/organisms/EmotionAnalysisCard';
+import { EmotionAnalysisCard, getAggregateEmotionColor, getEmotionTint } from '../../components/organisms/EmotionAnalysisCard';
 import { allBookmarks, BookmarkListCard } from '../../components/organisms/BookmarkListCard';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
 import type { ScreenKey } from '../types';
 
 export function BookDetailScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => void }) {
+  const emotionColor = getAggregateEmotionColor(allBookmarks);
+  const emotionTint = getEmotionTint(emotionColor);
+
   return (
     <ScreenFrame activeRoute="bookshelf" onNavigate={onNavigate} title="本の詳細">
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.hero}>
+        <View style={[styles.hero, { backgroundColor: emotionTint }]}>
           <Pressable accessibilityLabel="本の情報を編集" accessibilityRole="button" onPress={() => onNavigate('book-edit')} style={styles.editButton}>
-            <Ionicons color="#FF7171" name="pencil" size={22} />
+            <Ionicons color={emotionColor} name="pencil" size={22} />
           </Pressable>
           <BookCover large title="星の旅" />
           <View style={styles.info}>
@@ -24,9 +27,9 @@ export function BookDetailScreen({ onNavigate }: { onNavigate: (route: ScreenKey
           </View>
         </View>
         <View style={styles.card}>
-          <ReadingProgress currentPage={42} totalPages={180} />
+          <ReadingProgress color={emotionColor} currentPage={42} totalPages={180} />
         </View>
-        <BookmarkListCard />
+        <BookmarkListCard accentColor={emotionColor} tintColor={emotionTint} />
         <EmotionAnalysisCard bookmarks={allBookmarks} />
       </ScrollView>
     </ScreenFrame>

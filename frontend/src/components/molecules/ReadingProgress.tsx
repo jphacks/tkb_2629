@@ -1,20 +1,21 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 type ReadingProgressProps = {
+  color?: string;
   currentPage: number;
   totalPages: number;
 };
 
-export function ReadingProgress({ currentPage, totalPages }: ReadingProgressProps) {
+export function ReadingProgress({ color = '#C17AED', currentPage, totalPages }: ReadingProgressProps) {
   const percentage = totalPages > 0 ? Math.round((currentPage / totalPages) * 100) : 0;
 
   return (
     <View>
       <Text style={styles.progress}>{currentPage} / {totalPages}ページ</Text>
       <View style={styles.track}>
-        <View style={[styles.fill, { width: `${Math.min(100, Math.max(0, percentage))}%` }]} />
+      <View style={[styles.fill, { backgroundColor: color, width: `${Math.min(100, Math.max(0, percentage))}%` }]} />
       </View>
-      <Text style={styles.percent}>{percentage}% 読了</Text>
+      <Text style={[styles.percent, { color }]}>{percentage}% 読了</Text>
     </View>
   );
 }
