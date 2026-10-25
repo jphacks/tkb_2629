@@ -9,11 +9,12 @@ type MyThoughtCardProps = {
   emotionColor: string;
   emotionTint: string;
   note: string;
+  onPress?: () => void;
 };
 
-export function MyThoughtCard({ emotionColor, emotionTint, note }: MyThoughtCardProps) {
+export function MyThoughtCard({ emotionColor, emotionTint, note, onPress }: MyThoughtCardProps) {
   return (
-    <GlassSurface style={styles.card}>
+    <GlassSurface accessibilityLabel="本の詳細を開く" onPress={onPress} style={styles.card}>
       <BookCover color={emotionColor} compact title="星の旅" />
       <View style={styles.bubbleWrap}>
         <View style={[styles.tail, { borderRightColor: emotionColor }]} />

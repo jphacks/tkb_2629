@@ -20,7 +20,12 @@ export function HomeScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => v
         <View style={styles.content}>
           <BookStack count={totalReadBooks} />
           {myThought && (
-            <MyThoughtCard emotionColor={emotionColor} emotionTint={emotionTint} note={myThought.note} />
+            <MyThoughtCard
+              emotionColor={emotionColor}
+              emotionTint={emotionTint}
+              note={myThought.note}
+              onPress={() => onNavigate('book-detail')}
+            />
           )}
         </View>
         <FloatingActionButton onPress={() => onNavigate('bookmark-book-select')} />
