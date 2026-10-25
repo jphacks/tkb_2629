@@ -22,12 +22,11 @@ export function AccountSettingsScreen({ onNavigate }: { onNavigate: Navigate }) 
   return (
     <ScreenFrame activeRoute="account" onNavigate={onNavigate} title="アカウント設定">
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.notice}>ユーザー名・メールアドレスの変更は準備中です。</Text>
+        <Text style={styles.notice}>名前は他の読者にも表示されます。メールアドレスの変更は準備中です。</Text>
         <Text style={styles.section}>アカウント情報</Text>
         <GlassSurface style={styles.group}>
           <SettingsRow label="メールアドレス" value={user?.email} />
-          <SettingsRow label="ユーザー名" value={user?.name} />
-          <SettingsRow label="公開プロフィール" onPress={() => onNavigate('public-profile')} />
+          <SettingsRow label="名前" value="設定・変更" onPress={() => onNavigate('public-profile')} />
           <SettingsRow label="パスワード" value="再設定メールを送る" onPress={() => onNavigate('forgot-password')} />
         </GlassSurface>
         <Text style={styles.section}>読書の設定</Text>

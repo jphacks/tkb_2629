@@ -154,7 +154,15 @@ export type PublicProfile = {
 
 export async function getPublicProfile(): Promise<PublicProfile> {
   const response = await authenticatedFetch(`${API_URL}/users/me/public-profile`);
-  return parseResponse<PublicProfile>(response, "公開プロフィールの取得に失敗しました");
+  const result = await parseResponse<PublicProfile>(response, "名前の取得に失敗しました");
+  if (!result || (result.public_display_name !== null && (
+    typeof result.public_display_name !== "string" ||
+    result.public_display_name.trim().length === 0 ||
+    Array.from(result.public_display_name).length > 100
+  ))) {
+    throw new Error("名前の取得結果を確認できません。再度読み込んでください。");
+  }
+  return result;
 }
 
 export async function savePublicDisplayName(name: string): Promise<PublicProfile> {
@@ -163,9 +171,9 @@ export async function savePublicDisplayName(name: string): Promise<PublicProfile
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ public_display_name: name.trim() }),
   });
-  const result = await parseResponse<PublicProfile>(response, "公開用表示名の保存に失敗しました");
-  if (result.public_display_name !== name.trim()) {
-    throw new Error("公開用表示名の保存結果が一致しません。再度確認してください。");
+  const result = await parseResponse<PublicProfile>(response, "名前の保存に失敗しました");
+  if (!result || result.public_display_name !== name.trim()) {
+    throw new Error("名前の保存結果が一致しません。再度確認してください。");
   }
   return result;
 }
