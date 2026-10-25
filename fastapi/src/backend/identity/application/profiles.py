@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 from ..domain.errors import InvalidSession, UserNotFound
 from ..domain.policies import UserAccessPolicy
 from ..domain.values import DisplayName, EmailAddress
@@ -8,6 +10,10 @@ from .results import PublicProfile, UserSummary
 class ProfileService:
     def __init__(self, units: UnitOfWorkFactory):
         self.units = units
+
+    def public_display_names(self, user_ids: Sequence[int]) -> dict[int, str]:
+        with self.units() as unit:
+            return unit.profiles.public_display_names(user_ids)
 
     def get(self, actor_id: int, user_id: int) -> UserSummary:
         UserAccessPolicy.require_owner(actor_id, user_id)

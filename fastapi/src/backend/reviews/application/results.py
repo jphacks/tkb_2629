@@ -7,6 +7,25 @@ from ..domain.values import ReviewVisibility
 
 
 @dataclass(frozen=True)
+class PublicReading:
+    id: int
+    user_id: int
+    iteration_number: int
+
+
+@dataclass(frozen=True)
+class PublicReviewView:
+    id: int
+    public_display_name: str
+    page_number: int
+    iteration_number: int
+    review_text: str
+    contains_spoilers: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+@dataclass(frozen=True)
 class ReviewView:
     id: int
     book_id: int

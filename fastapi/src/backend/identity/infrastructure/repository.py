@@ -1,6 +1,7 @@
 """Data mapping and SQL only. Transaction and authentication policy live in application/domain."""
 
 import hashlib
+from collections.abc import Sequence
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -179,6 +180,21 @@ class SqlAttemptRepository:
 class SqlProfileRepository:
     def __init__(self, db: Session):
         self.db = db
+
+    def public_display_names(self, user_ids: Sequence[int]) -> dict[int, str]:
+        ids = list(dict.fromkeys(user_ids))
+        names: dict[int, str] = {}
+        for offset in range(0, len(ids), 1000):
+            rows = self.db.execute(
+                select(User.id, User.public_display_name).where(
+                    User.id.in_(ids[offset : offset + 1000]),
+                    User.public_display_name.is_not(None),
+                )
+            )
+            for user_id, name in rows:
+                if name is not None and name.strip():
+                    names[user_id] = name
+        return names
 
     def create(self, name: str, email: str) -> UserSummary:
         row = User(name=name, email=email)

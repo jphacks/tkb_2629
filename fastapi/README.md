@@ -37,6 +37,7 @@ PostgreSQLの既存ボリュームがある場合、`POSTGRES_DB` を変更し�
 ## コード構成
 
 本人用の公開用表示名APIについては [公開用表示名](docs/public-profile.md) を参照してください。
+ログイン済みの読者向けの感想取得は [公開感想一覧API](docs/public-reviews.md) を参照してください。
 
 構成と境界の詳細は [コンテキスト設計](docs/contexts.md) を参照してください。
 

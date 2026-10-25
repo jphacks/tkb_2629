@@ -6,14 +6,17 @@ from fastapi import APIRouter, Depends, Path, Query, Response
 
 from backend.shared.presentation.auth import get_current_user_id
 
+from ..application.public_reviews import PublicReviewService
 from ..application.results import ReviewView
 from ..application.service import ReviewService
-from .dependencies import get_review_service
+from .dependencies import get_public_review_service, get_review_service
 from .schemas import (
     BookEmotionResponse,
     PagePopularityPoint,
     PagePopularityResponse,
     PageReviewResponse,
+    PublicReviewResponse,
+    PublicReviewsResponse,
     ReviewSave,
     ReviewSpoilersUpdate,
     ReviewVisibilityUpdate,
@@ -23,6 +26,28 @@ router = APIRouter(tags=["reviews"])
 ReviewServiceDependency = Annotated[ReviewService, Depends(get_review_service)]
 CurrentUserId = Annotated[int, Depends(get_current_user_id)]
 PageNumber = Annotated[int, Path(ge=1)]
+
+
+@router.get(
+    "/catalog/books/{google_books_id}/reviews",
+    response_model=PublicReviewsResponse,
+)
+def list_public_reviews(
+    google_books_id: Annotated[str, Path(min_length=1, max_length=256, pattern=r"^\S+$")],
+    service: Annotated[PublicReviewService, Depends(get_public_review_service)],
+    user_id: CurrentUserId,
+    response: Response,
+    page: int | None = Query(default=None, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> PublicReviewsResponse:
+    response.headers["Cache-Control"] = "no-store"
+    items = service.list(google_books_id, page, limit, offset)
+    return PublicReviewsResponse(
+        items=[PublicReviewResponse.model_validate(item) for item in items],
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get(

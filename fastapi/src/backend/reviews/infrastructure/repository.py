@@ -30,6 +30,27 @@ class SqlReviewRepository:
     def __init__(self, db: Session):
         self.db = db
 
+    def list_public(
+        self, reading_ids: Sequence[int], page: int | None, limit: int, offset: int
+    ) -> list[ReviewEntity]:
+        ids = list(dict.fromkeys(reading_ids))
+        candidates: list[ReviewEntity] = []
+        for start in range(0, len(ids), 1000):
+            statement = select(PageReview).where(
+                PageReview.user_book_id.in_(ids[start : start + 1000]),
+                PageReview.visibility == "public",
+            )
+            if page is not None:
+                statement = statement.where(PageReview.page_number == page)
+            rows = self.db.scalars(
+                statement.order_by(PageReview.updated_at.desc(), PageReview.id.desc()).limit(
+                    offset + limit
+                )
+            )
+            candidates.extend(review_entity(row) for row in rows)
+        candidates.sort(key=lambda row: (row.updated_at, row.id), reverse=True)
+        return candidates[offset : offset + limit]
+
     def get(self, review_id: int, *, lock: bool = False) -> ReviewEntity | None:
         statement = select(PageReview).where(PageReview.id == review_id)
         if lock:

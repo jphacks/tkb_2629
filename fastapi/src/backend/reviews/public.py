@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from .application.errors import AnalysisUnavailable, ExternalServiceError, ServiceUnavailable
-from .application.results import AnalysisPreview, EmotionSummary, ReadingScope
+from .application.results import AnalysisPreview, EmotionSummary, PublicReading, ReadingScope
 from .domain.errors import Conflict, InvalidInput, NotFound
 
 __all__ = [
@@ -11,6 +11,7 @@ __all__ = [
     "AnalysisPreview",
     "EmotionSummary",
     "ReadingScope",
+    "PublicReading",
     "ExternalServiceError",
     "ServiceUnavailable",
     "Conflict",
