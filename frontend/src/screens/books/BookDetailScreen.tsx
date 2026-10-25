@@ -1,7 +1,7 @@
 import { colors } from "../../theme/colors";
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '../../components/molecules/ActionButton';
 import { BookCover } from '../../components/molecules/BookCover';
@@ -11,7 +11,7 @@ import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { EmotionAnalysisCard, getEmotionTint } from '../../components/organisms/EmotionAnalysisCard';
 import { BookmarkListCard } from '../../components/organisms/BookmarkListCard';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import { getBook, getBookEmotions, getBookReviews, type Book, type BookEmotions, type PageReview } from '../../lib/api';
+import { ApiError, completeIteration, getBook, getBookEmotions, getBookReviews, type Book, type BookEmotions, type PageReview } from '../../lib/api';
 import type { Navigate } from '../types';
 
 type BookDetailScreenProps = {
@@ -32,7 +32,13 @@ export function BookDetailScreen({ bookId, onNavigate }: BookDetailScreenProps) 
   const [reviewVersion, setReviewVersion] = useState(0);
   const [emotions, setEmotions] = useState<BookEmotions | null>(null);
   const [emotionError, setEmotionError] = useState<string | null>(null);
+  const [completing, setCompleting] = useState(false);
+  const [completeError, setCompleteError] = useState<string | null>(null);
 
+  useEffect(() => {
+    setCompleting(false);
+    setCompleteError(null);
+  }, [bookId]);
   useEffect(() => {
     let active = true;
     setState({ bookId, status: 'loading' });
@@ -85,6 +91,35 @@ export function BookDetailScreen({ bookId, onNavigate }: BookDetailScreenProps) 
   const emotionTint = getEmotionTint(emotionColor);
   const isReading = book?.reading_status === 'reading';
 
+  async function complete(target: Book) {
+    setCompleting(true);
+    setCompleteError(null);
+    try {
+      await completeIteration(bookId, target.latest_iteration);
+    } catch (reason: unknown) {
+      // 409: already completed elsewhere, so just reload the latest state.
+      if (!(reason instanceof ApiError && reason.status === 409)) {
+        setCompleting(false);
+        setCompleteError(reason instanceof Error ? reason.message : '読了の記録に失敗しました。');
+        return;
+      }
+    }
+    setCompleting(false);
+    setRequestVersion((version) => version + 1);
+  }
+
+  function confirmComplete(target: Book) {
+    if (completing) return;
+    Alert.alert(
+      '読了にしますか？',
+      `「${target.title}」を読了にします。この読書回のしおりは追加・編集できなくなります。`,
+      [
+        { style: 'cancel', text: 'キャンセル' },
+        { onPress: () => { void complete(target); }, text: '読了にする' },
+      ],
+    );
+  }
+
   return (
     <ScreenFrame activeRoute="bookshelf" onNavigate={onNavigate} title="本の詳細">
       <ScrollView contentContainerStyle={styles.content}>
@@ -116,6 +151,14 @@ export function BookDetailScreen({ bookId, onNavigate }: BookDetailScreenProps) 
             {isReading && (
               <GlassSurface style={styles.card}>
                 <ReadingProgress color={emotionColor} currentPage={book.current_page} totalPages={book.total_pages} />
+                <View style={styles.completeAction}>
+                  <ActionButton
+                    label={completing ? '読了にしています…' : '読了にする'}
+                    onPress={completing ? undefined : () => confirmComplete(book)}
+                    secondary
+                  />
+                </View>
+                {completeError && <Text accessibilityRole="alert" style={styles.message}>{completeError}</Text>}
               </GlassSurface>
             )}
             {!reviews && !reviewError && <Text style={styles.message}>しおりを読み込んでいます…</Text>}
@@ -167,5 +210,6 @@ const styles = StyleSheet.create({
   status: { color: colors.textSecondary, fontSize: 12, marginTop: 6 },
   message: { color: colors.placeholder, fontSize: 14, marginTop: 16 },
   error: { gap: 16 },
+  completeAction: { marginTop: 16 },
   card: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, elevation: 2, marginTop: 16, padding: 18, shadowColor: colors.black, shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } },
 });
