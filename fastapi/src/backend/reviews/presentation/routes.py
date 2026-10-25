@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Path, Query, Response
 from backend.shared.presentation.auth import get_current_user_id
 
 from ..application.public_reviews import PublicReviewService
+from ..application.bookmark_gradient import build_bookmark_gradient_svg
 from ..application.results import ReviewView
 from ..application.service import ReviewService
 from .dependencies import get_public_review_service, get_review_service
@@ -195,6 +196,16 @@ def compare_book_emotions(
 ) -> EmotionComparisonResponse:
     response.headers["Cache-Control"] = "no-store"
     return EmotionComparisonResponse.model_validate(service.compare_emotions(user_id, book_id))
+
+
+@router.get("/books/{book_id}/bookmark-gradient.svg", response_class=Response)
+def get_bookmark_gradient(
+    book_id: int,
+    service: ReviewServiceDependency,
+    user_id: CurrentUserId,
+) -> Response:
+    svg = build_bookmark_gradient_svg(service.bookmark_colors(user_id, book_id))
+    return Response(content=svg, media_type="image/svg+xml")
 
 
 @router.get("/books/{book_id}/pages/{page_number}/review", response_model=PageReviewResponse)

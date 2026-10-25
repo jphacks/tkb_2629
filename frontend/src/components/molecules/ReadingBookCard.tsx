@@ -1,8 +1,9 @@
 import { colors } from "../../theme/colors";
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, Rect, Stop, SvgXml } from 'react-native-svg';
 
-import type { Book } from '../../lib/api';
+import { getBookmarkGradientSvg, type Book } from '../../lib/api';
 import { gradients } from '../../theme/gradients';
 import { GlassSurface } from '../atoms/GlassSurface';
 import { BookmarkAddIcon } from '../atoms/BookmarkAddIcon';
@@ -17,12 +18,34 @@ type ReadingBookCardProps = {
 
 export function ReadingBookCard({ book, onBookmark, onPress }: ReadingBookCardProps) {
   const author = book.author ?? '著者不明';
+  const [gradientSvg, setGradientSvg] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setGradientSvg(null);
+    getBookmarkGradientSvg(book.id)
+      .then((svg) => {
+        if (active) setGradientSvg(svg);
+      })
+      .catch(() => {
+        if (active) setGradientSvg(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [book.id]);
+
   return (
     <GlassSurface
       accessibilityLabel={`${book.title}の詳細を開く`}
       onPress={onPress}
       style={styles.book}
     >
+      {gradientSvg && (
+        <View pointerEvents="none" style={styles.cardGradient}>
+          <SvgXml height="100%" preserveAspectRatio="none" width="100%" xml={gradientSvg} />
+        </View>
+      )}
       <OwnedBookCover book={book} />
       <View style={styles.copy}>
         <Text numberOfLines={1} style={styles.title}>{book.title}</Text>
@@ -56,6 +79,7 @@ export function ReadingBookCard({ book, onBookmark, onPress }: ReadingBookCardPr
 
 const styles = StyleSheet.create({
   book: { alignItems: 'center', borderRadius: 18, flexDirection: 'row', gap: 16, padding: 14, width: '100%' },
+  cardGradient: { bottom: 0, left: 0, opacity: 0.16, position: 'absolute', right: 0, top: 0 },
   copy: { flex: 1 },
   title: { color: colors.text, fontSize: 16, fontWeight: '700' },
   author: { color: colors.placeholder, fontSize: 11, marginTop: 6 },

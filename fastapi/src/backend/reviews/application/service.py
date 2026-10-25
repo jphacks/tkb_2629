@@ -163,6 +163,15 @@ class ReviewService:
             "others": self.analyses.summarize(others),
         }
 
+    def bookmark_colors(self, user_id: int, book_id: int) -> list[str]:
+        """Return the analyzed color of every bookmark in the book."""
+        self.readings.resolve(user_id, book_id, None)
+        reading_ids = self.readings.reading_ids(book_id, latest_only=False)
+        with self.units() as unit:
+            references = unit.reviews.analysis_references(reading_ids)
+        previews = self.analyses.previews(references) if references else {}
+        return [previews[reference].color_code for reference in references if reference in previews]
+
     def set_visibility(
         self,
         user_id: int,
