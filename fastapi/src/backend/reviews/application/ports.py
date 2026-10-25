@@ -6,7 +6,14 @@ from types import TracebackType
 from typing import Protocol, Self
 
 from ..domain.entities import PageReview
-from .results import AnalysisPreview, EmotionSummary, PagePopularity, PublicReading, ReadingScope
+from .results import (
+    AnalysisPreview,
+    EmotionSummary,
+    PagePopularity,
+    PublicReading,
+    PublicReviewCount,
+    ReadingScope,
+)
 
 AnalysisKey = tuple[int, int]
 
@@ -33,8 +40,16 @@ class AnalysisGateway(Protocol):
 
 class ReviewRepository(Protocol):
     def list_public(
-        self, reading_ids: Sequence[int], page: int | None, limit: int, offset: int
+        self,
+        reading_ids: Sequence[int],
+        page: int | None,
+        limit: int,
+        offset: int,
+        *,
+        page_start: int | None = None,
+        page_end: int | None = None,
     ) -> list[PageReview]: ...
+    def public_distribution(self, reading_ids: Sequence[int]) -> list[PublicReviewCount]: ...
     def get(self, review_id: int, *, lock: bool = False) -> PageReview | None: ...
     def find(self, reading_id: int, page: int, *, lock: bool = False) -> PageReview | None: ...
     def list(self, reading_id: int, limit: int, offset: int) -> list[PageReview]: ...

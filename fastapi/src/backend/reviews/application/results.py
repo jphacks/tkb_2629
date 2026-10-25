@@ -23,6 +23,15 @@ class PublicReviewView:
     contains_spoilers: bool
     created_at: datetime
     updated_at: datetime
+    color_code: str
+    analysis_status: str
+    source: str | None
+
+
+@dataclass(frozen=True)
+class PublicReviewCount:
+    page_number: int
+    review_count: int
 
 
 @dataclass(frozen=True)
