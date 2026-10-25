@@ -3,11 +3,18 @@ from __future__ import annotations
 import logging
 
 from ..domain.entities import PageReview
-from ..domain.errors import NotFound
+from ..domain.errors import InvalidInput, NotFound
 from ..domain.values import ReviewPage, ReviewText, ReviewVisibility
 from .errors import AnalysisUnavailable
 from .ports import AnalysisGateway, Clock, ReadingGateway, UnitOfWorkFactory
-from .results import EmotionSummary, PagePopularity, ReadingScope, ReviewSaveResult, ReviewView
+from .results import (
+    EmotionSummary,
+    PagePopularity,
+    ReadingScope,
+    Recommendations,
+    ReviewSaveResult,
+    ReviewView,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +31,32 @@ class ReviewService:
         self.readings = readings
         self.analyses = analyses
         self.clock = clock
+
+    def recommendations(self, user_id: int, limit: int = 5) -> Recommendations:
+        if not 1 <= limit <= 20:
+            raise InvalidInput("limit must be between 1 and 20")
+        own_ids = self.readings.owned_reading_ids(user_id)
+        with self.units() as unit:
+            own_references = unit.reviews.analysis_references(own_ids)
+        mine = self.analyses.summarize(own_references)
+        if mine.review_count == 0:
+            return Recommendations([], "needs_reviews", limit)
+        candidates = self.readings.discovery_candidates(user_id)
+        ranked: list[tuple[float, str]] = []
+        for catalog_id, reading_ids in candidates.items():
+            with self.units() as unit:
+                references = unit.reviews.analysis_references(reading_ids, public_only=True)
+            average = self.analyses.summarize(references)
+            if average.review_count == 0:
+                continue
+            distance = sum(
+                (value - average.emotion_scores[name]) ** 2
+                for name, value in mine.emotion_scores.items()
+            )
+            ranked.append((distance, catalog_id))
+        ranked.sort()
+        items = [self.readings.catalog_book(catalog_id) for _, catalog_id in ranked[:limit]]
+        return Recommendations(items, "ready" if items else "no_candidates", limit)
 
     def _views(self, scope: ReadingScope, rows: list[PageReview]) -> list[ReviewView]:
         keys = [(row.id, row.revision) for row in rows if row.analysis_status == "completed"]

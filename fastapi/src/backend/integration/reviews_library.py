@@ -25,6 +25,26 @@ class LibraryReadingGateway:
     def __init__(self, service: library.LibraryAccess):
         self.service = service
 
+    def owned_reading_ids(self, user_id: int) -> list[int]:
+        with translate_library_errors():
+            return self.service.owned_reading_ids(user_id)
+
+    def discovery_candidates(self, user_id: int) -> dict[str, list[int]]:
+        with translate_library_errors():
+            return self.service.discovery_candidates(user_id)
+
+    def catalog_book(self, google_books_id: str) -> reviews.RecommendationBook:
+        with translate_library_errors():
+            book = self.service.catalog_book(google_books_id)
+            return reviews.RecommendationBook(
+                book.google_books_id,
+                book.title,
+                book.author,
+                book.total_pages,
+                book.isbn_13,
+                book.thumbnail_url,
+            )
+
     def catalog_readings(self, google_books_id: str) -> list[reviews.PublicReading]:
         with translate_library_errors():
             return [

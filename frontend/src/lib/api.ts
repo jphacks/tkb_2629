@@ -14,6 +14,37 @@ export type GoogleBook = {
 
 export type PopularBook = { book: GoogleBook; reader_count: number };
 
+function isGoogleBook(value: unknown): value is GoogleBook {
+  return typeof value === "object" && value !== null &&
+    "google_books_id" in value && typeof value.google_books_id === "string" && !!value.google_books_id.trim() &&
+    "title" in value && typeof value.title === "string" && !!value.title.trim() &&
+    "author" in value && (value.author === null || typeof value.author === "string") &&
+    "total_pages" in value && typeof value.total_pages === "number" && Number.isSafeInteger(value.total_pages) && value.total_pages > 0 &&
+    "isbn_13" in value && (value.isbn_13 === null || typeof value.isbn_13 === "string") &&
+    "thumbnail_url" in value && (value.thumbnail_url === null || typeof value.thumbnail_url === "string");
+}
+
+export type EmotionRecommendations = {
+  items: GoogleBook[];
+  status: "ready" | "needs_reviews" | "no_candidates";
+  limit: number;
+};
+
+export async function getEmotionRecommendations(): Promise<EmotionRecommendations> {
+  const response = await authenticatedFetch(`${API_URL}/catalog/books/recommendations?limit=5`);
+  const payload = await parseResponse<EmotionRecommendations>(response, "おすすめの本の取得に失敗しました");
+  if (
+    !payload || payload.limit !== 5 || !Array.isArray(payload.items) || payload.items.length > 5 ||
+    !["ready", "needs_reviews", "no_candidates"].includes(payload.status) ||
+    (payload.status === "ready" ? payload.items.length === 0 : payload.items.length !== 0) ||
+    !payload.items.every(isGoogleBook) ||
+    new Set(payload.items.map((book) => book.google_books_id)).size !== payload.items.length
+  ) {
+    throw new Error("おすすめの本の応答形式が正しくありません。");
+  }
+  return payload;
+}
+
 export async function getPopularBooks(): Promise<PopularBook[]> {
   const response = await authenticatedFetch(`${API_URL}/catalog/books/popular?limit=5`);
   const payload = await parseResponse<{ items: PopularBook[]; limit: number }>(
@@ -24,12 +55,7 @@ export async function getPopularBooks(): Promise<PopularBook[]> {
     payload.items.some((item, index, items) => (
       !item || !Number.isSafeInteger(item.reader_count) || item.reader_count < 1 ||
       (index > 0 && item.reader_count > items[index - 1]!.reader_count) ||
-      !item.book || typeof item.book.google_books_id !== "string" || !item.book.google_books_id.trim() ||
-      typeof item.book.title !== "string" || !item.book.title.trim() ||
-      (item.book.author !== null && typeof item.book.author !== "string") ||
-      !Number.isSafeInteger(item.book.total_pages) || item.book.total_pages < 1 ||
-      (item.book.isbn_13 !== null && typeof item.book.isbn_13 !== "string") ||
-      (item.book.thumbnail_url !== null && typeof item.book.thumbnail_url !== "string")
+      !isGoogleBook(item.book)
     )) ||
     new Set(payload.items.map((item) => item.book.google_books_id)).size !== payload.items.length
   ) {

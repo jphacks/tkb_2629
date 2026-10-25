@@ -101,6 +101,26 @@ DB障害・外部API障害は既存の503・502応答にし、空リストや架
 レスポンスは `Cache-Control: no-store`。DBマイグレーションは不要です。
 検証: `uv run --no-sync pytest --noconftest tests/reviews/test_popular_books.py -q`。
 
+### 感情傾向に近い本の推薦
+
+認証付き `GET /catalog/books/recommendations?limit=5` は、本人の全読書回の感想の
+8感情平均に近い、まだ本棚にないGoogle Books書籍を返します。読了済みの所有書籍も除外します。
+本人の非公開感想は本人用プロフィールにのみ使い、候補本の平均は公開しおりだけから算出します。
+どちらも解析完了・最新改訂・source=jev・全8感情がある感想だけを対象とし、
+しおり1件を同じ重みとして平均します。8軸のユークリッド距離（比較時は距離の二乗）昇順、
+同距離はGoogle Books ID昇順です。色やRGBの距離ではありません。
+有効な本人の感想が1件以上、候補本の公開感想が1件以上あれば比較可能です。
+`limit` は1〜20（既定5）。レスポンスは
+`{ "items": [<書誌情報>], "status": "ready", "limit": 5 }`。
+`status` は `ready`（1件以上）、`needs_reviews`（本人の有効な解析なし）、
+`no_candidates`（推薦候補なし）。後者2つの `items` は空です。
+感想本文・ユーザーID・感情ベクトル・類似率は返しません。未公開の他者の感想は集計にも使いません。
+既存のコンテキスト公開契約経由で読書回、解析平均、選出した本の書誌を取得します。
+新規のAI呼び出しや書誌の永続化はしません。DB・解析・書誌の障害は空結果に置き換えず、
+既存の503・502等で返します。応答は `Cache-Control: no-store`、DB移行なしです。
+現在は有効な候補を全件比較するため、データ増加時は集計のバッチ化・事前計算を検討してください。
+検証: `uv run --no-sync pytest --noconftest tests/reviews/test_recommendations.py -q`。
+
 Google Books由来のタイトル・著者・ページ数・ISBN・表紙URLはDBへ保存しません。
 `books` へ永続化する外部書誌情報は `google_books_id` のみです。本棚表示、書籍詳細、
 感想のページ範囲検証ではIDを使ってGoogle Books APIから書誌情報を取得します。

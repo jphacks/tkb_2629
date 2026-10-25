@@ -124,6 +124,22 @@ class SqlReadingRepository:
     def __init__(self, db: Session):
         self.db = db
 
+    def owned_ids(self, user_id: int) -> list[int]:
+        return list(self.db.scalars(select(UserBook.id).where(UserBook.user_id == user_id)))
+
+    def discovery_candidates(self, user_id: int) -> dict[str, list[int]]:
+        owned = select(UserBook.book_id).where(UserBook.user_id == user_id)
+        rows = self.db.execute(
+            select(Book.google_books_id, UserBook.id)
+            .join(UserBook, UserBook.book_id == Book.id)
+            .where(Book.google_books_id.is_not(None), Book.id.not_in(owned))
+            .order_by(Book.google_books_id, UserBook.id)
+        )
+        candidates: dict[str, list[int]] = {}
+        for catalog_id, reading_id in rows:
+            candidates.setdefault(catalog_id, []).append(reading_id)
+        return candidates
+
     def get(
         self, user_id: int, book_id: int, iteration: int | None = None, *, lock: bool = False
     ) -> Reading:

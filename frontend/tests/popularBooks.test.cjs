@@ -104,16 +104,19 @@ test('popular API rejects invalid counts, metadata, duplicates, limit, size and 
   }
 });
 
-function panel() {
+function panel(component = 'PopularBooks') {
   const h = hooks(), requests = [], selections = [];
-  const { PopularBooks } = load('src/components/organisms/PopularBooks.tsx', {
+  const module = load(`src/components/organisms/${component}.tsx`, {
     react: h.react, 'react/jsx-runtime': { jsx, jsxs: jsx }, 'react-native': native,
     '../../theme/colors': { colors: {} },
-    '../../lib/api': { getPopularBooks: () => new Promise((resolve, reject) => requests.push({ resolve, reject })) },
+    '../../lib/api': {
+      getPopularBooks: () => new Promise((resolve, reject) => requests.push({ resolve, reject })),
+      getEmotionRecommendations: () => new Promise((resolve, reject) => requests.push({ resolve, reject })),
+    },
   });
   return {
     requests, selections, unmount: h.unmount,
-    render: () => h.render(() => PopularBooks({ onSelect: (book) => selections.push(book) })),
+    render: () => h.render(() => module[component]({ onSelect: (book) => selections.push(book) })),
   };
 }
 
@@ -185,7 +188,8 @@ test('popular panel ignores late success and failure after leaving', async () =>
   }
 });
 
-test('discovery routes unowned books to preview, owned books to detail and keeps search intact', async () => {
+for (const discovery of ['PopularBooks', 'EmotionRecommendations']) {
+test(`${discovery} routes unowned books to preview, owned books to detail and keeps search intact`, async () => {
   const h = hooks(), imported = [];
   const { AddBookScreen } = load('src/screens/books/AddBookScreen.tsx', {
     react: h.react, 'react/jsx-runtime': { jsx, jsxs: jsx }, 'react-native': native,
@@ -198,7 +202,7 @@ test('discovery routes unowned books to preview, owned books to detail and keeps
   const render = () => h.render(() => AddBookScreen({ onNavigate() {} }));
   render(); await flush();
   nodes(render()).find((node) => node.type === 'ShadowInput').props.onChangeText('Keep query');
-  const popular = () => nodes(render()).find((node) => node.type === 'PopularBooks');
+  const popular = () => nodes(render()).find((node) => node.type === discovery);
   popular().props.onSelect(book('new'));
   let tree = render();
   assert.equal(tree.type, 'BookPreviewScreen');
@@ -217,4 +221,73 @@ test('discovery routes unowned books to preview, owned books to detail and keeps
   assert.deepEqual(imported, ['new']);
   assert.equal(render().type, 'BookDetailScreen');
   assert.equal(render().props.bookId, 8);
+});
+}
+
+test('emotion recommendations API validates real books, states, size, duplicates and errors', async () => {
+  for (const status of ['needs_reviews', 'no_candidates']) {
+    const payload = { status, items: [], limit: 5 };
+    const h = api(payload);
+    assert.equal(await h.getEmotionRecommendations(), payload);
+    assert.match(h.requests[0][0], /\/catalog\/books\/recommendations\?limit=5$/);
+  }
+  const ready = { status: 'ready', items: [book('real')], limit: 5 };
+  assert.equal(await api(ready).getEmotionRecommendations(), ready);
+  for (const invalid of [
+    null, {}, { ...ready, limit: 20 }, { ...ready, items: [] },
+    { ...ready, status: 'unknown' }, { ...ready, status: 'needs_reviews' },
+    { ...ready, status: 'no_candidates' }, { ...ready, items: [null] },
+    { ...ready, items: [book('real'), book('real')] },
+    { ...ready, items: [{ ...book('real'), total_pages: 0 }] },
+    { ...ready, items: Array.from({ length: 6 }, (_, i) => book(String(i))) },
+  ]) await assert.rejects(api(invalid).getEmotionRecommendations(), /応答形式/);
+  await assert.rejects(api({ detail: 'recommendations offline' }, 503).getEmotionRecommendations(), /recommendations offline/);
+});
+
+test('emotion recommendations show distinct cold-start guidance and real clickable books', async () => {
+  for (const status of ['needs_reviews', 'no_candidates', 'ready']) {
+    const h = panel('EmotionRecommendations');
+    assert.match(text(h.render()), /読み込み中/);
+    h.requests[0].resolve({ status, items: status === 'ready' ? [book('real')] : [], limit: 5 });
+    await flush();
+    const tree = h.render();
+    if (status === 'needs_reviews') assert.match(text(tree), /感想を残すと/);
+    if (status === 'no_candidates') assert.match(text(tree), /まだ感情の近い本が見つかりません/);
+    if (status !== 'ready') {
+      assert.match(text(tree), /ジャンルや人気の本/);
+      assert.equal(nodes(tree).filter((node) => node.type === 'Pressable').length, 0);
+    } else {
+      const card = button(tree, 'おすすめの本 Title real');
+      assert.ok(card.props.style({ pressed: false })[0].minHeight >= 44);
+      assert.equal(h.selections.length, 0);
+      card.props.onPress();
+      assert.equal(h.selections[0].google_books_id, 'real');
+    }
+  }
+});
+
+test('emotion recommendations expose failures, retry independently and ignore late responses', async () => {
+  const h = panel('EmotionRecommendations');
+  h.render();
+  h.requests[0].reject(new Error('recommendations offline'));
+  await flush();
+  let tree = h.render();
+  assert.match(text(tree), /recommendations offline/);
+  assert.doesNotMatch(text(tree), /感想を残すと|まだ感情の近い本/);
+  assert.ok(nodes(tree).some((node) => node.props?.accessibilityRole === 'alert'));
+  button(tree, 'おすすめの本を再読み込み').props.onPress();
+  h.render();
+  h.requests[1].resolve({ status: 'ready', items: [book('real')], limit: 5 });
+  await flush();
+  assert.ok(button(h.render(), 'おすすめの本 Title real'));
+  for (const outcome of ['resolve', 'reject']) {
+    const late = panel('EmotionRecommendations');
+    late.render();
+    late.unmount();
+    late.requests[0][outcome](outcome === 'resolve' ? { status: 'ready', items: [book('late')], limit: 5 } : new Error('late failure'));
+    await flush();
+    tree = late.render();
+    assert.match(text(tree), /読み込み中/);
+    assert.doesNotMatch(text(tree), /Title late|late failure/);
+  }
 });

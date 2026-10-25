@@ -27,6 +27,17 @@ class LibraryService:
             rows = unit.books.list_popular(limit)
         return [PopularBook(self.catalog.get(catalog_id), count) for catalog_id, count in rows]
 
+    def owned_reading_ids(self, user_id: int) -> list[int]:
+        with self.units() as unit:
+            return unit.readings.owned_ids(user_id)
+
+    def discovery_candidates(self, user_id: int) -> dict[str, list[int]]:
+        with self.units() as unit:
+            return unit.readings.discovery_candidates(user_id)
+
+    def catalog_book(self, google_books_id: str) -> CatalogBook:
+        return self.catalog.get(google_books_id)
+
     def _view(
         self, book: StoredBook, reading: Reading, metadata: CatalogBook | None = None
     ) -> BookView:

@@ -1,11 +1,31 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
 from ..domain.reactions import ReactionKind
 from ..domain.values import ReviewVisibility
+
+
+class RecommendationBookResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    google_books_id: str
+    title: str
+    author: str | None
+    total_pages: int
+    isbn_13: str | None
+    thumbnail_url: str | None
+
+
+class RecommendationsResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[RecommendationBookResponse]
+    status: Literal["ready", "needs_reviews", "no_candidates"]
+    limit: int
 
 
 class ReactionUpdate(BaseModel):

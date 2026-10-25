@@ -22,6 +22,7 @@ from .schemas import (
     PublicReviewsResponse,
     ReactionResponse,
     ReactionUpdate,
+    RecommendationsResponse,
     ReviewSave,
     ReviewSpoilersUpdate,
     ReviewVisibilityUpdate,
@@ -34,6 +35,17 @@ PageNumber = Annotated[int, Path(ge=1)]
 GoogleBooksId = Annotated[str, Path(min_length=1, max_length=256, pattern=r"^\S+$")]
 ReviewId = Annotated[int, Path(ge=1)]
 PublicService = Annotated[PublicReviewService, Depends(get_public_review_service)]
+
+
+@router.get("/catalog/books/recommendations", response_model=RecommendationsResponse)
+def recommend_books(
+    service: ReviewServiceDependency,
+    user_id: CurrentUserId,
+    response: Response,
+    limit: int = Query(default=5, ge=1, le=20),
+) -> RecommendationsResponse:
+    response.headers["Cache-Control"] = "no-store"
+    return RecommendationsResponse.model_validate(service.recommendations(user_id, limit))
 
 
 @router.get(
