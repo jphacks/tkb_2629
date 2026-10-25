@@ -48,6 +48,36 @@ const review = (id = 7, page = 42) => ({
   analysis_status: 'completed', source: 'jev',
 });
 
+test('home renders with the current emotion helpers and uses the thought color or neutral gray', () => {
+  const native = { StyleSheet: { create: (value) => value }, View: 'View' };
+  const emotions = load('src/components/organisms/EmotionAnalysisCard.tsx', {
+    'react-native': native,
+  });
+  const samples = [{ note: 'Sample thought', color: '#123456' }];
+  const { HomeScreen } = load('src/screens/main/HomeScreen.tsx', {
+    'react-native': native,
+    'react/jsx-runtime': {
+      jsx: (type, props) => ({ type, props }),
+      jsxs: (type, props) => ({ type, props }),
+    },
+    '../../components/organisms/BookmarkListCard': { myBookmarks: samples },
+    '../../components/organisms/EmotionAnalysisCard': emotions,
+  });
+  let target;
+  const render = () => HomeScreen({ onNavigate: (value) => { target = value; } });
+  let card = find(render(), 'MyThoughtCard');
+  assert.equal(card.props.emotionColor, '#123456');
+  assert.equal(card.props.emotionTint, emotions.getEmotionTint('#123456'));
+  card.props.onPress();
+  assert.equal(target.name, 'book-detail');
+  assert.equal(target.bookId, 1);
+  delete samples[0].color;
+  card = find(render(), 'MyThoughtCard');
+  assert.equal(card.props.emotionColor, '#8C8C8C');
+  samples.length = 0;
+  assert.equal(find(render(), 'MyThoughtCard'), undefined);
+});
+
 function screenHarness() {
   let state = [], refs = [], effects = [], cursor = 0, scheduled = [], component, props;
   let target;

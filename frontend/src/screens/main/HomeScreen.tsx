@@ -3,15 +3,15 @@ import { StyleSheet, View } from 'react-native';
 import { BookStack } from '../../components/molecules/BookStack';
 import { FloatingActionButton } from '../../components/molecules/FloatingActionButton';
 import { MyThoughtCard } from '../../components/molecules/MyThoughtCard';
-import { allBookmarks, myBookmarks } from '../../components/organisms/BookmarkListCard';
-import { getAggregateEmotionColor, getEmotionTint } from '../../components/organisms/EmotionAnalysisCard';
+import { myBookmarks } from '../../components/organisms/BookmarkListCard';
+import { getEmotionTint } from '../../components/organisms/EmotionAnalysisCard';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
 import type { Navigate } from '../types';
 
 export function HomeScreen({ onNavigate }: { onNavigate: Navigate }) {
   const totalReadBooks = 12;
   const myThought = myBookmarks[0];
-  const emotionColor = getAggregateEmotionColor(allBookmarks);
+  const emotionColor = myThought?.color ?? '#8C8C8C';
   const emotionTint = getEmotionTint(emotionColor);
 
   return (
