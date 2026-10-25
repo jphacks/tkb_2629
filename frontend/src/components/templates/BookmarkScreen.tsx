@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TouchableWithoutFeedback, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { getBook, getPageReview, reviewAnalysisLabel, savePageReview, setReviewSpoilers, setReviewVisibility, type Book, type PageReview, type ReviewVisibility } from '../../lib/api';
 import { colors } from '../../theme/colors';
+import { FieldLabel } from '../atoms/FieldLabel';
 import { ActionButton } from '../molecules/ActionButton';
 import { BackButton } from '../molecules/BackButton';
 import { BookmarkCard } from '../organisms/BookmarkCard';
@@ -50,6 +51,7 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
   const contentHeight = useRef(720);
   const [visibility, setVisibility] = useState<ReviewVisibility>('private');
   const [containsSpoilers, setContainsSpoilers] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const savedDraft = useRef<PageReview | null>(null);
 
   useEffect(() => {
@@ -94,8 +96,6 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
     setLoaded(false);
     setExisting(null);
     setThoughts('');
-    setVisibility('private');
-    setContainsSpoilers(true);
     savedDraft.current = null;
     setError(null);
     if (!page.trim()) return;
@@ -109,8 +109,10 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
         if (active) {
           setExisting(review);
           setThoughts(review?.review_text ?? '');
-          setVisibility(review?.visibility ?? 'private');
-          setContainsSpoilers(review?.contains_spoilers ?? true);
+          if (review) {
+            setVisibility(review.visibility);
+            setContainsSpoilers(review.contains_spoilers);
+          }
           setLoaded(true);
         }
       }).catch((reason: unknown) => {
@@ -185,6 +187,7 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
   }
 
   function choosePage() {
+    setSettingsOpen(false);
     setPage('');
     setLoaded(false);
     setExisting(null);
@@ -220,69 +223,111 @@ function SelectedBookmarkScreen({ bookId, iteration, initialPage, onNavigate, on
   }
 
   return (
-    <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title={completed ? undefined : 'しおりを追加'} showNavigation={!busy || completed}
-      headerLeading={!completed && <BackButton onPress={onBack ?? (() => onNavigate('reading'))} disabled={busy} />}
-    >
-      <View style={styles.content} onLayout={(event) => { contentHeight.current = event.nativeEvent.layout.height; }}>
-        {!completed && (
-          <>
-            {canEdit && <BookmarkRibbon translateY={translateY} color={result?.color_code ?? existing?.color_code} />}
-            <BookmarkCard
-              translateY={translateY}
-              title={book.title}
-              page={page}
-              thoughts={thoughts}
-              loaded={loaded}
-              updating={existing !== null}
-              busy={busy}
-              readOnly={!canEdit}
-              visibility={visibility}
-              onVisibilityChange={setVisibility}
-              containsSpoilers={containsSpoilers}
-              onSpoilersChange={setContainsSpoilers}
-              error={error}
-              color={result?.color_code ?? existing?.color_code}
-              analysisLabel={analysisLabel}
-              onPageChange={(value) => {
-                setPage(value);
-                setLoaded(false);
-                setExisting(null);
-                setThoughts('');
-                setVisibility('private');
-                setContainsSpoilers(true);
-                savedDraft.current = null;
-                setError(null);
-              }}
-              onThoughtsChange={(value) => { setThoughts(value); setError(null); }}
-              onRetry={() => setPageVersion((version) => version + 1)}
-              onSubmit={save}
-            />
-            {!canEdit && (
-              <View style={styles.readOnlyHeader}>
-                <Text style={styles.message}>閲覧専用（編集不可）</Text>
-                <ActionButton label="本の詳細へ" secondary onPress={() => onNavigate({ name: 'book-detail', bookId })} />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.screen}>
+        <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate} title={completed ? undefined : 'しおりを追加'} showNavigation={!busy || completed}
+          headerLeading={!completed && <BackButton onPress={onBack ?? (() => onNavigate('reading'))} disabled={busy} />}
+          headerAction={!completed && (
+            <Pressable accessibilityRole="button" accessibilityLabel="しおりの設定を開く"
+              accessibilityState={{ disabled: busy }} disabled={busy}
+              onPress={() => { Keyboard.dismiss(); setSettingsOpen(true); }}
+              style={({ pressed }) => [styles.settingsButton, (pressed || busy) && styles.dimmed]}>
+              <Text style={styles.settingsButtonText}>設定</Text>
+            </Pressable>
+          )}
+        >
+          <Modal transparent animationType="fade" visible={settingsOpen && !completed}
+            onRequestClose={() => setSettingsOpen(false)}>
+            <View style={styles.modalBackdrop}>
+              <Pressable accessibilityRole="button" accessibilityLabel="設定を閉じる" style={StyleSheet.absoluteFill}
+                onPress={() => setSettingsOpen(false)} />
+              <View accessibilityViewIsModal style={styles.settings}>
+                <Text accessibilityRole="header" style={styles.settingsTitle}>しおりの設定</Text>
+                <View style={styles.settingRow}>
+                  <FieldLabel>他の読者に公開する</FieldLabel>
+                  <Switch style={styles.settingSwitch} accessibilityLabel="他の読者に公開する" value={visibility === 'public'}
+                    disabled={busy || !canEdit} onValueChange={(value) => setVisibility(value ? 'public' : 'private')} />
+                </View>
+                <View style={styles.settingRow}>
+                  <FieldLabel>ネタバレを含む</FieldLabel>
+                  <Switch style={styles.settingSwitch} accessibilityLabel="ネタバレを含む" value={containsSpoilers}
+                    disabled={busy || !canEdit} onValueChange={setContainsSpoilers} />
+                </View>
+                <Text style={styles.settingsNote}>{canEdit ? '設定はしおりの保存時に反映されます。' : '閲覧専用（編集不可）'}</Text>
+                <ActionButton label="閉じる" onPress={() => setSettingsOpen(false)} />
               </View>
-            )}
-          </>
-        )}
-        {completed && result && (
-          <ScrollView contentContainerStyle={styles.successState}>
-            <Ionicons color={result.color_code} name="checkmark-circle" size={56} />
-            <Text style={styles.successTitle}>しおりを{existing ? '更新' : '追加'}しました</Text>
-            <Text style={styles.message}>「{book.title}」 {result.page_number}ページ・{iteration}回目</Text>
-            {analysisLabel && <Text style={styles.message}>{analysisLabel}</Text>}
-            <View style={styles.successActions}>
-              <ActionButton label="本の詳細へ" onPress={() => onNavigate({ name: 'book-detail', bookId })} />
-              <ActionButton label="続けて他のページの感想も書く" secondary onPress={choosePage} />
             </View>
-          </ScrollView>
-        )}
+          </Modal>
+          <View style={styles.content} onLayout={(event) => { contentHeight.current = event.nativeEvent.layout.height; }}>
+            {!completed && (
+              <>
+                <View style={styles.bookmarkArea}>
+                  {canEdit && <BookmarkRibbon translateY={translateY} color={result?.color_code ?? existing?.color_code} />}
+                  <BookmarkCard
+                    translateY={translateY}
+                    title={book.title}
+                    page={page}
+                    thoughts={thoughts}
+                    loaded={loaded}
+                    updating={existing !== null}
+                    busy={busy}
+                    readOnly={!canEdit}
+                    error={error}
+                    color={result?.color_code ?? existing?.color_code}
+                    analysisLabel={analysisLabel}
+                    onPageChange={(value) => {
+                      setSettingsOpen(false);
+                      setPage(value);
+                      setLoaded(false);
+                      setExisting(null);
+                      setThoughts('');
+                      savedDraft.current = null;
+                      setError(null);
+                    }}
+                    onThoughtsChange={(value) => { setThoughts(value); setError(null); }}
+                    onRetry={() => setPageVersion((version) => version + 1)}
+                    onSubmit={save}
+                  />
+                </View>
+                {!canEdit && (
+                  <View style={styles.readOnlyHeader}>
+                    <Text style={styles.message}>閲覧専用（編集不可）</Text>
+                    <ActionButton label="本の詳細へ" secondary onPress={() => onNavigate({ name: 'book-detail', bookId })} />
+                  </View>
+                )}
+              </>
+            )}
+            {completed && result && (
+              <ScrollView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.successState}>
+                <Ionicons color={result.color_code} name="checkmark-circle" size={56} />
+                <Text style={styles.successTitle}>しおりを{existing ? '更新' : '追加'}しました</Text>
+                <Text style={styles.message}>「{book.title}」 {result.page_number}ページ・{iteration}回目</Text>
+                {analysisLabel && <Text style={styles.message}>{analysisLabel}</Text>}
+                <View style={styles.successActions}>
+                  <ActionButton label="本の詳細へ" onPress={() => onNavigate({ name: 'book-detail', bookId })} />
+                  <ActionButton label="続けて他のページの感想も書く" secondary onPress={choosePage} />
+                </View>
+              </ScrollView>
+            )}
+          </View>
+        </ScreenFrame>
       </View>
-    </ScreenFrame>
+    </TouchableWithoutFeedback>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  bookmarkArea: { flex: 1, position: 'relative' },
+  settingsButton: { minHeight: 44, minWidth: 52, alignItems: 'center', justifyContent: 'center' },
+  settingsButtonText: { color: colors.navAccent, fontSize: 16, fontWeight: '600' },
+  dimmed: { opacity: 0.4 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.35)', justifyContent: 'center', padding: 24 },
+  settings: { backgroundColor: colors.background, borderRadius: 20, padding: 24, gap: 12, width: '100%', maxWidth: 480, alignSelf: 'center' },
+  settingsTitle: { color: colors.text, fontSize: 20, fontWeight: '700' },
+  settingsNote: { color: colors.textSecondary, fontSize: 13, marginBottom: 8 },
+  settingSwitch: { transform: [{ scale: 1.2 }], marginHorizontal: 6 },
+  settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, gap: 12 },
   content: { backgroundColor: colors.backgroundSoft, flex: 1, padding: 24, position: 'relative' },
   messageState: { gap: 16, padding: 24 },
   readOnlyHeader: { marginHorizontal: 24, marginTop: 8, gap: 4 },

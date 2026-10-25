@@ -94,6 +94,7 @@ def list_public_reviews(
     service: Annotated[PublicReviewService, Depends(get_public_review_service)],
     user_id: CurrentUserId,
     response: Response,
+    exclude_mine: bool = Query(default=False),
     page: int | None = Query(default=None, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
@@ -102,7 +103,8 @@ def list_public_reviews(
 ) -> PublicReviewsResponse:
     response.headers["Cache-Control"] = "no-store"
     items = service.list(
-        google_books_id, page, limit, offset, page_start=page_start, page_end=page_end
+        google_books_id, page, limit, offset, page_start=page_start, page_end=page_end,
+        exclude_user_id=user_id if exclude_mine else None
     )
     return PublicReviewsResponse(
         items=[PublicReviewResponse.model_validate(item) for item in items],
@@ -120,9 +122,10 @@ def public_review_distribution(
     service: Annotated[PublicReviewService, Depends(get_public_review_service)],
     user_id: CurrentUserId,
     response: Response,
+    exclude_mine: bool = Query(default=False),
 ) -> PublicReviewDistributionResponse:
     response.headers["Cache-Control"] = "no-store"
-    items = service.distribution(google_books_id)
+    items = service.distribution(google_books_id, exclude_user_id=user_id if exclude_mine else None)
     return PublicReviewDistributionResponse(
         items=[PublicReviewDistributionPoint.model_validate(item) for item in items],
         total_count=sum(item.review_count for item in items),

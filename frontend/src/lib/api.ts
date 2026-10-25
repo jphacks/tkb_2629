@@ -207,12 +207,12 @@ export async function getBookEmotions(bookId: number): Promise<BookEmotions> {
   return parseResponse<BookEmotions>(response, "感情分析の取得に失敗しました");
 }
 
-export function reviewAnalysisLabel(review: Pick<PageReview, "analysis_status" | "source">): string {
+export function reviewAnalysisLabel(review: Pick<PageReview, "analysis_status" | "source">): string | undefined {
   if (review.analysis_status === "failed")
     return "感想は保存済み・色の取得に失敗しました";
   if (review.analysis_status === "pending") return "感想は保存済み・感想の色を準備中";
   if (review.source === "mock") return "感想の色（仮）";
-  if (review.source === "jev") return "感想の色";
+  if (review.source === "jev") return undefined;
   return "感想の色を確認できません";
 }
 
