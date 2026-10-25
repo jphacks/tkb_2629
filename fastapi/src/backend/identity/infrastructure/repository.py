@@ -181,6 +181,12 @@ class SqlProfileRepository:
     def __init__(self, db: Session):
         self.db = db
 
+    @staticmethod
+    def _summary(row: User) -> UserSummary:
+        public_name = row.public_display_name
+        name = public_name if public_name and public_name.strip() else row.name
+        return UserSummary(row.id, name, row.email)
+
     def public_display_names(self, user_ids: Sequence[int]) -> dict[int, str]:
         ids = list(dict.fromkeys(user_ids))
         names: dict[int, str] = {}
@@ -205,26 +211,33 @@ class SqlProfileRepository:
             raise RegistrationConflict(
                 "登録できませんでした。ログインまたはメール確認の再送をお試しください"
             ) from None
-        return UserSummary(row.id, row.name, row.email)
+        return self._summary(row)
 
     def get(self, user_id: int) -> UserSummary | None:
         row = self.db.get(User, user_id)
-        return UserSummary(row.id, row.name, row.email) if row else None
+        return self._summary(row) if row else None
 
     def find_by_email(self, email: str) -> UserSummary | None:
         rows = self.db.scalars(select(User).where(func.lower(func.trim(User.email)) == email)).all()
         if len(rows) > 1:
             raise RegistrationConflict("同じメールアドレスに対応するユーザーが複数存在します")
         row = rows[0] if rows else None
-        return UserSummary(row.id, row.name, row.email) if row else None
+        return self._summary(row) if row else None
 
     def update_name(self, user_id: int, name: str) -> UserSummary:
-        row = self.db.get(User, user_id)
+        row = self.db.scalar(
+            select(User)
+            .where(User.id == user_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
         if row is None:
             raise UserNotFound("User not found")
         row.name = name
+        if row.public_display_name and row.public_display_name.strip():
+            row.public_display_name = name
         self.db.flush()
-        return UserSummary(row.id, row.name, row.email)
+        return self._summary(row)
 
     def get_public_profile(self, user_id: int) -> PublicProfile:
         row = self.db.get(User, user_id)
@@ -233,10 +246,16 @@ class SqlProfileRepository:
         return PublicProfile(row.public_display_name)
 
     def update_public_display_name(self, user_id: int, name: str) -> PublicProfile:
-        row = self.db.get(User, user_id)
+        row = self.db.scalar(
+            select(User)
+            .where(User.id == user_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
         if row is None:
             raise UserNotFound("User not found")
         row.public_display_name = name
+        row.name = name
         self.db.flush()
         return PublicProfile(row.public_display_name)
 

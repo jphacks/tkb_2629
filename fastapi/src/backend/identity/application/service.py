@@ -37,7 +37,9 @@ class AuthenticationService:
         self.limiter = limiter
         self.dummy_hash = dummy_hash
 
-    def register(self, name: str, email: str, password: str, *, client: str) -> None:
+    def register(
+        self, name: str, email: str, password: str, *, client: str, name_is_public: bool = False
+    ) -> None:
         address = EmailAddress(email)
         display_name = DisplayName(name)
         self.limiter.check(AuthenticationAction.REGISTER, client, address.value)
@@ -46,6 +48,8 @@ class AuthenticationService:
         with self.units() as unit:
             # The identity context owns both the profile and its credentials.
             profile = unit.profiles.create(display_name.value, address.value)
+            if name_is_public:
+                unit.profiles.update_public_display_name(profile.id, display_name.value)
             identity = Identity(profile.id, address, password_hash)
             unit.identities.add(identity)
             unit.commit()

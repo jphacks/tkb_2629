@@ -55,7 +55,13 @@ def refresh_value(body: RefreshInput, request: Request) -> str:
 
 @router.post("/register", status_code=201)
 def register(body: RegisterInput, request: Request, service: Auth) -> dict[str, str]:
-    service.register(body.name, str(body.email), body.password, client=client_address(request))
+    service.register(
+        body.name,
+        str(body.email),
+        body.password,
+        client=client_address(request),
+        name_is_public=body.name_is_public,
+    )
     return {"message": "確認メールを送信しました"}
 
 
