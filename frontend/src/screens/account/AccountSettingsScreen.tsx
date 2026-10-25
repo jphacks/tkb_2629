@@ -27,6 +27,7 @@ export function AccountSettingsScreen({ onNavigate }: { onNavigate: Navigate }) 
         <GlassSurface style={styles.group}>
           <SettingsRow label="メールアドレス" value={user?.email} />
           <SettingsRow label="ユーザー名" value={user?.name} />
+          <SettingsRow label="公開プロフィール" onPress={() => onNavigate('public-profile')} />
           <SettingsRow label="パスワード" value="再設定メールを送る" onPress={() => onNavigate('forgot-password')} />
         </GlassSurface>
         <Text style={styles.section}>読書の設定</Text>

@@ -9,6 +9,7 @@ import { AccountRegisterScreen } from './src/screens/auth/AccountRegisterScreen'
 import { EmailVerificationScreen } from './src/screens/auth/EmailVerificationScreen';
 import { LoginScreen } from './src/screens/auth/LoginScreen';
 import { AccountSettingsScreen } from './src/screens/account/AccountSettingsScreen';
+import { PublicProfileScreen } from './src/screens/account/PublicProfileScreen';
 import { AddBookScreen } from './src/screens/books/AddBookScreen';
 import { BookDetailScreen } from './src/screens/books/BookDetailScreen';
 import { BookEditScreen } from './src/screens/books/BookEditScreen';
@@ -79,6 +80,7 @@ export default function App() {
     case 'book-edit': return <BookEditScreen bookId={route.bookId} onNavigate={navigate} />;
     case 'add-book': return <AddBookScreen onNavigate={navigate} />;
     case 'account-settings': return <AccountSettingsScreen onNavigate={navigate} />;
+    case 'public-profile': return <PublicProfileScreen onNavigate={navigate} onBack={onBack} />;
     case 'reading-complete': return <ReadingCompleteScreen onNavigate={navigate} />;
     case 'bookmark': return <BookmarkScreen bookId={route.bookId} iteration={route.iteration} initialPage={route.page} onNavigate={navigate} onBack={onBack} />;
   }
