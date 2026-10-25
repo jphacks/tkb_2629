@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StrictBool, field_validator
 
 
 class EmailInput(BaseModel):
@@ -16,6 +16,7 @@ class LoginInput(EmailInput):
 
 class RegisterInput(LoginInput):
     name: str = Field(min_length=1, max_length=100)
+    name_is_public: StrictBool = False
 
     @field_validator("name")
     @classmethod

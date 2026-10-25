@@ -83,7 +83,7 @@ SQLで手動登録する場合も、`users` に加えて `auth_credentials` が�
 
 | メソッド・パス | 入力・動作 |
 | --- | --- |
-| POST /auth/register | `name`, `email`, `password`。登録と確認メール送信 |
+| POST /auth/register | `name`, `email`, `password`、任意の `name_is_public`（厳密なboolean、既定false）。trueで名前を公開名にも設定。登録と確認メール送信 |
 | POST /auth/verify-email | `token`。メール確認を完了 |
 | POST /auth/resend-verification | `email`。確認メール再送 |
 | POST /auth/login | `email`, `password`。メール確認済みのみログイン可能 |
