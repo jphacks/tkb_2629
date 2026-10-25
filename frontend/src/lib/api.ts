@@ -30,6 +30,45 @@ export type Book = {
 
 export type ReviewVisibility = "private" | "public";
 
+export type PublicReview = {
+  id: number;
+  public_display_name: string;
+  page_number: number;
+  iteration_number: number;
+  review_text: string;
+  contains_spoilers: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PublicReviews = {
+  items: PublicReview[];
+  limit: number;
+  offset: number;
+};
+
+export async function getPublicReviews(googleBooksId: string, offset = 0): Promise<PublicReviews> {
+  const params = new URLSearchParams({ limit: "20", offset: String(offset) });
+  const response = await authenticatedFetch(
+    `${API_URL}/catalog/books/${encodeURIComponent(googleBooksId)}/reviews?${params}`,
+  );
+  const result = await parseResponse<PublicReviews>(response, "公開感想の取得に失敗しました");
+  if (
+    !result || !Array.isArray(result.items) || result.limit !== 20 || result.offset !== offset ||
+    !result.items.every((item) =>
+      item && Number.isInteger(item.id) && item.id > 0 &&
+      typeof item.public_display_name === "string" && item.public_display_name.trim().length > 0 &&
+      Number.isInteger(item.page_number) && item.page_number > 0 &&
+      Number.isInteger(item.iteration_number) && item.iteration_number > 0 &&
+      typeof item.review_text === "string" && typeof item.contains_spoilers === "boolean" &&
+      typeof item.created_at === "string" && typeof item.updated_at === "string"
+    )
+  ) {
+    throw new Error("公開感想の取得結果を確認できません。再度読み込んでください。");
+  }
+  return result;
+}
+
 export type PublicProfile = {
   public_display_name: string | null;
 };

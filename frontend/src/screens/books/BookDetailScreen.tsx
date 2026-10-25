@@ -255,6 +255,13 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
                 ))}
               </GlassSurface>
             )}
+            <GlassSurface style={styles.card}>
+              {book.google_books_id ? (
+                <ActionButton label="みんなの公開感想を見る" onPress={() => onNavigate({ name: 'public-reviews', bookId })} secondary />
+              ) : (
+                <Text style={styles.historyRow}>手動登録の本は公開感想の一覧に対応していません。</Text>
+              )}
+            </GlassSurface>
             {!reviews && !reviewError && <Text style={styles.message}>しおりを読み込んでいます…</Text>}
             {reviewError && (
               <View style={styles.error}>
