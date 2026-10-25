@@ -4,7 +4,7 @@ import logging
 
 from ..domain.catalog import CatalogBook
 from ..domain.emotions import EmotionAnalyzer, EmotionResult
-from ..domain.entities import Book, Review, User
+from ..domain.entities import Book, PagePopularity, ReadingIteration, Review, User
 from ..domain.errors import InvalidInput
 from ..domain.values import BookDetails, ReviewText, UserDetails
 from .ports import BookCatalog, ReadingRepository, ReviewRepository, UserRepository
@@ -81,6 +81,31 @@ class ReadingService:
         catalog_book = self.catalog.get(google_books_id)
         return self.books.add_catalog_book(user_id, catalog_book)
 
+    def list_iterations(self, user_id: int, book_id: int) -> list[ReadingIteration]:
+        self.books.get(user_id, book_id)
+        return self.books.list_iterations(user_id, book_id)
+
+    def start_iteration(self, user_id: int, book_id: int) -> ReadingIteration:
+        self.books.get(user_id, book_id)
+        return self.books.start_iteration(user_id, book_id)
+
+    def complete_iteration(
+        self,
+        user_id: int,
+        book_id: int,
+        iteration_number: int,
+    ) -> ReadingIteration:
+        book = self.books.get(user_id, book_id)
+        return self.books.complete_iteration(
+            user_id,
+            book_id,
+            iteration_number,
+            book.total_pages,
+        )
+
+    def page_popularity(self, user_id: int, book_id: int) -> list[PagePopularity]:
+        return self.books.page_popularity(user_id, book_id)
+
 
 class ReviewService:
     def __init__(
@@ -93,17 +118,36 @@ class ReviewService:
         self.reviews = reviews
         self.analyzer = analyzer
 
-    def get(self, user_id: int, book_id: int, page: int) -> Review:
+    def get(
+        self,
+        user_id: int,
+        book_id: int,
+        page: int,
+        iteration_number: int | None = None,
+    ) -> Review:
         book = self.books.get(user_id, book_id)
         book.check_page(page)
-        return self.reviews.get(user_id, book_id, page)
+        return self.reviews.get(user_id, book_id, page, iteration_number)
 
-    def save(self, user_id: int, book_id: int, page: int, text: str) -> ReviewSaveResult:
+    def save(
+        self,
+        user_id: int,
+        book_id: int,
+        page: int,
+        text: str,
+        iteration_number: int | None = None,
+    ) -> ReviewSaveResult:
         book = self.books.get(user_id, book_id)
         book.check_page(page)
         review_text = ReviewText(text)
         normalized_text = review_text.value
-        saved_text = self.reviews.save_text(user_id, book_id, page, normalized_text)
+        saved_text = self.reviews.save_text(
+            user_id,
+            book_id,
+            page,
+            normalized_text,
+            iteration_number,
+        )
         try:
             analysis_result: EmotionResult = self.analyzer.analyze(normalized_text)
             self.reviews.complete(saved_text.review_id, saved_text.revision, analysis_result)
@@ -114,5 +158,5 @@ class ReviewService:
                 saved_text.revision,
             )
             self.reviews.fail(saved_text.review_id, saved_text.revision)
-        review = self.reviews.get(user_id, book_id, page)
+        review = self.reviews.get(user_id, book_id, page, iteration_number)
         return ReviewSaveResult(review=review, created=saved_text.created)

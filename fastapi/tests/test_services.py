@@ -11,6 +11,7 @@ from backend.application.ports import (
 from backend.application.results import ReviewTextSaveResult
 from backend.application.services import CatalogService, ReadingService, ReviewService, UserService
 from backend.domain.emotions import EmotionAnalyzer, EmotionResult
+from backend.domain.entities import PagePopularity, ReadingIteration
 from backend.domain.errors import InvalidInput, NotFound
 
 
@@ -141,11 +142,33 @@ def test_catalog_import_uses_canonical_metadata(books_repo, catalog, catalog_boo
     books_repo.add_catalog_book.assert_called_once_with(7, catalog_book)
 
 
+def test_reading_iteration_lifecycle(books_repo, book):
+    completed = ReadingIteration(1, "completed", 20, book.created_at, book.created_at)
+    started = ReadingIteration(2, "reading", 0, book.created_at, None)
+    books_repo.list_iterations.return_value = [completed]
+    books_repo.start_iteration.return_value = started
+    books_repo.complete_iteration.return_value = completed
+    service = ReadingService(books_repo)
+
+    assert service.list_iterations(7, 10) == [completed]
+    assert service.start_iteration(7, 10) == started
+    assert service.complete_iteration(7, 10, 1) == completed
+    assert books_repo.get.call_args_list == [call(7, 10), call(7, 10), call(7, 10)]
+    books_repo.complete_iteration.assert_called_once_with(7, 10, 1, book.total_pages)
+
+
+def test_page_popularity_requires_owned_book(books_repo):
+    points = [PagePopularity(page_number=12, user_count=3)]
+    books_repo.page_popularity.return_value = points
+    assert ReadingService(books_repo).page_popularity(7, 10) == points
+    books_repo.page_popularity.assert_called_once_with(7, 10)
+
+
 def test_review_get_checks_ownership(books_repo, reviews_repo, analyzer, review):
     service = ReviewService(books_repo, reviews_repo, analyzer)
     assert service.get(7, 10, 3) == review
     books_repo.get.assert_called_once_with(7, 10)
-    reviews_repo.get.assert_called_once_with(7, 10, 3)
+    reviews_repo.get.assert_called_once_with(7, 10, 3, None)
 
 
 @pytest.mark.parametrize("method", ["get", "save"])
@@ -198,10 +221,10 @@ def test_review_saves_text_before_analysis_and_passes_revision(
     assert result.review == review
     assert result.created is created
     assert timeline.mock_calls == [
-        call.reviews.save_text(1, 10, 3, "text"),
+        call.reviews.save_text(1, 10, 3, "text", None),
         call.analyzer.analyze("text"),
         call.reviews.complete(100, 2, analyzer.analyze.return_value),
-        call.reviews.get(1, 10, 3),
+        call.reviews.get(1, 10, 3, None),
     ]
 
 
@@ -219,9 +242,9 @@ def test_analysis_failure_preserves_saved_text_and_returns_latest_review(
         reviews_repo.complete.side_effect = RuntimeError("could not store analysis")
     result = ReviewService(books_repo, reviews_repo, analyzer).save(1, 10, 3, "text")
     assert result.review == review
-    reviews_repo.save_text.assert_called_once_with(1, 10, 3, "text")
+    reviews_repo.save_text.assert_called_once_with(1, 10, 3, "text", None)
     reviews_repo.fail.assert_called_once_with(100, 2)
-    reviews_repo.get.assert_called_once_with(1, 10, 3)
+    reviews_repo.get.assert_called_once_with(1, 10, 3, None)
     if failure == "analyze":
         reviews_repo.complete.assert_not_called()
 

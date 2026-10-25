@@ -1,6 +1,7 @@
 import pytest
 
 from backend.application.results import ReviewSaveResult
+from backend.domain.entities import PagePopularity, ReadingIteration
 from backend.domain.errors import Conflict, InvalidInput, NotFound
 from backend.presentation.auth import get_current_user_id
 
@@ -93,12 +94,67 @@ def test_get_book(client, reading_service_mock, book):
     reading_service_mock.get.assert_called_once_with(1, 10)
 
 
+def test_list_reading_iterations(client, reading_service_mock):
+    reading_service_mock.list_iterations.return_value = [
+        ReadingIteration(
+            iteration_number=1,
+            status="completed",
+            current_page=20,
+            started_at="2026-01-01T00:00:00Z",
+            completed_at="2026-01-02T00:00:00Z",
+        )
+    ]
+    response = client.get("/books/10/iterations")
+    assert response.status_code == 200
+    assert response.json()[0]["iteration_number"] == 1
+    reading_service_mock.list_iterations.assert_called_once_with(1, 10)
+
+
+def test_start_reading_iteration(client, reading_service_mock):
+    reading_service_mock.start_iteration.return_value = ReadingIteration(
+        iteration_number=2,
+        status="reading",
+        current_page=0,
+        started_at="2026-01-03T00:00:00Z",
+        completed_at=None,
+    )
+    response = client.post("/books/10/iterations")
+    assert response.status_code == 201
+    assert response.json()["iteration_number"] == 2
+    reading_service_mock.start_iteration.assert_called_once_with(1, 10)
+
+
+def test_complete_reading_iteration(client, reading_service_mock):
+    reading_service_mock.complete_iteration.return_value = ReadingIteration(
+        iteration_number=2,
+        status="completed",
+        current_page=20,
+        started_at="2026-01-03T00:00:00Z",
+        completed_at="2026-01-04T00:00:00Z",
+    )
+    response = client.post("/books/10/iterations/2/complete")
+    assert response.status_code == 200
+    assert response.json()["status"] == "completed"
+    reading_service_mock.complete_iteration.assert_called_once_with(1, 10, 2)
+
+
+def test_page_popularity(client, reading_service_mock):
+    reading_service_mock.page_popularity.return_value = [
+        PagePopularity(page_number=12, user_count=3)
+    ]
+    response = client.get("/books/10/page-popularity")
+    assert response.status_code == 200
+    assert response.json() == {"items": [{"page_number": 12, "user_count": 3}]}
+    reading_service_mock.page_popularity.assert_called_once_with(1, 10)
+
+
 def test_get_review(client, review_service_mock, review):
     review_service_mock.get.return_value = review
     response = client.get("/books/10/pages/3/review")
     assert response.status_code == 200
     assert response.json()["color_code"] == review.color_code
-    review_service_mock.get.assert_called_once_with(1, 10, 3)
+    assert response.json()["iteration_number"] == 1
+    review_service_mock.get.assert_called_once_with(1, 10, 3, None)
 
 
 @pytest.mark.parametrize(("created", "status_code"), [(True, 201), (False, 200)])
@@ -111,7 +167,17 @@ def test_save_review(client, review_service_mock, review, created, status_code):
     assert response.status_code == status_code
     assert response.json()["review_text"] == review.review_text
     assert response.json()["color_code"] == review.color_code
-    review_service_mock.save.assert_called_once_with(1, 10, 3, "A hopeful passage")
+    review_service_mock.save.assert_called_once_with(1, 10, 3, "A hopeful passage", None)
+
+
+def test_save_review_for_selected_iteration(client, review_service_mock, review):
+    review_service_mock.save.return_value = ReviewSaveResult(review, False)
+    response = client.put(
+        "/books/10/pages/3/review?iteration=2",
+        json={"review_text": "Second reading"},
+    )
+    assert response.status_code == 200
+    review_service_mock.save.assert_called_once_with(1, 10, 3, "Second reading", 2)
 
 
 @pytest.mark.parametrize(

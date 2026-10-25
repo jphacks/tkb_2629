@@ -5,11 +5,13 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -53,7 +55,21 @@ class Book(Base):
 class UserBook(Base):
     __tablename__ = "user_books"
     __table_args__ = (
-        UniqueConstraint("user_id", "book_id", name="uq_user_books_user_book"),
+        UniqueConstraint(
+            "user_id",
+            "book_id",
+            "iteration_number",
+            name="uq_user_books_user_book_iteration",
+        ),
+        Index(
+            "uq_user_books_active_reading",
+            "user_id",
+            "book_id",
+            unique=True,
+            postgresql_where=text("status = 'reading'"),
+            sqlite_where=text("status = 'reading'"),
+        ),
+        CheckConstraint("iteration_number > 0", name="ck_user_books_iteration_positive"),
         CheckConstraint("current_page >= 0", name="ck_user_books_current_page_nonnegative"),
         CheckConstraint("status IN ('reading', 'completed')", name="ck_user_books_status"),
         CheckConstraint(
@@ -66,6 +82,9 @@ class UserBook(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     book_id: Mapped[int] = mapped_column(
         ForeignKey("books.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    iteration_number: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
     )
     current_page: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"

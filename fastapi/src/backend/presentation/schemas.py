@@ -39,6 +39,11 @@ class BookResponse(BaseModel):
     google_books_id: str | None = None
     isbn_13: str | None = None
     thumbnail_url: str | None = None
+    latest_iteration: int
+    reading_status: str
+    current_page: int
+    started_at: datetime | None
+    completed_at: datetime | None
 
 
 class BookListResponse(BaseModel):
@@ -64,6 +69,27 @@ class GoogleBookImport(BaseModel):
     google_books_id: str = Field(min_length=1, max_length=128)
 
 
+class ReadingIterationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    iteration_number: int
+    status: str
+    current_page: int
+    started_at: datetime
+    completed_at: datetime | None
+
+
+class PagePopularityPoint(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    page_number: int
+    user_count: int
+
+
+class PagePopularityResponse(BaseModel):
+    items: list[PagePopularityPoint]
+
+
 class ReviewSave(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -78,3 +104,4 @@ class PageReviewResponse(BaseModel):
     color_code: str
     created_at: datetime
     updated_at: datetime
+    iteration_number: int

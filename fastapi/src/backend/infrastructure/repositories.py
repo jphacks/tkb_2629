@@ -1,4 +1,8 @@
-from sqlalchemy import select, update
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -6,14 +10,22 @@ from ..application.ports import BookCatalog, ReadingRepository, ReviewRepository
 from ..application.results import ReviewTextSaveResult
 from ..domain.catalog import CatalogBook
 from ..domain.emotions import EmotionResult
-from ..domain.entities import Book as BookEntity
-from ..domain.entities import Review
-from ..domain.entities import User as UserEntity
+from ..domain.entities import (
+    Book as BookEntity,
+)
+from ..domain.entities import (
+    PagePopularity,
+    ReadingIteration,
+    Review,
+)
+from ..domain.entities import (
+    User as UserEntity,
+)
 from ..domain.errors import Conflict, NotFound
 from .models import Book, EmotionAnalysis, PageReview, User, UserBook
 
 
-def _book(book: Book, catalog: BookCatalog | None) -> BookEntity:
+def _book(book: Book, catalog: BookCatalog | None, reading: UserBook) -> BookEntity:
     if book.google_books_id is not None:
         if catalog is None:
             raise RuntimeError("Book catalog is required to resolve Google Books metadata")
@@ -27,6 +39,11 @@ def _book(book: Book, catalog: BookCatalog | None) -> BookEntity:
             google_books_id=book.google_books_id,
             isbn_13=catalog_book.isbn_13,
             thumbnail_url=catalog_book.thumbnail_url,
+            latest_iteration=reading.iteration_number,
+            reading_status=reading.status,
+            current_page=reading.current_page,
+            started_at=reading.started_at,
+            completed_at=reading.completed_at,
         )
     if book.title is None or book.total_pages is None:
         raise RuntimeError("Manual book metadata is incomplete")
@@ -36,6 +53,21 @@ def _book(book: Book, catalog: BookCatalog | None) -> BookEntity:
         author=book.author,
         total_pages=book.total_pages,
         created_at=book.created_at,
+        latest_iteration=reading.iteration_number,
+        reading_status=reading.status,
+        current_page=reading.current_page,
+        started_at=reading.started_at,
+        completed_at=reading.completed_at,
+    )
+
+
+def _iteration(reading: UserBook) -> ReadingIteration:
+    return ReadingIteration(
+        iteration_number=reading.iteration_number,
+        status=reading.status,
+        current_page=reading.current_page,
+        started_at=reading.started_at,
+        completed_at=reading.completed_at,
     )
 
 
@@ -115,12 +147,12 @@ class SqlReadingRepository(ReadingRepository):
                 raise NotFound("Book not found")
             if book.title != title or book.author != author or book.total_pages != total_pages:
                 raise Conflict("Book metadata does not match the existing book")
-        reading = UserBook(user_id=user_id, book_id=book.id)
+        reading = UserBook(user_id=user_id, book_id=book.id, iteration_number=1)
         self.db.add(reading)
         _commit(self.db)
         self.db.refresh(book)
         self.db.refresh(reading)
-        return _book(book, self.catalog)
+        return _book(book, self.catalog, reading)
 
     def add_catalog_book(self, user_id: int, catalog_book: CatalogBook) -> BookEntity:
         book = self.db.scalar(
@@ -149,7 +181,7 @@ class SqlReadingRepository(ReadingRepository):
         if existing_reading_id is not None:
             raise Conflict("Book is already in the bookshelf")
 
-        reading = UserBook(user_id=user_id, book_id=book.id)
+        reading = UserBook(user_id=user_id, book_id=book.id, iteration_number=1)
         self.db.add(reading)
         _commit(self.db)
         self.db.refresh(book)
@@ -162,33 +194,148 @@ class SqlReadingRepository(ReadingRepository):
             google_books_id=catalog_book.google_books_id,
             isbn_13=catalog_book.isbn_13,
             thumbnail_url=catalog_book.thumbnail_url,
+            latest_iteration=reading.iteration_number,
+            reading_status=reading.status,
+            current_page=reading.current_page,
+            started_at=reading.started_at,
+            completed_at=reading.completed_at,
         )
 
     def list(self, user_id: int, limit: int, offset: int) -> list[BookEntity]:
+        latest_iteration = (
+            select(func.max(UserBook.iteration_number))
+            .where(
+                UserBook.user_id == user_id,
+                UserBook.book_id == Book.id,
+            )
+            .correlate(Book)
+            .scalar_subquery()
+        )
         statement = (
-            select(Book)
+            select(Book, UserBook)
             .join(UserBook, UserBook.book_id == Book.id)
-            .where(UserBook.user_id == user_id)
+            .where(
+                UserBook.user_id == user_id,
+                UserBook.iteration_number == latest_iteration,
+            )
             .order_by(Book.id)
             .limit(limit)
             .offset(offset)
         )
-        rows = self.db.scalars(statement).all()
+        rows = self.db.execute(statement).all()
         books: list[BookEntity] = []
-        for row in rows:
-            books.append(_book(row, self.catalog))
+        for book, reading in rows:
+            books.append(_book(book, self.catalog, reading))
         return books
 
     def get(self, user_id: int, book_id: int) -> BookEntity:
         statement = (
-            select(Book)
+            select(Book, UserBook)
             .join(UserBook, UserBook.book_id == Book.id)
             .where(Book.id == book_id, UserBook.user_id == user_id)
+            .order_by(UserBook.iteration_number.desc())
+            .limit(1)
         )
-        row = self.db.scalars(statement).one_or_none()
+        row = self.db.execute(statement).one_or_none()
         if row is None:
             raise NotFound("Book not found")
-        return _book(row, self.catalog)
+        book, reading = row
+        return _book(book, self.catalog, reading)
+
+    def list_iterations(self, user_id: int, book_id: int) -> list[ReadingIteration]:
+        rows = self.db.scalars(
+            select(UserBook)
+            .where(UserBook.user_id == user_id, UserBook.book_id == book_id)
+            .order_by(UserBook.iteration_number)
+        ).all()
+        if not rows:
+            raise NotFound("Book not found")
+        return [_iteration(row) for row in rows]
+
+    def start_iteration(self, user_id: int, book_id: int) -> ReadingIteration:
+        latest = self.db.scalar(
+            select(UserBook)
+            .where(UserBook.user_id == user_id, UserBook.book_id == book_id)
+            .order_by(UserBook.iteration_number.desc())
+            .limit(1)
+        )
+        if latest is None:
+            raise NotFound("Book not found")
+        if latest.status != "completed":
+            raise Conflict("Complete the current reading before starting another")
+        reading = UserBook(
+            user_id=user_id,
+            book_id=book_id,
+            iteration_number=latest.iteration_number + 1,
+        )
+        self.db.add(reading)
+        _commit(self.db)
+        self.db.refresh(reading)
+        return _iteration(reading)
+
+    def complete_iteration(
+        self,
+        user_id: int,
+        book_id: int,
+        iteration_number: int,
+        total_pages: int,
+    ) -> ReadingIteration:
+        reading = self.db.scalar(
+            select(UserBook).where(
+                UserBook.user_id == user_id,
+                UserBook.book_id == book_id,
+                UserBook.iteration_number == iteration_number,
+            )
+        )
+        if reading is None:
+            raise NotFound("Reading iteration not found")
+        if reading.status == "completed":
+            raise Conflict("Reading iteration is already completed")
+        reading.status = "completed"
+        reading.current_page = total_pages
+        reading.completed_at = datetime.now(UTC)
+        _commit(self.db)
+        self.db.refresh(reading)
+        return _iteration(reading)
+
+    def page_popularity(self, user_id: int, book_id: int) -> list[PagePopularity]:
+        owned_reading_id = self.db.scalar(
+            select(UserBook.id)
+            .where(UserBook.user_id == user_id, UserBook.book_id == book_id)
+            .limit(1)
+        )
+        if owned_reading_id is None:
+            raise NotFound("Book not found")
+        latest_iterations = (
+            select(
+                UserBook.user_id.label("user_id"),
+                func.max(UserBook.iteration_number).label("iteration_number"),
+            )
+            .where(UserBook.book_id == book_id)
+            .group_by(UserBook.user_id)
+            .subquery()
+        )
+        rows = self.db.execute(
+            select(
+                PageReview.page_number,
+                func.count(UserBook.user_id).label("user_count"),
+            )
+            .join(UserBook, UserBook.id == PageReview.user_book_id)
+            .join(
+                latest_iterations,
+                and_(
+                    latest_iterations.c.user_id == UserBook.user_id,
+                    latest_iterations.c.iteration_number == UserBook.iteration_number,
+                ),
+            )
+            .where(UserBook.book_id == book_id)
+            .group_by(PageReview.page_number)
+            .order_by(PageReview.page_number)
+        ).all()
+        return [
+            PagePopularity(page_number=page_number, user_count=user_count)
+            for page_number, user_count in rows
+        ]
 
 
 def _revise_page_review(db: Session, review_id: int, review_text: str) -> int:
@@ -220,16 +367,34 @@ class SqlReviewRepository(ReviewRepository):
             .execution_options(populate_existing=True)
         )
 
-    def _reading_id(self, user_id: int, book_id: int) -> int:
-        reading_id = self.db.scalar(
-            select(UserBook.id).where(UserBook.user_id == user_id, UserBook.book_id == book_id)
+    def _reading(
+        self,
+        user_id: int,
+        book_id: int,
+        iteration_number: int | None,
+    ) -> UserBook:
+        statement = select(UserBook).where(
+            UserBook.user_id == user_id,
+            UserBook.book_id == book_id,
         )
-        if reading_id is None:
+        if iteration_number is not None:
+            statement = statement.where(UserBook.iteration_number == iteration_number)
+        else:
+            statement = statement.order_by(UserBook.iteration_number.desc()).limit(1)
+        reading = self.db.scalar(statement)
+        if reading is None:
             raise NotFound("Book not found")
-        return reading_id
+        return reading
 
-    def get(self, user_id: int, book_id: int, page: int) -> Review:
-        row = self._row(self._reading_id(user_id, book_id), page)
+    def get(
+        self,
+        user_id: int,
+        book_id: int,
+        page: int,
+        iteration_number: int | None,
+    ) -> Review:
+        reading = self._reading(user_id, book_id, iteration_number)
+        row = self._row(reading.id, page)
         if row is None:
             raise NotFound("Review not found")
         color_code = "#808080"
@@ -250,16 +415,27 @@ class SqlReviewRepository(ReviewRepository):
             color_code=color_code,
             created_at=row.created_at,
             updated_at=row.updated_at,
+            iteration_number=reading.iteration_number,
         )
 
-    def save_text(self, user_id: int, book_id: int, page: int, text: str) -> ReviewTextSaveResult:
-        reading_id = self._reading_id(user_id, book_id)
-        row = self._row(reading_id, page)
+    def save_text(
+        self,
+        user_id: int,
+        book_id: int,
+        page: int,
+        text: str,
+        iteration_number: int | None,
+    ) -> ReviewTextSaveResult:
+        reading = self._reading(user_id, book_id, iteration_number)
+        if reading.status != "reading":
+            raise Conflict("Cannot edit a completed reading iteration")
+        reading.current_page = max(reading.current_page, page)
+        row = self._row(reading.id, page)
         if row is not None:
             revision = _revise_page_review(self.db, row.id, text)
             return ReviewTextSaveResult(review_id=row.id, revision=revision, created=False)
         row = PageReview(
-            user_book_id=reading_id,
+            user_book_id=reading.id,
             page_number=page,
             review_text=text,
             analysis_status="pending",
@@ -273,9 +449,11 @@ class SqlReviewRepository(ReviewRepository):
             self.db.commit()
         except IntegrityError as error:
             self.db.rollback()
-            row = self._row(reading_id, page)
+            reading = self._reading(user_id, book_id, iteration_number)
+            row = self._row(reading.id, page)
             if row is None:
                 raise Conflict("Could not save review") from error
+            reading.current_page = max(reading.current_page, page)
             revision = _revise_page_review(self.db, row.id, text)
             return ReviewTextSaveResult(review_id=row.id, revision=revision, created=False)
         return ReviewTextSaveResult(review_id=review_id, revision=revision, created=True)

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Path, Query, Response
 
 from ..application.services import CatalogService, ReadingService, ReviewService, UserService
 from ..domain.catalog import CatalogBook
-from ..domain.entities import Book, Review, User
+from ..domain.entities import Book, ReadingIteration, Review, User
 from .auth import get_current_user_id
 from .dependencies import get_catalog_service, get_reading, get_reviews, get_users
 from .schemas import (
@@ -14,7 +14,10 @@ from .schemas import (
     GoogleBookImport,
     GoogleBookResponse,
     GoogleBookSearchResponse,
+    PagePopularityPoint,
+    PagePopularityResponse,
     PageReviewResponse,
+    ReadingIterationResponse,
     ReviewSave,
     UserCreate,
     UserResponse,
@@ -98,14 +101,68 @@ def get_book(book_id: int, service: ReadingServiceDependency, user_id: CurrentUs
     return service.get(user_id, book_id)
 
 
+@reading.get(
+    "/books/{book_id}/iterations",
+    response_model=list[ReadingIterationResponse],
+)
+def list_reading_iterations(
+    book_id: int,
+    service: ReadingServiceDependency,
+    user_id: CurrentUserId,
+) -> list[ReadingIteration]:
+    return service.list_iterations(user_id, book_id)
+
+
+@reading.post(
+    "/books/{book_id}/iterations",
+    response_model=ReadingIterationResponse,
+    status_code=201,
+)
+def start_reading_iteration(
+    book_id: int,
+    service: ReadingServiceDependency,
+    user_id: CurrentUserId,
+) -> ReadingIteration:
+    return service.start_iteration(user_id, book_id)
+
+
+@reading.post(
+    "/books/{book_id}/iterations/{iteration_number}/complete",
+    response_model=ReadingIterationResponse,
+)
+def complete_reading_iteration(
+    book_id: int,
+    iteration_number: int,
+    service: ReadingServiceDependency,
+    user_id: CurrentUserId,
+) -> ReadingIteration:
+    return service.complete_iteration(user_id, book_id, iteration_number)
+
+
+@reading.get(
+    "/books/{book_id}/page-popularity",
+    response_model=PagePopularityResponse,
+)
+def get_page_popularity(
+    book_id: int,
+    service: ReadingServiceDependency,
+    user_id: CurrentUserId,
+) -> PagePopularityResponse:
+    items = service.page_popularity(user_id, book_id)
+    return PagePopularityResponse(
+        items=[PagePopularityPoint.model_validate(item) for item in items]
+    )
+
+
 @reading.get("/books/{book_id}/pages/{page_number}/review", response_model=PageReviewResponse)
 def get_review(
     book_id: int,
     page_number: PageNumber,
     service: ReviewServiceDependency,
     user_id: CurrentUserId,
+    iteration: int | None = Query(default=None, ge=1),
 ) -> Review:
-    return service.get(user_id, book_id, page_number)
+    return service.get(user_id, book_id, page_number, iteration)
 
 
 @reading.put("/books/{book_id}/pages/{page_number}/review", response_model=PageReviewResponse)
@@ -116,8 +173,9 @@ def save_review(
     response: Response,
     service: ReviewServiceDependency,
     user_id: CurrentUserId,
+    iteration: int | None = Query(default=None, ge=1),
 ) -> Review:
-    result = service.save(user_id, book_id, page_number, request.review_text)
+    result = service.save(user_id, book_id, page_number, request.review_text, iteration)
     if result.created:
         response.status_code = 201
     else:

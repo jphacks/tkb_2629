@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 
 from ..domain.catalog import CatalogBook
 from ..domain.emotions import EmotionResult
-from ..domain.entities import Book, Review, User
+from ..domain.entities import Book, PagePopularity, ReadingIteration, Review, User
 from .results import ReviewTextSaveResult
 
 
@@ -52,6 +54,28 @@ class ReadingRepository(ABC):
     def get(self, user_id: int, book_id: int) -> Book:
         raise NotImplementedError
 
+    @abstractmethod
+    def list_iterations(self, user_id: int, book_id: int) -> list[ReadingIteration]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def start_iteration(self, user_id: int, book_id: int) -> ReadingIteration:
+        raise NotImplementedError
+
+    @abstractmethod
+    def complete_iteration(
+        self,
+        user_id: int,
+        book_id: int,
+        iteration_number: int,
+        total_pages: int,
+    ) -> ReadingIteration:
+        raise NotImplementedError
+
+    @abstractmethod
+    def page_popularity(self, user_id: int, book_id: int) -> list[PagePopularity]:
+        raise NotImplementedError
+
 
 class BookCatalog(ABC):
     @abstractmethod
@@ -65,11 +89,24 @@ class BookCatalog(ABC):
 
 class ReviewRepository(ABC):
     @abstractmethod
-    def get(self, user_id: int, book_id: int, page: int) -> Review:
+    def get(
+        self,
+        user_id: int,
+        book_id: int,
+        page: int,
+        iteration_number: int | None,
+    ) -> Review:
         raise NotImplementedError
 
     @abstractmethod
-    def save_text(self, user_id: int, book_id: int, page: int, text: str) -> ReviewTextSaveResult:
+    def save_text(
+        self,
+        user_id: int,
+        book_id: int,
+        page: int,
+        text: str,
+        iteration_number: int | None,
+    ) -> ReviewTextSaveResult:
         raise NotImplementedError
 
     @abstractmethod
