@@ -19,6 +19,7 @@ class BookView:
     current_page: int = 0
     started_at: datetime | None = None
     completed_at: datetime | None = None
+    last_read_at: datetime | None = None
 
 
 @dataclass(frozen=True)

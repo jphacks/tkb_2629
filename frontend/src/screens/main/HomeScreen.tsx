@@ -2,13 +2,11 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BookStack } from '../../components/molecules/BookStack';
-import { FloatingActionButton } from '../../components/molecules/FloatingActionButton';
-import { MyThoughtCard } from '../../components/molecules/MyThoughtCard';
+import { ReadingBookCard } from '../../components/molecules/ReadingBookCard';
 import { ActionButton } from '../../components/molecules/ActionButton';
-import { myBookmarks } from '../../components/organisms/BookmarkListCard';
-import { getEmotionTint } from '../../components/organisms/EmotionAnalysisCard';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import { loadAllBooks, loadReadingBooks } from '../../lib/readingBooks';
+import { getContinueReadingBooks, type Book } from '../../lib/api';
+import { loadAllBooks } from '../../lib/readingBooks';
 import { completedReadCount } from '../../lib/readingStatus';
 import { colors } from '../../theme/colors';
 import type { Navigate } from '../types';
@@ -20,10 +18,10 @@ export function HomeScreen({ onNavigate }: { onNavigate: Navigate }) {
   const [version, setVersion] = useState(0);
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const displayingPreview = __DEV__ && previewCount !== null;
-  const myThought = myBookmarks[0];
-  const emotionColor = myThought?.color ?? '#8C8C8C';
-  const emotionTint = getEmotionTint(emotionColor);
-  const [opening, setOpening] = useState(false);
+  const [recent, setRecent] = useState<
+    { status: 'loading' } | { status: 'ready'; books: Book[] } | { status: 'error'; message: string }
+  >({ status: 'loading' });
+  const [recentVersion, setRecentVersion] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -43,23 +41,21 @@ export function HomeScreen({ onNavigate }: { onNavigate: Navigate }) {
     return () => { active = false; };
   }, [version]);
 
-  // One reading book: open its bookmark input directly. Otherwise let the user choose on 今読んでいる本.
-  async function openBookmark() {
-    if (opening) return;
-    setOpening(true);
-    try {
-      const books = await loadReadingBooks();
-      const [book] = books ?? [];
-      if (books?.length === 1 && book) {
-        onNavigate({ name: 'bookmark', bookId: book.id, iteration: book.latest_iteration });
-        return;
-      }
-    } catch {
-      // The reading screen shows the error and a retry button.
-    }
-    setOpening(false);
-    onNavigate('reading');
-  }
+  useEffect(() => {
+    let active = true;
+    setRecent({ status: 'loading' });
+    getContinueReadingBooks()
+      .then((books) => {
+        if (active) setRecent({ status: 'ready', books });
+      })
+      .catch((reason: unknown) => {
+        if (active) setRecent({
+          status: 'error',
+          message: reason instanceof Error ? reason.message : '読書中の本の取得に失敗しました。',
+        });
+      });
+    return () => { active = false; };
+  }, [recentVersion]);
 
   return (
     <ScreenFrame activeRoute="home" onNavigate={onNavigate} title="ホーム" subtitle="あなたの読書を、もっと身近に">
@@ -88,16 +84,29 @@ export function HomeScreen({ onNavigate }: { onNavigate: Navigate }) {
             <ActionButton label="読了冊数を再読み込み" onPress={() => setVersion((value) => value + 1)} secondary />
           </View>}
           {displayingPreview ? <BookStack count={previewCount} /> : readCount.status === 'ready' && <BookStack count={readCount.count} />}
-          {myThought && (
-            <MyThoughtCard
-              emotionColor={emotionColor}
-              emotionTint={emotionTint}
-              note={myThought.note}
-              onPress={() => onNavigate({ name: 'book-detail', bookId: 1 })}
-            />
-          )}
+          <View style={styles.recent}>
+            <Text accessibilityRole="header" style={styles.heading}>続きを読む</Text>
+            <Text style={styles.description}>最近しおりを保存した本から表示しています</Text>
+            {recent.status === 'loading' && <Text style={styles.description}>読書中の本を読み込み中…</Text>}
+            {recent.status === 'error' && <>
+              <Text accessibilityRole="alert" style={styles.error}>{recent.message}</Text>
+              <ActionButton label="続きを読むを再読み込み" onPress={() => setRecentVersion((value) => value + 1)} secondary />
+            </>}
+            {recent.status === 'ready' && recent.books.length === 0 && <>
+              <Text style={styles.description}>読書中の本はありません。本を追加して、読書を始めましょう。</Text>
+              <ActionButton label="本を探す" onPress={() => onNavigate('search')} />
+            </>}
+            {recent.status === 'ready' && recent.books.map((book) => (
+              <ReadingBookCard
+                book={book}
+                key={book.id}
+                onPress={() => onNavigate({ name: 'book-detail', bookId: book.id })}
+                onBookmark={() => onNavigate({ name: 'bookmark', bookId: book.id, iteration: book.latest_iteration })}
+              />
+            ))}
+            <ActionButton label="今読んでいる本をすべて見る" onPress={() => onNavigate('reading')} secondary />
+          </View>
         </ScrollView>
-        <FloatingActionButton onPress={openBookmark} />
       </View>
     </ScreenFrame>
   );
@@ -108,6 +117,9 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, paddingBottom: 100 },
   message: { color: colors.textSecondary, padding: 20 },
   feedback: { padding: 20, gap: 12 },
+  recent: { padding: 24, gap: 12 },
+  heading: { color: colors.text, fontSize: 20, fontWeight: '700' },
+  description: { color: colors.textSecondary, fontSize: 14, lineHeight: 22 },
   previewChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   previewButton: { minWidth: 44, minHeight: 44, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: colors.borderMuted },
   previewSelected: { backgroundColor: '#F0EAF2', borderColor: colors.navAccent },

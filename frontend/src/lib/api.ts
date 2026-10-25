@@ -26,6 +26,7 @@ export type Book = {
   current_page: number;
   started_at: string | null;
   completed_at: string | null;
+  last_read_at?: string | null;
 };
 
 export type ReviewVisibility = "private" | "public";
@@ -313,6 +314,31 @@ export async function getBooks(offset = 0): Promise<Book[]> {
 export async function getBook(bookId: number): Promise<Book> {
   const response = await authenticatedFetch(`${API_URL}/books/${bookId}`);
   return parseResponse<Book>(response, "本の詳細の取得に失敗しました");
+}
+
+export async function getContinueReadingBooks(): Promise<Book[]> {
+  const response = await authenticatedFetch(`${API_URL}/books/continue-reading?limit=3`);
+  const payload = await parseResponse<{ items: Book[]; limit: number; offset: number }>(
+    response,
+    "続きを読むの取得に失敗しました",
+  );
+  if (
+    !payload || !Array.isArray(payload.items) || payload.limit !== 3 || payload.offset !== 0 ||
+    payload.items.length > 3 || new Set(payload.items.map((book) => book?.id)).size !== payload.items.length ||
+    payload.items.some((book) => (
+      !book || !Number.isSafeInteger(book.id) || book.id < 1 ||
+      typeof book.title !== "string" || !book.title.trim() ||
+      (book.author !== null && typeof book.author !== "string") ||
+      book.reading_status !== "reading" ||
+      !Number.isSafeInteger(book.latest_iteration) || book.latest_iteration < 1 ||
+      !Number.isSafeInteger(book.total_pages) || book.total_pages < 1 ||
+      !Number.isSafeInteger(book.current_page) || book.current_page < 0 || book.current_page > book.total_pages ||
+      (book.last_read_at !== null && (typeof book.last_read_at !== "string" || !Number.isFinite(Date.parse(book.last_read_at))))
+    ))
+  ) {
+    throw new Error("続きを読むの応答形式が正しくありません。");
+  }
+  return payload.items;
 }
 
 export async function completeIteration(

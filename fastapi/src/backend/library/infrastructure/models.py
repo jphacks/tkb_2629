@@ -45,6 +45,7 @@ class Book(Base):
 class UserBook(Base):
     __tablename__ = "user_books"
     __table_args__ = (
+        Index("ix_user_books_recent_reading", "user_id", "status", "last_read_at"),
         UniqueConstraint(
             "user_id",
             "book_id",
@@ -86,6 +87,7 @@ class UserBook(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
