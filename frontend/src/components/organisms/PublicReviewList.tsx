@@ -25,8 +25,8 @@ export function publicReviewHiddenReason(book: Book, review: PublicReview): stri
   return review.contains_spoilers ? 'ネタバレあり' : null;
 }
 
-export function PublicReviewList({ bookId, range, compact = false }: {
-  bookId: number; range?: ReviewPageRange; compact?: boolean;
+export function PublicReviewList({ bookId, range, compact = false, bookmarkLayout = false }: {
+  bookId: number; range?: ReviewPageRange; compact?: boolean; bookmarkLayout?: boolean;
 }) {
   const [state, setState] = useState<ListState>({ status: 'loading' });
   const [version, setVersion] = useState(0);
@@ -36,6 +36,7 @@ export function PublicReviewList({ bookId, range, compact = false }: {
   const epoch = useRef(0);
   const locked = useRef(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [listPage, setListPage] = useState(0);
 
   useEffect(() => {
     const request = ++epoch.current;
@@ -43,6 +44,7 @@ export function PublicReviewList({ bookId, range, compact = false }: {
     setState({ status: 'loading' });
     setRevealed([]);
     setPanelOpen(false);
+    setListPage(0);
     setLoadingMore(false);
     setMoreError(null);
     async function load() {
@@ -106,15 +108,17 @@ export function PublicReviewList({ bookId, range, compact = false }: {
     }
   }
 
-  const cards = (preview: boolean) => state.status === 'ready' && state.items.slice(0, preview ? 1 : undefined).map((review) => {
+  const cards = (preview: boolean) => state.status === 'ready' && state.items.slice(bookmarkLayout ? listPage * 5 : 0, bookmarkLayout ? listPage * 5 + 5 : preview ? 1 : undefined).map((review) => {
     const reason = publicReviewHiddenReason(state.book, review);
     const hidden = reason !== null && (preview || !revealed.includes(review.id));
     return (
-      <GlassSurface key={review.id} style={styles.card}>
+      <GlassSurface key={review.id} style={[styles.card, bookmarkLayout && styles.bookmarkCard]}>
+        {bookmarkLayout && <View style={[styles.bookmarkSwatch, { backgroundColor: hidden ? colors.borderMuted : review.color_code }]} />}
+        <View style={bookmarkLayout ? styles.bookmarkText : styles.reviewContent}>
         <View style={styles.author}>
-          <View accessibilityRole="image" accessibilityLabel="本のデフォルトアイコン" style={styles.avatar}>
+          {!bookmarkLayout && <View accessibilityRole="image" accessibilityLabel="本のデフォルトアイコン" style={styles.avatar}>
             <Ionicons accessible={false} name="book-outline" size={24} color={colors.navAccent} />
-          </View>
+          </View>}
           <Text style={styles.name}>{review.public_display_name}</Text>
         </View>
         <Text style={styles.description}>{review.page_number}ページ · {review.iteration_number}回目の読書</Text>
@@ -127,14 +131,15 @@ export function PublicReviewList({ bookId, range, compact = false }: {
         ) : (
           <>
             <View style={styles.emotion}>
-              <View accessibilityRole="image" accessibilityLabel="感想の色" style={[styles.swatch, { backgroundColor: review.color_code }]} />
-              <Text style={styles.description}>{reviewAnalysisLabel(review)}</Text>
+              {!bookmarkLayout && <View accessibilityRole="image" accessibilityLabel="感想の色" style={[styles.swatch, { backgroundColor: review.color_code }]} />}
+              {reviewAnalysisLabel(review) && <Text style={styles.description}>{reviewAnalysisLabel(review)}</Text>}
             </View>
             <Text numberOfLines={preview ? 3 : undefined} style={styles.body}>{review.review_text}</Text>
             {!preview && state.book.google_books_id && <ReviewReactionBar googleBooksId={state.book.google_books_id} reviewId={review.id} />}
             {!preview && reason !== null && <ActionButton label="この感想を隠す" secondary onPress={() => setRevealed((current) => current.filter((id) => id !== review.id))} />}
           </>
         )}
+        </View>
       </GlassSurface>
     );
   });
@@ -181,13 +186,20 @@ export function PublicReviewList({ bookId, range, compact = false }: {
         )}
         {state.status === 'ready' && (
           <>
-            {!compact && <ActionButton label="最新の情報に更新" onPress={refresh} secondary />}
+            {!compact && !bookmarkLayout && <ActionButton label="最新の情報に更新" onPress={refresh} secondary />}
             {!state.book.google_books_id ? (
               <Text style={styles.description}>手動登録の本は公開感想の一覧に対応していません。</Text>
             ) : state.items.length === 0 ? (
               <Text style={styles.description}>{range ? 'この範囲には公開感想がありません。' : '公開感想はまだありません。'}</Text>
             ) : null}
             {cards(false)}
+            {bookmarkLayout && state.items.length > 0 && (
+              <View style={styles.pageControls}>
+                <Pressable accessibilityRole="button" disabled={listPage === 0} accessibilityState={{ disabled: listPage === 0 }} style={styles.pageButton} onPress={() => setListPage((page) => page - 1)}><Text>前へ</Text></Pressable>
+                <Text accessibilityLiveRegion="polite">{listPage + 1}/{Math.max(1, Math.ceil(state.items.length / 5))}</Text>
+                <Pressable accessibilityRole="button" disabled={(listPage + 1) * 5 >= state.items.length} accessibilityState={{ disabled: (listPage + 1) * 5 >= state.items.length }} style={styles.pageButton} onPress={() => setListPage((page) => page + 1)}><Text>次へ</Text></Pressable>
+              </View>
+            )}
             {pagination}
           </>
         )}
@@ -196,6 +208,12 @@ export function PublicReviewList({ bookId, range, compact = false }: {
 }
 
 const styles = StyleSheet.create({
+  reviewContent: { gap: 12 },
+  bookmarkCard: { flexDirection: 'row', padding: 0, borderRadius: 0, backgroundColor: 'transparent', gap: 12, marginTop: 18 },
+  bookmarkSwatch: { width: 14, minHeight: 48, borderBottomLeftRadius: 7, borderBottomRightRadius: 7 },
+  bookmarkText: { flex: 1, gap: 6 },
+  pageControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pageButton: { minHeight: 44, minWidth: 64, justifyContent: 'center', alignItems: 'center' },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
   panel: { height: '80%', backgroundColor: colors.backgroundSoft, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20 },
   panelHeader: { gap: 12, paddingBottom: 16 },

@@ -1,3 +1,4 @@
+import { useCompletedBookCount } from '../../lib/readingBooks';
 import { currentUser } from '../../lib/auth';
 import { useEffect, useState } from 'react';
 import { getPublicProfile } from '../../lib/api';
@@ -12,6 +13,7 @@ import type { Navigate } from '../types';
 
 export function AccountScreen({ onNavigate }: { onNavigate: Navigate }) {
   const user = currentUser();
+  const { count, error: countError, retry: retryCount } = useCompletedBookCount();
   const [profile, setProfile] = useState<
     { status: 'loading' } | { status: 'ready'; name: string | null } | { status: 'error'; message: string }
   >({ status: 'loading' });
@@ -42,7 +44,8 @@ export function AccountScreen({ onNavigate }: { onNavigate: Navigate }) {
           <Text accessibilityRole="alert" style={styles.error}>{profile.message}</Text>
           <ActionButton label="名前を再読み込み" secondary onPress={() => setVersion((value) => value + 1)} />
         </>}
-        <Text style={styles.section}>読書の概要</Text><GlassSurface style={styles.stats}><Stat value="12" label="読んだ本" /><Stat value="3" label="読書中" /><Stat value="86" label="読んだページ" /></GlassSurface>
+        <Text style={styles.section}>読書の概要</Text><GlassSurface style={styles.stats}><Stat value={count === null ? '—' : String(count)} label="読んだ本" /><Stat value="3" label="読書中" /><Stat value="86" label="読んだページ" /></GlassSurface>
+        {countError && <View><Text accessibilityRole="alert">{countError}</Text><ActionButton label="読了冊数を再読み込み" onPress={retryCount} /></View>}
         <Text style={styles.section}>アカウントメニュー</Text><GlassSurface style={styles.menu}><SettingsRow icon="♙" label="名前を設定・変更" onPress={() => onNavigate('public-profile')} /><SettingsRow icon="⚙" label="アカウント設定" onPress={() => onNavigate('account-settings')} /></GlassSurface>
       </ScrollView>
     </ScreenFrame>
