@@ -11,16 +11,6 @@ export const demoBook = {
   totalPages: 200,
 };
 
-export const demoChoices: readonly DemoBookmark[] = [
-  { page: 120, emotion: '喜び', color: '#E6C84D', content: '手紙の返事が届いて、二人がまた話せることがうれしかった' },
-  { page: 120, emotion: '悲しみ', color: '#8073CC', content: '返事を待ち続けていた時間を想像して、胸が締めつけられた' },
-  { page: 120, emotion: '期待', color: '#F2AD62', content: 'この手紙をきっかけに、二人の関係が変わっていく予感がした' },
-];
-
-export const demoOtherBookmark: DemoBookmark = {
-  page: 120, emotion: '信頼', color: '#7EB56B', content: '返事が来ると信じて待っていたことに、相手への深い信頼を感じた',
-};
-
 export const demoBookmarks: Record<'mine' | 'others', readonly DemoBookmark[]> = {
   mine: [
     { page: 24, emotion: '期待', color: '#F2AD62', content: '閉じていた図書室の扉が開く場面に、これから何かが始まりそうでわくわくした' },

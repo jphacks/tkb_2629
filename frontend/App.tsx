@@ -24,7 +24,7 @@ import type { Navigate, Route } from './src/screens/types';
 import { DemoScreen } from './src/screens/demo/DemoScreen';
 
 export default function App() {
-  return process.env.EXPO_PUBLIC_DEMO_MODE === 'true' ? <DemoScreen /> : <RegularApp />;
+  return process.env.EXPO_PUBLIC_DEMO_MODE === 'true' ? <DemoScreen><RegularApp /></DemoScreen> : <RegularApp />;
 }
 
 function RegularApp() {

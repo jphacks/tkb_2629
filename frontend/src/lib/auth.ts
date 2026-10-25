@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import { demoRequest, demoUser } from './demoApi';
 
+const DEMO_MODE = process.env.EXPO_PUBLIC_DEMO_MODE === 'true';
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
 export type AuthUser = { id: number; name: string; email: string };
 type Tokens = { access_token: string; refresh_token: string; expires_in: number; user: AuthUser };
@@ -8,7 +10,7 @@ let session: Tokens | null = null;
 let refreshPromise: Promise<void> | null = null;
 let epoch = 0;
 const listeners = new Set<() => void>();
-export const currentUser = () => session?.user ?? null;
+export const currentUser = () => DEMO_MODE ? demoUser : session?.user ?? null;
 export function subscribeAuth(listener: () => void) {
   listeners.add(listener);
   return () => { listeners.delete(listener); };
@@ -16,6 +18,7 @@ export function subscribeAuth(listener: () => void) {
 function notify() { listeners.forEach(listener => listener()); }
 
 export async function authPost<T = { message: string }>(path: string, body: object): Promise<T> {
+  if (DEMO_MODE) throw new Error('体験デモでは認証・メール送信は利用できません');
   const response = await fetch(`${API_URL}/auth/${path}`, {
     method: 'POST', credentials: 'include',
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -51,6 +54,7 @@ export async function refreshSession() {
   return refreshPromise;
 }
 export async function restoreSession() {
+  if (DEMO_MODE) return;
   try { await refreshSession(); } catch { session = null; notify(); }
 }
 export async function clearLocalSession() {
@@ -60,6 +64,7 @@ export async function clearLocalSession() {
   if (Platform.OS !== 'web') await SecureStore.deleteItemAsync('shiori.refresh');
 }
 export async function logout() {
+  if (DEMO_MODE) throw new Error('体験デモはログイン不要です\n最初から試すにはページを再読み込みしてください');
   // Wait for an in-flight rotation so the newest refresh token is revoked.
   if (refreshPromise) { try { await refreshPromise; } catch { /* already signed out */ } }
   const refresh_token = session?.refresh_token;
@@ -68,6 +73,7 @@ export async function logout() {
   await clearLocalSession();
 }
 export async function authenticatedFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  if (DEMO_MODE) return demoRequest(input, init);
   const send = () => {
     const headers = new Headers(init.headers);
     if (session) headers.set('Authorization', `Bearer ${session.access_token}`);
