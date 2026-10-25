@@ -2,10 +2,17 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../theme/colors';
 
-type SettingsRowProps = { label: string; value?: string; icon?: string; onPress?: () => void };
+type SettingsRowProps = { label: string; value?: string; icon?: string; onPress?: () => void; readOnly?: boolean };
 
-export function SettingsRow({ label, value, icon, onPress }: SettingsRowProps) {
+export function SettingsRow({ label, value, icon, onPress, readOnly = false }: SettingsRowProps) {
   const unavailable = !onPress;
+  if (readOnly) return (
+    <View style={styles.row}>
+      <Text style={styles.icon}>{icon}</Text>
+      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.value}>{value}</Text>
+    </View>
+  );
   return (
     <Pressable
       accessibilityLabel={unavailable ? `${label}（準備中）` : label}

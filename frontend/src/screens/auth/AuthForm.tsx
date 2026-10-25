@@ -4,14 +4,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { ShadowInput } from '../../components/atoms/ShadowInput';
 import { ActionButton } from '../../components/molecules/ActionButton';
 import { BrandHeader } from '../../components/molecules/BrandHeader';
+import { BackButton } from '../../components/molecules/BackButton';
+import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
 import { colors } from '../../theme/colors';
+import type { Navigate } from '../types';
 
 type Field<Key extends string> = { key: Key; label: string; password?: boolean; email?: boolean };
 type Link = { label: string; onPress: () => void };
-export function AuthForm<Key extends string>({ title, description, fields, submitLabel, submit, links = [] }:
+export function AuthForm<Key extends string>({ title, description, fields, submitLabel, submit, links = [], accountLayout = false, onBack, onNavigate }:
   { title: string; description?: string; fields: Field<Key>[]; submitLabel: string;
-    submit: (values: Record<Key, string>) => Promise<string | void>; links?: Link[] }) {
+    submit: (values: Record<Key, string>) => Promise<string | void>; links?: Link[];
+    accountLayout?: boolean; onBack?: () => void; onNavigate?: Navigate }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -29,12 +33,15 @@ export function AuthForm<Key extends string>({ title, description, fields, submi
     catch (cause) { setError(true); setMessage(cause instanceof Error ? cause.message : '通信に失敗しました'); }
     finally { setBusy(false); }
   }
-  return <ScreenFrame showNavigation={false}>
+  const FormSurface = accountLayout ? GlassSurface : View;
+  return <ScreenFrame showNavigation={accountLayout} activeRoute={accountLayout ? 'account' : undefined}
+    onNavigate={onNavigate} title={accountLayout ? title : undefined}
+    headerLeading={accountLayout && onBack ? <BackButton onPress={onBack} disabled={busy} /> : undefined}>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-        <BrandHeader /><Text style={styles.title}>{title}</Text>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, accountLayout && styles.accountContent]}>
+        {!accountLayout && <><BrandHeader /><Text style={styles.title}>{title}</Text></>}
         {description && <Text style={styles.description}>{description}</Text>}
-        <View style={styles.form}>{fields.map(field => <View key={field.key}>
+        <FormSurface style={[styles.form, accountLayout && styles.accountForm]}>{fields.map(field => <View key={field.key}>
           <Text style={styles.label}>{field.label}</Text>
           <View style={styles.inputContainer}>
           <ShadowInput value={values[field.key] ?? ''} secureTextEntry={field.password ? !visiblePasswords[field.key] : false}
@@ -55,7 +62,7 @@ export function AuthForm<Key extends string>({ title, description, fields, submi
             </Pressable>
           )}
           </View>
-        </View>)}</View>
+        </View>)}</FormSurface>
         {!!message && <Text accessibilityRole="alert" style={[styles.message, error && styles.error]}>{message}</Text>}
         <ActionButton disabled={busy} label={busy ? '処理中…' : submitLabel} onPress={() => { void handleSubmit(); }} />
         {links.map(link => <View key={link.label} style={styles.link}><ActionButton secondary disabled={busy} {...link} /></View>)}
@@ -64,6 +71,8 @@ export function AuthForm<Key extends string>({ title, description, fields, submi
   </ScreenFrame>;
 }
 const styles = StyleSheet.create({
+  accountContent: { paddingTop: 8, paddingBottom: 110 },
+  accountForm: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, padding: 16 },
   content: { padding: 24, paddingTop: 56, paddingBottom: 48 },
   title: { color: colors.text, fontSize: 26, fontWeight: '700', marginTop: 16 },
   description: { color: colors.placeholder, lineHeight: 22, marginTop: 12 },

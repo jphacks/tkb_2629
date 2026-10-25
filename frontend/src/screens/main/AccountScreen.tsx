@@ -1,4 +1,4 @@
-import { useCompletedBookCount } from '../../lib/readingBooks';
+import { useReadingStatistics } from '../../lib/readingStatistics';
 import { currentUser } from '../../lib/auth';
 import { useEffect, useState } from 'react';
 import { getPublicProfile } from '../../lib/api';
@@ -13,7 +13,7 @@ import type { Navigate } from '../types';
 
 export function AccountScreen({ onNavigate }: { onNavigate: Navigate }) {
   const user = currentUser();
-  const { count, error: countError, retry: retryCount } = useCompletedBookCount();
+  const { statistics, error: statisticsError, retry: retryStatistics } = useReadingStatistics();
   const [profile, setProfile] = useState<
     { status: 'loading' } | { status: 'ready'; name: string | null } | { status: 'error'; message: string }
   >({ status: 'loading' });
@@ -44,17 +44,25 @@ export function AccountScreen({ onNavigate }: { onNavigate: Navigate }) {
           <Text accessibilityRole="alert" style={styles.error}>{profile.message}</Text>
           <ActionButton label="名前を再読み込み" secondary onPress={() => setVersion((value) => value + 1)} />
         </>}
-        <Text style={styles.section}>読書の概要</Text><GlassSurface style={styles.stats}><Stat value={count === null ? '—' : String(count)} label="読んだ本" /><Stat value="3" label="読書中" /><Stat value="86" label="読んだページ" /></GlassSurface>
-        {countError && <View><Text accessibilityRole="alert">{countError}</Text><ActionButton label="読了冊数を再読み込み" onPress={retryCount} /></View>}
+        <Text style={styles.section}>読書の概要</Text>
+        <GlassSurface style={styles.stats}>
+          <Stat value={statistics === null ? '—' : String(statistics.completed)} label="読んだ本" />
+          <Stat value={statistics === null ? '—' : String(statistics.reading)} label="読書中" />
+          <Stat value={statistics === null ? '—' : String(statistics.pages)} label="読んだページ" />
+        </GlassSurface>
+        <Text style={styles.statisticsNote}>再読も含めた記録です。ページ数は、しおりの保存や読了時に記録した進捗の合計です。</Text>
+        {!statistics && !statisticsError && <Text style={styles.statisticsNote}>読書の概要を読み込み中…</Text>}
+        {statisticsError && <View><Text accessibilityRole="alert" style={styles.error}>{statisticsError}</Text><ActionButton label="読書の概要を再読み込み" onPress={retryStatistics} /></View>}
         <Text style={styles.section}>アカウントメニュー</Text><GlassSurface style={styles.menu}><SettingsRow icon="♙" label="名前を設定・変更" onPress={() => onNavigate('public-profile')} /><SettingsRow icon="⚙" label="アカウント設定" onPress={() => onNavigate('account-settings')} /></GlassSurface>
       </ScrollView>
     </ScreenFrame>
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) { return <View style={styles.stat}><Text style={styles.value}>{value}</Text><Text style={styles.label}>{label}</Text></View>; }
+function Stat({ value, label }: { value: string; label: string }) { return <View style={styles.stat}><Text adjustsFontSizeToFit minimumFontScale={0.5} numberOfLines={1} style={styles.value}>{value}</Text><Text style={styles.label}>{label}</Text></View>; }
 
 const styles = StyleSheet.create({
+  statisticsNote: { color: colors.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 10 },
   profileCopy: { flex: 1, minWidth: 0 },
   error: { color: '#B42318', fontSize: 14, lineHeight: 22, marginVertical: 12 },
   content: { padding: 24, paddingBottom: 110 }, profile: { alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 20, flexDirection: 'row', gap: 18, marginTop: 8, padding: 20 }, avatar: { alignItems: 'center', backgroundColor: '#E2B7F0', borderRadius: 32, height: 64, justifyContent: 'center', width: 64 }, initial: { color: colors.background, fontSize: 28, fontWeight: '700' }, name: { color: colors.text, fontSize: 20, fontWeight: '700' }, email: { color: colors.placeholder, fontSize: 13, marginTop: 5 }, member: { color: colors.navAccent, fontSize: 12, marginTop: 5 }, section: { color: colors.text, fontSize: 18, fontWeight: '700', marginBottom: 12, marginTop: 28 }, stats: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, elevation: 2, flexDirection: 'row', paddingVertical: 18, shadowColor: colors.black, shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } }, stat: { alignItems: 'center', flex: 1 }, value: { color: colors.text, fontSize: 27, fontWeight: '700' }, label: { color: colors.placeholder, fontSize: 12, marginTop: 6 }, menu: { backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 16, elevation: 2, overflow: 'hidden', shadowColor: colors.black, shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { height: 1, width: 0 } },
