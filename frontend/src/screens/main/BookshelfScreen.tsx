@@ -7,7 +7,12 @@ import { ScreenFrame } from '../../components/organisms/ScreenFrame';
 import { getBooks, type Book } from '../../lib/api';
 import type { ScreenKey } from '../types';
 
-export function BookshelfScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => void }) {
+type BookshelfScreenProps = {
+  onNavigate: (route: ScreenKey) => void;
+  onOpenBook: (book: Book) => void;
+};
+
+export function BookshelfScreen({ onNavigate, onOpenBook }: BookshelfScreenProps) {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,8 +54,8 @@ export function BookshelfScreen({ onNavigate }: { onNavigate: (route: ScreenKey)
             author={book.author}
             key={book.id}
             title={book.title}
-            status="読書中"
-            onPress={() => onNavigate('book-detail')}
+            status={book.reading_status === 'completed' ? `${book.latest_iteration}回目 読了` : `${book.latest_iteration}回目 読書中`}
+            onPress={() => onOpenBook(book)}
           />
         ))}
         <ActionButton label="本を追加する" onPress={() => onNavigate('add-book')} />
