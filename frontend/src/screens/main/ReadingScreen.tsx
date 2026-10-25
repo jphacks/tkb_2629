@@ -2,15 +2,15 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ReadingBookCard, readingBooks } from '../../components/molecules/ReadingBookCard';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import type { ScreenKey } from '../types';
+import type { Navigate } from '../types';
 
-export function ReadingScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => void }) {
+export function ReadingScreen({ onNavigate }: { onNavigate: Navigate }) {
   return (
     <ScreenFrame activeRoute="reading" onNavigate={onNavigate} title="今読んでる本" subtitle="読書の続きを記録しましょう">
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.bookGrid}>
           {readingBooks.map((book) => (
-            <ReadingBookCard book={book} key={book.title} onPress={() => onNavigate('book-detail')} />
+            <ReadingBookCard book={book} key={book.title} onPress={() => onNavigate({ name: 'book-detail', bookId: book.id })} />
           ))}
         </View>
       </ScrollView>

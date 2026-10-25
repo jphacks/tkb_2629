@@ -9,16 +9,17 @@ import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { EmotionAnalysisCard, getAggregateEmotionColor, getEmotionTint } from '../../components/organisms/EmotionAnalysisCard';
 import { allBookmarks, BookmarkListCard } from '../../components/organisms/BookmarkListCard';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import type { ScreenKey } from '../types';
+import type { Navigate } from '../types';
 
 export type ReadingStatus = 'reading' | 'completed'; // 読み途中 or 読了
 
 type BookDetailScreenProps = {
-  onNavigate: (route: ScreenKey) => void;
+  bookId: number;
+  onNavigate: Navigate;
   readingStatus?: ReadingStatus;
 };
 
-export function BookDetailScreen({ onNavigate, readingStatus = 'reading' }: BookDetailScreenProps) {
+export function BookDetailScreen({ bookId, onNavigate, readingStatus = 'reading' }: BookDetailScreenProps) {
   const emotionColor = getAggregateEmotionColor(allBookmarks);
   const emotionTint = getEmotionTint(emotionColor);
   const isReading = readingStatus === 'reading'; //一旦読み途中で登録
@@ -27,7 +28,7 @@ export function BookDetailScreen({ onNavigate, readingStatus = 'reading' }: Book
     <ScreenFrame activeRoute="bookshelf" onNavigate={onNavigate} title="本の詳細">
       <ScrollView contentContainerStyle={styles.content}>
         <GlassSurface style={styles.hero}>
-          <Pressable accessibilityLabel="本の情報を編集" accessibilityRole="button" onPress={() => onNavigate('book-edit')} style={styles.editButton}>
+          <Pressable accessibilityLabel="本の情報を編集" accessibilityRole="button" onPress={() => onNavigate({ name: 'book-edit', bookId })} style={styles.editButton}>
             <Ionicons color={emotionColor} name="pencil" size={22} />
           </Pressable>
           <BookCover color={emotionColor} large title="星の旅" />

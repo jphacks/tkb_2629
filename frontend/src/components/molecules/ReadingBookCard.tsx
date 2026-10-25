@@ -8,14 +8,15 @@ import { ReadingProgress } from './ReadingProgress';
 export type ReadingBook = {
   author: string;
   currentPage: number;
+  id: number;
   title: string;
   totalPages: number;
 };
 
 export const readingBooks: ReadingBook[] = [
-  { author: '著者名 ・ 出版社', currentPage: 42, title: '星の旅', totalPages: 180 },
-  { author: '著者名 ・ 出版社', currentPage: 96, title: '海辺の手紙', totalPages: 240 },
-  { author: '著者名 ・ 出版社', currentPage: 28, title: '夜の図書館', totalPages: 156 },
+  { author: '著者名 ・ 出版社', currentPage: 42, id: 1, title: '星の旅', totalPages: 180 },
+  { author: '著者名 ・ 出版社', currentPage: 96, id: 2, title: '海辺の手紙', totalPages: 240 },
+  { author: '著者名 ・ 出版社', currentPage: 28, id: 3, title: '夜の図書館', totalPages: 156 },
 ];
 
 type ReadingBookCardProps = {

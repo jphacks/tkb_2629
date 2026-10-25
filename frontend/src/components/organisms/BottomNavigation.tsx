@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native';
 
 import { colors } from '../../theme/colors';
 import { BottomNavItem } from '../molecules/BottomNavItem';
-import type { ScreenKey } from '../../screens/types';
+import type { Navigate, ScreenKey } from '../../screens/types';
 import { GlassSurface } from '../atoms/GlassSurface';
 
 const items = [
@@ -15,7 +15,7 @@ const items = [
 
 type BottomNavigationProps = {
   activeRoute?: ScreenKey;
-  onNavigate?: (route: ScreenKey) => void;
+  onNavigate?: Navigate;
 };
 
 export function BottomNavigation({ activeRoute, onNavigate }: BottomNavigationProps) {

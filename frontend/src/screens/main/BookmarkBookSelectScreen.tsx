@@ -4,9 +4,9 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ReadingBookCard, readingBooks } from '../../components/molecules/ReadingBookCard';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import type { ScreenKey } from '../types';
+import type { Navigate } from '../types';
 
-export function BookmarkBookSelectScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => void }) {
+export function BookmarkBookSelectScreen({ onNavigate }: { onNavigate: Navigate }) {
   return (
     <ScreenFrame
       activeRoute="home"
