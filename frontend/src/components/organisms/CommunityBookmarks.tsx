@@ -80,7 +80,7 @@ export function CommunityBookmarks({ bookId, initialPage }: { bookId: number; in
               <View style={styles.pageEntry}>
                 <TextInput accessibilityLabel="感想を探すページ番号" value={pageInput} onChangeText={(value) => { setPageInput(value); setPageError(null); }} keyboardType="number-pad" placeholder="ページ番号" style={styles.pageInput} />
               </View>
-              <Text style={styles.description}>の</Text>
+              <Text style={styles.description}>ページの</Text>
               <View style={styles.searchAction}>
                 <ActionButton label="感想を読む" secondary onPress={() => {
                   const value = Number(pageInput);

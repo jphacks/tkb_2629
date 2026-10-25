@@ -45,6 +45,50 @@ export type PublicReview = {
 };
 
 export type ReviewPageRange = { start: number; end: number };
+export type ReactionKind = "empathy" | "insight" | "curious";
+export type ReviewReactions = {
+  review_id: number;
+  counts: Record<ReactionKind, number>;
+  my_reaction: ReactionKind | null;
+};
+
+async function requestReviewReactions(
+  googleBooksId: string, reviewId: number, kind?: ReactionKind | null,
+): Promise<ReviewReactions> {
+  const changing = kind !== undefined;
+  const response = await authenticatedFetch(
+    `${API_URL}/catalog/books/${encodeURIComponent(googleBooksId)}/reviews/${reviewId}/${changing ? "reaction" : "reactions"}`,
+    changing ? kind === null ? { method: "DELETE" } : {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind }),
+    } : undefined,
+  );
+  const result = await parseResponse<ReviewReactions>(response, changing
+    ? "リアクションの更新に失敗しました" : "リアクションの取得に失敗しました");
+  const kinds: ReactionKind[] = ["empathy", "insight", "curious"];
+  if (
+    !result || result.review_id !== reviewId || !result.counts ||
+    !kinds.every((value) => Number.isSafeInteger(result.counts[value]) && result.counts[value] >= 0) ||
+    (result.my_reaction !== null && !kinds.includes(result.my_reaction)) ||
+    (result.my_reaction !== null && result.counts[result.my_reaction] < 1) ||
+    (changing && result.my_reaction !== kind)
+  ) {
+    throw new Error("リアクションの取得結果を確認できません。再度読み込んでください。");
+  }
+  return result;
+}
+
+export function getReviewReactions(googleBooksId: string, reviewId: number): Promise<ReviewReactions> {
+  return requestReviewReactions(googleBooksId, reviewId);
+}
+
+export function setReviewReaction(
+  googleBooksId: string, reviewId: number, kind: ReactionKind | null,
+): Promise<ReviewReactions> {
+  return requestReviewReactions(googleBooksId, reviewId, kind);
+}
+
 export type PublicReviewDistribution = {
   items: { page_number: number; review_count: number }[];
   total_count: number;
