@@ -67,7 +67,7 @@ export default function App() {
   if (!user && !publicRoutes.includes(route.name)) return <LoginScreen onNavigate={navigate} />;
   if (user && publicRoutes.includes(route.name) && route.name !== 'forgot-password') return <HomeScreen key={user.id} onNavigate={navigate} />;
   switch (route.name) {
-    case 'forgot-password': return <PasswordResetScreen onNavigate={navigate} />;
+    case 'forgot-password': return <PasswordResetScreen onNavigate={navigate} onBack={onBack} accountLayout={user !== null} />;
     case 'register': return <AccountRegisterScreen onNavigate={navigate} />;
     case 'login': return <LoginScreen onNavigate={navigate} />;
     case 'verify-email': return <EmailVerificationScreen onNavigate={navigate} />;

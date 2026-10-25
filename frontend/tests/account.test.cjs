@@ -208,7 +208,7 @@ test('account ignores late statistics and profile responses after leaving', asyn
   }
 });
 
-test('settings retain working routes, mark dummy sections unavailable and guard rapid logout presses', async () => {
+test('settings retain working routes, support local dummy inputs and guard rapid logout presses', async () => {
   const h = hooks(), requests = [], targets = [];
   const { AccountSettingsScreen } = load('src/screens/account/AccountSettingsScreen.tsx', {
     react: h.react, 'react/jsx-runtime': { jsx, jsxs: jsx }, 'react-native': native,
@@ -221,27 +221,38 @@ test('settings retain working routes, mark dummy sections unavailable and guard 
   let tree = render();
   const rows = nodes(tree).filter((node) => node.type === 'SettingsRow');
   assert.deepEqual(rows.map((row) => row.props.label), [
-    'メールアドレス', '名前', 'パスワード', '読書目標', '読書リマインダー', 'ヘルプ・よくある質問', 'お問い合わせ',
+    'メールアドレス', '名前', 'パスワード', 'ヘルプ・よくある質問', 'お問い合わせ',
   ]);
   assert.equal(rows[0].props.value, 'one@example.test');
   rows[1].props.onPress(); rows[2].props.onPress();
   assert.deepEqual(targets, ['public-profile', 'forgot-password']);
-  assert.match(text(tree), /表示サンプル/);
-  assert.match(text(tree), /変更・保存はできません/);
+  assert.doesNotMatch(text(tree), /準備中|表示サンプル/);
   const { SettingsRow } = load('src/components/molecules/SettingsRow.tsx', {
     'react/jsx-runtime': { jsx, jsxs: jsx }, 'react-native': { ...native, Pressable: 'Pressable' },
     '../../theme/colors': { colors: {} },
   });
   for (const row of rows.slice(3)) {
     const control = SettingsRow(row.props);
-    assert.equal(row.props.onPress, undefined);
-    assert.equal(control.props.disabled, true);
-    assert.equal(control.props.accessibilityState.disabled, true);
-    assert.match(control.props.accessibilityLabel, /準備中/);
-    assert.match(text(control), /準備中/);
+    assert.equal(control.props.disabled, false);
+    assert.doesNotMatch(text(control), /準備中/);
   }
-  assert.equal(rows[3].props.value, '月3冊（例）');
-  assert.equal(rows[4].props.value, '毎日20:00（例）');
+  assert.doesNotMatch(text(SettingsRow(rows[0].props)), /準備中/);
+  const field = (label) => nodes(render()).find((node) => node.props?.accessibilityLabel === label);
+  field('月の読書目標').props.onChangeText('5');
+  assert.equal(field('月の読書目標').props.value, '5');
+  assert.equal(field('月の読書目標').props.style.backgroundColor, 'transparent');
+  assert.equal(field('月の読書目標').props.style.borderWidth, 0);
+  field('読書リマインダー').props.onValueChange(true);
+  assert.equal(field('読書リマインダー').props.value, true);
+  field('リマインダーの時刻').props.onChangeText('21:30');
+  assert.equal(field('リマインダーの時刻').props.value, '21:30');
+  assert.equal(field('リマインダーの時刻').props.underlineColorAndroid, 'transparent');
+  rows[3].props.onPress();
+  assert.match(text(render()), /本を探して/);
+  rows[4].props.onPress();
+  field('お問い合わせ内容').props.onChangeText('Test message');
+  assert.equal(field('お問い合わせ内容').props.value, 'Test message');
+  assert.equal(requests.length, 0);
   const logout = button(tree, 'ログアウト');
   logout.props.onPress(); logout.props.onPress();
   assert.equal(requests.length, 1);
@@ -255,4 +266,113 @@ test('settings retain working routes, mark dummy sections unavailable and guard 
   requests[1].resolve();
   await flush();
   assert.equal(targets.at(-1), 'login');
+});
+
+test('password reset back button returns to its caller in both form stages with a login fallback', async () => {
+  const h = hooks(), targets = [], requests = [];
+  let backs = 0;
+  const { PasswordResetScreen } = load('src/screens/auth/PasswordResetScreen.tsx', {
+    react: h.react, 'react/jsx-runtime': { jsx, jsxs: jsx },
+    '../../lib/auth': { authPost: async (...args) => { requests.push(args); } },
+  });
+  const render = (withBack = true) => h.render(() => PasswordResetScreen({
+    onNavigate: (target) => targets.push(target),
+    onBack: withBack ? () => { backs += 1; } : undefined,
+  }));
+  const back = (tree) => tree.props.links.find((link) => link.label === '前の画面に戻る');
+  let tree = render();
+  back(tree).onPress();
+  assert.equal(backs, 1);
+  assert.equal(targets.length, 0);
+  await tree.props.submit({ email: ' reader@example.test ' });
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0][0], 'forgot-password');
+  assert.equal(requests[0][1].email, 'reader@example.test');
+  tree = render();
+  assert.equal(tree.props.submitLabel, 'パスワードを更新');
+  back(tree).onPress();
+  assert.equal(backs, 2);
+  back(render(false)).onPress();
+  assert.deepEqual(targets, ['login']);
+});
+
+test('app password reset back pops the actual entry route for authenticated and unauthenticated callers', () => {
+  for (const entry of ['account-settings', 'login']) {
+    let routes = [{ name: entry }], cursor = 0;
+    const user = entry === 'account-settings' ? { id: 1 } : null;
+    const { default: App } = load('App.tsx', {
+      react: {
+        useState() {
+          const i = cursor++;
+          if (i === 0) return [routes, (value) => { routes = typeof value === 'function' ? value(routes) : value; }];
+          return i === 1 ? [user, () => {}] : [false, () => {}];
+        },
+        useEffect() {},
+      },
+      'react/jsx-runtime': { jsx, jsxs: jsx },
+      './src/lib/auth': { currentUser: () => user },
+    });
+    const render = () => { cursor = 0; return App(); };
+    for (let repeat = 0; repeat < 2; repeat += 1) {
+      render().props.onNavigate('forgot-password');
+      const tree = render();
+      assert.equal(tree.type, 'PasswordResetScreen');
+      assert.equal(tree.props.accountLayout, entry === 'account-settings');
+      assert.equal(routes.length, 2);
+      tree.props.onBack();
+      assert.equal(render().type, entry === 'login' ? 'LoginScreen' : 'AccountSettingsScreen');
+      assert.equal(routes.length, 1);
+    }
+  }
+});
+
+test('account password form uses settings header with a back arrow instead of login branding', async () => {
+  const h = hooks();
+  let backs = 0, finish;
+  const { AuthForm } = load('src/screens/auth/AuthForm.tsx', {
+    react: h.react, 'react/jsx-runtime': { jsx, jsxs: jsx },
+    'react-native': { ...native, Platform: { OS: 'android' } },
+  });
+  const render = () => h.render(() => AuthForm({
+    title: 'パスワードの変更', accountLayout: true, onBack: () => { backs += 1; },
+    fields: [{ key: 'email', label: 'メールアドレス', email: true }],
+    submitLabel: '再設定メールを送信',
+    submit: () => new Promise((resolve) => { finish = resolve; }),
+  }));
+  let tree = render();
+  assert.equal(tree.props.title, 'パスワードの変更');
+  assert.equal(tree.props.activeRoute, 'account');
+  assert.equal(tree.props.showNavigation, true);
+  assert.equal(tree.props.headerLeading.type, 'BackButton');
+  tree.props.headerLeading.props.onPress();
+  assert.equal(backs, 1);
+  assert.equal(nodes(tree).some((node) => node.type === 'BrandHeader'), false);
+  assert.ok(nodes(tree).some((node) => node.type === 'GlassSurface'));
+  nodes(tree).find((node) => node.type === 'ShadowInput').props.onChangeText('reader@example.test');
+  button(render(), '再設定メールを送信').props.onPress();
+  assert.equal(render().props.headerLeading.props.disabled, true);
+  finish();
+  await flush();
+  assert.equal(render().props.headerLeading.props.disabled, false);
+});
+
+test('account reset keeps its arrow in both steps and omits login-style back links', async () => {
+  const h = hooks();
+  let backs = 0;
+  const { PasswordResetScreen } = load('src/screens/auth/PasswordResetScreen.tsx', {
+    react: h.react, 'react/jsx-runtime': { jsx, jsxs: jsx },
+    '../../lib/auth': { authPost: async () => {} },
+  });
+  const render = () => h.render(() => PasswordResetScreen({
+    accountLayout: true, onNavigate() {}, onBack: () => { backs += 1; },
+  }));
+  for (let step = 0; step < 2; step += 1) {
+    const tree = render();
+    assert.equal(tree.props.accountLayout, true);
+    assert.equal(tree.props.title, 'パスワードの変更');
+    assert.equal(tree.props.links.some((link) => /前の画面|ログインへ/.test(link.label)), false);
+    tree.props.onBack();
+    if (step === 0) await tree.props.submit({ email: 'reader@example.test' });
+  }
+  assert.equal(backs, 2);
 });
