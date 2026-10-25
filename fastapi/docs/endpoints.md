@@ -29,24 +29,30 @@ CASCADEの説明は外部キーが有効なDB（標準構成のPostgreSQL）を�
 | メソッド・パス | 内部処理 | 正常レスポンス |
 | --- | --- | --- |
 | `POST /books` | title・authorをtrimして検証。book_id未指定ならbooksを新規作成。指定時は既存booksを取得し、title・author・total_pagesの一致を確認。その後user_booksで現在のユーザーと紐付け・commit。 | 201、書籍情報 |
-| `GET /books` | booksとuser_booksをJOINし、現在のユーザーの書籍だけをID昇順で取得。limitは既定50、1〜100。offsetは既定0、0以上。 | 200、items・limit・offset |
-| `GET /books/{book_id}` | 現在のユーザーの本棚に存在する書籍だけ取得。他人だけが所有する本や存在しない本は404。 | 200、書籍情報 |
+| `GET /books` | booksと各書籍の最新のuser_booksをJOINし、現在のユーザーの書籍だけをID昇順で取得。limitは既定50、1〜100。offsetは既定0、0以上。 | 200、items・limit・offset |
+| `GET /books/{book_id}` | 現在のユーザーの本棚に存在する書籍と最新の読書回を取得。他人だけが所有する本や存在しない本は404。 | 200、書籍情報 |
+| `GET /books/{book_id}/iterations` | 指定書籍の読書回を古い順に取得。 | 200、読書回の配列 |
+| `POST /books/{book_id}/iterations` | 最新回が読了済みの場合だけ、回数を1増やした新しい読書回を開始。 | 201、新しい読書回 |
+| `POST /books/{book_id}/iterations/{iteration_number}/complete` | 読書中の指定回を読了にし、current_pageを総ページ数へ更新。 | 200、更新後の読書回 |
+| `GET /books/{book_id}/page-popularity` | 各ユーザーの最新の読書回だけを対象に、感想のあるページごとのユーザー数を集計。 | 200、page_number・user_countの配列 |
 
-書籍情報はid・title・author・total_pages・created_atです。読書進捗はレスポンスに含みません。
+書籍情報にはid・title・author・total_pages・created_atに加え、latest_iteration・reading_status・current_page・started_at・completed_atを含みます。
 titleはtrim後1〜255文字、authorは省略可・trim後255文字以内、total_pagesは1〜1,000,000です。
 既存書籍の内容不一致や同じ本棚への重複登録は409、指定された既存書籍がなければ404です。
-進捗更新API、書籍の更新・削除APIはありません。
+同じ本を再読するには現在の回を先に読了する必要があります。同一ユーザー・書籍で読書中にできる回は1つだけです。
+書籍の更新・削除APIはありません。
 
 ## ページごとの感想
 
 | メソッド・パス | 内部処理 | 正常レスポンス |
 | --- | --- | --- |
-| `GET /books/{book_id}/pages/{page_number}/review` | 本棚の所有確認→ページ範囲検証→感想取得。解析がcompletedなら現在のrevisionに一致する解析履歴から色を取得。 | 200、感想情報 |
-| `PUT /books/{book_id}/pages/{page_number}/review` | 所有確認→ページ・本文検証→本文を先に保存→同期解析→結果保存→最新の感想を再取得。 | 新規201、更新200、感想情報 |
+| `GET /books/{book_id}/pages/{page_number}/review` | 本棚の所有確認→ページ範囲検証→感想取得。`iteration`未指定時は最新回。解析がcompletedなら現在のrevisionに一致する解析履歴から色を取得。 | 200、感想情報 |
+| `PUT /books/{book_id}/pages/{page_number}/review` | 所有確認→ページ・本文検証→本文を先に保存→同期解析→結果保存→最新の感想を再取得。`iteration`未指定時は最新回。 | 新規201、更新200、感想情報 |
 
 page_numberは1以上かつ本のtotal_pages以下。本文は前後の空白を除去して1〜140文字です。
+`iteration` クエリは1以上です。読了済みの回は参照できますが、感想の追加・更新は409です。
 本棚または取得対象の感想が存在しなければ404、ページ範囲・本文が不正なら422です。
-感想情報はid・book_id・page_number・review_text・color_code・created_at・updated_atです。
+感想情報はid・book_id・page_number・review_text・color_code・created_at・updated_at・iteration_numberです。
 
 PUTの詳細:
 
