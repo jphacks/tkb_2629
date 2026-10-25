@@ -16,7 +16,9 @@ class PublicReviewService:
         self.authors = authors
         self.analyses = analyses
 
-    def _eligible(self, google_books_id: str) -> tuple[dict[int, PublicReading], dict[int, str]]:
+    def _eligible(
+        self, google_books_id: str, exclude_user_id: int | None = None
+    ) -> tuple[dict[int, PublicReading], dict[int, str]]:
         if (
             not google_books_id
             or len(google_books_id) > 256
@@ -27,11 +29,16 @@ class PublicReviewService:
         if not readings:
             return {}, {}
         names = self.authors.display_names(list({reading.user_id for reading in readings}))
-        eligible = {reading.id: reading for reading in readings if reading.user_id in names}
+        eligible = {
+            reading.id: reading for reading in readings
+            if reading.user_id in names and reading.user_id != exclude_user_id
+        }
         return eligible, names
 
-    def distribution(self, google_books_id: str) -> list[PublicReviewCount]:
-        eligible, _ = self._eligible(google_books_id)
+    def distribution(
+        self, google_books_id: str, *, exclude_user_id: int | None = None
+    ) -> list[PublicReviewCount]:
+        eligible, _ = self._eligible(google_books_id, exclude_user_id)
         if not eligible:
             return []
         with self.units() as unit:
@@ -44,6 +51,7 @@ class PublicReviewService:
         limit: int = 20,
         offset: int = 0,
         *,
+        exclude_user_id: int | None = None,
         page_start: int | None = None,
         page_end: int | None = None,
     ) -> list[PublicReviewView]:
@@ -58,7 +66,7 @@ class PublicReviewService:
             or (page_start is not None and page_end is not None and page_start > page_end)
         ):
             raise InvalidInput("Invalid public review query")
-        eligible, names = self._eligible(google_books_id)
+        eligible, names = self._eligible(google_books_id, exclude_user_id)
         if not eligible:
             return []
         with self.units() as unit:
