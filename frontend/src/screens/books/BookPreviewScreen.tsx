@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ActionButton } from '../../components/molecules/ActionButton';
 import { BackButton } from '../../components/molecules/BackButton';
 import { BookCover } from '../../components/molecules/BookCover';
+import { OwnedBookCover } from '../../components/molecules/OwnedBookCover';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
 import type { Book, GoogleBook } from '../../lib/api';
 import { shelfStatusLabel } from '../../lib/readingStatus';
@@ -29,7 +30,7 @@ export function BookPreviewScreen({
     >
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.cover}>
-          <BookCover large title={book.title} author={book.author ?? '著者不明'} />
+          {owned ? <OwnedBookCover large book={owned} /> : <BookCover large title={book.title} author={book.author ?? '著者不明'} />}
         </View>
         <Text style={styles.title}>{book.title}</Text>
         <Text style={styles.body}>{book.author ?? '著者不明'}</Text>

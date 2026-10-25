@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { BookCover } from '../../components/molecules/BookCover';
+import { OwnedBookCover } from '../../components/molecules/OwnedBookCover';
 import { ActionButton } from '../../components/molecules/ActionButton';
 import { ShadowInput } from '../../components/atoms/ShadowInput';
 import { SearchHistory } from '../../components/molecules/SearchHistory';
@@ -113,7 +113,7 @@ export function BookshelfScreen({ onNavigate }: { onNavigate: Navigate }) {
                   <Pressable key={book.id} accessibilityLabel={`${book.title}の詳細を見る`}
                     onPress={() => onNavigate({ name: 'book-detail', bookId: book.id })} style={styles.book}
                   >
-                    <BookCover grid title={book.title} author={book.author ?? '著者不明'} />
+                    <OwnedBookCover grid book={book} />
                     <Text numberOfLines={2} style={styles.bookTitle}>{book.title}</Text>
                     <Text style={styles.caption}>{formatDate(entry.completedAt) ?? '読了日不明'} 読了</Text>
                     {book.reading_status === 'reading' && (

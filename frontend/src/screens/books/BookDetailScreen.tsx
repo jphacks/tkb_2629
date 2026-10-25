@@ -5,7 +5,8 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { ActionButton } from '../../components/molecules/ActionButton';
 import { BackButton } from '../../components/molecules/BackButton';
-import { BookCover } from '../../components/molecules/BookCover';
+import { OwnedBookCover } from '../../components/molecules/OwnedBookCover';
+import { BookCoverCustomizer } from '../../components/organisms/BookCoverCustomizer';
 import { FloatingActionButton } from '../../components/molecules/FloatingActionButton';
 import { ReadingProgress } from '../../components/molecules/ReadingProgress';
 import { GlassSurface } from '../../components/atoms/GlassSurface';
@@ -30,6 +31,7 @@ type BookDetailState =
 
 export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScreenProps) {
   const [state, setState] = useState<BookDetailState>({ bookId, status: 'loading' });
+  const [coverOpen, setCoverOpen] = useState(false);
   const [requestVersion, setRequestVersion] = useState(0);
   const [reviews, setReviews] = useState<PageReview[] | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
@@ -48,6 +50,7 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
 
   useEffect(() => {
     activeBook.current = bookId;
+    setCoverOpen(false);
     startLocked.current = false;
     setStarting(false);
     setStartError(null);
@@ -205,16 +208,26 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
         {book && (
           <>
             <GlassSurface style={styles.hero}>
-              <Pressable accessibilityLabel="本の情報を編集" accessibilityRole="button" onPress={() => onNavigate({ name: 'book-edit', bookId })} style={styles.editButton}>
+              <Pressable accessibilityLabel="本のメモを開く" accessibilityRole="button" onPress={() => onNavigate({ name: 'book-memo', bookId })} style={styles.editButton}>
                 <Ionicons color={colors.navAccent} name="pencil" size={22} />
               </Pressable>
-              <BookCover large title={book.title} author={book.author ?? '著者不明'} />
+              <Pressable accessibilityLabel="表紙をカスタマイズ" accessibilityRole="button"
+                accessibilityState={{ expanded: coverOpen }} onPress={() => setCoverOpen(true)}
+                style={styles.coverButton}>
+                <Ionicons color={colors.navAccent} name="color-palette" size={25} />
+              </Pressable>
+              <OwnedBookCover large book={book} />
               <View style={styles.info}>
                 <Text style={styles.title}>{book.title}</Text>
                 <Text style={styles.author}>{book.author ?? '著者不明'}</Text>
                 <Text style={styles.status}>{book.latest_iteration}回目・{isReading ? '読書中' : '読了'}</Text>
               </View>
             </GlassSurface>
+            <BookCoverCustomizer key={book.id} book={book} summary={emotions} emotionError={emotionError}
+              open={coverOpen} onOpenChange={setCoverOpen}
+              onRetryEmotions={() => setReviewVersion((value) => value + 1)}
+              onSaved={(style) => setState((current) => current.bookId === bookId && current.status === 'success'
+                ? { ...current, book: { ...current.book, cover_style: style } } : current)} />
             {book.reading_status === 'completed' && (
               <GlassSurface style={styles.card}>
                 <ActionButton
@@ -296,8 +309,9 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
 const styles = StyleSheet.create({
   content: { padding: 24, paddingBottom: 110 },
   hero: { alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.48)', borderRadius: 20, flexDirection: 'row', marginTop: 8, padding: 18, position: 'relative' },
-  info: { flex: 1, marginLeft: 18, justifyContent: 'center' },
-  editButton: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 18, elevation: 2, height: 36, justifyContent: 'center', position: 'absolute', right: 14, top: 14, width: 36 },
+  info: { flex: 1, marginLeft: 18, paddingRight: 48, justifyContent: 'center' },
+  editButton: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 22, elevation: 2, height: 44, justifyContent: 'center', position: 'absolute', right: 14, top: 14, width: 44 },
+  coverButton: { alignItems: 'center', backgroundColor: colors.backgroundSoft, borderColor: colors.navAccent, borderWidth: 1, borderRadius: 22, height: 44, justifyContent: 'center', position: 'absolute', right: 14, top: 66, width: 44 },
   title: { color: colors.text, fontSize: 24, fontWeight: '700'},
   author: { color: colors.textSecondary, fontSize: 14, marginTop: 8 },
   status: { color: colors.textSecondary, fontSize: 12, marginTop: 6 },

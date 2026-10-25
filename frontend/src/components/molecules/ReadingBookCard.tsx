@@ -1,10 +1,10 @@
 import { colors } from "../../theme/colors";
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SvgUri } from 'react-native-svg';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Book } from '../../lib/api';
 import { GlassSurface } from '../atoms/GlassSurface';
-import { BookCover } from './BookCover';
+import { BookmarkAddIcon } from '../atoms/BookmarkAddIcon';
+import { OwnedBookCover } from './OwnedBookCover';
 import { ReadingProgress } from './ReadingProgress';
 
 type ReadingBookCardProps = {
@@ -12,8 +12,6 @@ type ReadingBookCardProps = {
   onBookmark: () => void;
   onPress: () => void;
 };
-
-const addBookmarkSvgUri = Image.resolveAssetSource(require('../../assets/addBookmark.svg'))?.uri ?? '';
 
 export function ReadingBookCard({ book, onBookmark, onPress }: ReadingBookCardProps) {
   const author = book.author ?? '著者不明';
@@ -23,7 +21,7 @@ export function ReadingBookCard({ book, onBookmark, onPress }: ReadingBookCardPr
       onPress={onPress}
       style={styles.book}
     >
-      <BookCover title={book.title} author={author} />
+      <OwnedBookCover book={book} />
       <View style={styles.copy}>
         <Text numberOfLines={1} style={styles.title}>{book.title}</Text>
         <Text numberOfLines={1} style={styles.author}>{author}</Text>
@@ -34,7 +32,7 @@ export function ReadingBookCard({ book, onBookmark, onPress }: ReadingBookCardPr
             onPress={onBookmark}
             style={({ pressed }) => [styles.bookmarkButton, pressed && styles.pressed]}
           >
-            <SvgUri height={28} uri={addBookmarkSvgUri} width={26} />
+            <BookmarkAddIcon height={28} width={26} />
           </Pressable>
         </ReadingProgress>
       </View>

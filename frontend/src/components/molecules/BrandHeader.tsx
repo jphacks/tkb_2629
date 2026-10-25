@@ -1,16 +1,11 @@
-import { StyleSheet, Text, View } from "react-native";
-
-import { colors } from "../../theme/colors";
+import { Image, StyleSheet, View } from "react-native";
 
 export function BrandHeader() {
   return (
     <View style={styles.brand}>
-      <View style={styles.symbol}>
-        <Text style={styles.symbolText}>V</Text>
-      </View>
-      <View>
-        <Text style={styles.name}>Re:Read</Text>
-        <Text style={styles.tagline}>読書を記録する</Text>
+      <Image accessibilityLabel="Re:Readのロゴ" source={require('../../assets/brand-logo.png')} resizeMode="contain" style={styles.symbol} />
+      <View style={styles.wordmark}>
+        <Image accessibilityLabel="Re:Read" source={require('../../assets/brand-wordmark.png')} resizeMode="contain" style={styles.name} />
       </View>
     </View>
   );
@@ -19,14 +14,10 @@ export function BrandHeader() {
 const styles = StyleSheet.create({
   brand: { alignItems: "center", flexDirection: "row", gap: 12 },
   symbol: {
-    alignItems: "center",
-    backgroundColor: colors.navAccent,
-    borderRadius: 44,
-    height: 88,
-    justifyContent: "center",
-    width: 88,
+    borderRadius: 10,
+    height: 50,
+    width: 50,
   },
-  symbolText: { color: colors.background, fontSize: 48, fontWeight: "800" },
-  name: { color: colors.text, fontSize: 26, fontWeight: "700" },
-  tagline: { color: colors.placeholder, fontSize: 14, marginTop: 4 },
+  wordmark: { width: 32 * 960 / 220 },
+  name: { height: 32, width: "100%" },
 });

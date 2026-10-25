@@ -139,6 +139,29 @@ const detailButton = (tree, title) => nodes(tree).find((node) => node.props?.acc
 
 const pressEvent = () => ({ stopPropagation() {} });
 
+test('search results precede genres, rankings, recommendations and history and search returns to top', async () => {
+  const h = searchHarness({ shelf: [] });
+  let tree = h.render();
+  const scroll = nodes(tree).find((node) => node.type === 'ScrollView');
+  const positions = [];
+  scroll.props.ref.current = { scrollTo: (value) => positions.push(value) };
+  tree = await h.search();
+  const all = nodes(tree);
+  const firstResult = all.findIndex((node) => node.props?.accessibilityLabel === 'Ownedの検索結果');
+  for (const type of ['PopularBooks', 'EmotionRecommendations', 'SearchHistory']) {
+    assert.ok(all.findIndex((node) => node.type === type) > firstResult);
+  }
+  assert.ok(all.findIndex((node) => node.props?.accessibilityLabel === '小説の本を探す') > firstResult);
+  assert.equal(positions.length, 1);
+  assert.equal(positions[0].y, 0);
+  assert.equal(positions[0].animated, false);
+  nodes(tree).find((node) => node.props?.accessibilityLabel === '検索する').props.onPress();
+  tree = h.render();
+  assert.equal(card(tree, 'Owned'), undefined);
+  assert.ok(texts(tree).includes('検索中…'));
+  await flush();
+});
+
 test('search results show detail and add buttons for every book and status for owned books', async () => {
   const h = searchHarness({ shelf: [shelfBook({ reading_status: 'completed', completed_at: at(24) })] });
   let tree = await h.search();
@@ -176,6 +199,22 @@ test('only the add button adds a book, opens detail, and returns to preserved re
   assert.ok(texts(tree).includes('2026/10/25 追加・読書中'));
   detailButton(tree, 'New').props.onPress(pressEvent());
   assert.equal(h.render().props.bookId, 9);
+});
+
+test('returning from detail refreshes owned cover preferences in preserved search results', async () => {
+  const shelf = [shelfBook()];
+  const h = searchHarness({ shelf });
+  let tree = await h.search();
+  detailButton(tree, 'Owned').props.onPress();
+  tree = h.render();
+  shelf[0] = shelfBook({ cover_style: { color_mode: 'palette', palette: 7, pattern: 3 } });
+  tree.props.onBack();
+  h.render();
+  await flush();
+  tree = h.render();
+  const cover = nodes(card(tree, 'Owned')).find((node) => node.type === 'OwnedBookCover');
+  assert.equal(cover.props.book.cover_style.palette, 7);
+  assert.equal(cover.props.book.cover_style.pattern, 3);
 });
 
 test('if the shelf cannot be loaded, search and adding still work without status', async () => {
@@ -245,6 +284,7 @@ function detailHarness(iterationResult) {
   const h = hooks();
   const requests = [];
   let backs = 0;
+  const targets = [];
   const { BookDetailScreen } = compile('src/screens/books/BookDetailScreen.tsx', {
     react: h.react,
     'react/jsx-runtime': jsxRuntime,
@@ -263,9 +303,33 @@ function detailHarness(iterationResult) {
     },
     '../../lib/readingStatus': status,
   });
-  const render = () => h.render(() => BookDetailScreen({ bookId: 5, onNavigate() {}, onBack() { backs += 1; } }));
-  return { requests, render, get backs() { return backs; } };
+  const render = () => h.render(() => BookDetailScreen({ bookId: 5, onNavigate(target) { targets.push(target); }, onBack() { backs += 1; } }));
+  return { requests, targets, render, get backs() { return backs; } };
 }
+
+test('detail pencil opens the private book memo, not a metadata editor', async () => {
+  const h = detailHarness(async () => []);
+  h.render();
+  await flush();
+  const tree = h.render();
+  const pencil = nodes(tree).find((node) => node.props?.accessibilityLabel === '本のメモを開く');
+  assert.ok(pencil);
+  assert.equal(pencil.props.style.width, 44);
+  const palette = nodes(tree).find((node) => node.props?.accessibilityLabel === '表紙をカスタマイズ');
+  assert.ok(palette);
+  assert.equal(palette.props.style.right, pencil.props.style.right);
+  assert.ok(palette.props.style.top >= pencil.props.style.top + pencil.props.style.height);
+  assert.equal(palette.props.style.width, 44);
+  assert.equal(palette.props.children.props.name, 'color-palette');
+  palette.props.onPress();
+  const editor = nodes(h.render()).find((node) => node.type === 'BookCoverCustomizer');
+  assert.equal(editor.props.open, true);
+  editor.props.onOpenChange(false);
+  assert.equal(nodes(h.render()).find((node) => node.type === 'BookCoverCustomizer').props.open, false);
+  pencil.props.onPress();
+  assert.equal(h.targets[0].name, 'book-memo');
+  assert.equal(h.targets[0].bookId, 5);
+});
 
 test('book detail exposes a working header back arrow even while loading', () => {
   const h = detailHarness(async () => []);
