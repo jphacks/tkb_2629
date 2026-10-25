@@ -1,12 +1,11 @@
 import { useRef, useState } from 'react';
-import { Animated, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { colors } from '../../theme/colors';
 import { BookmarkCard } from '../organisms/BookmarkCard';
 import { BookmarkRibbon } from '../organisms/BookmarkRibbon';
-import { BottomNavigation } from '../organisms/BottomNavigation';
+import { ScreenFrame } from '../organisms/ScreenFrame';
 import type { ScreenKey } from '../../screens/types';
 
 type BookmarkScreenProps = { onNavigate?: (route: ScreenKey) => void };
@@ -21,9 +20,8 @@ export function BookmarkScreen({ onNavigate }: BookmarkScreenProps) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="dark" />
-      <View style={styles.screen}>
+    <ScreenFrame activeRoute="bookmark" onNavigate={onNavigate}>
+      <View style={styles.content}>
         {!isAdded && <BookmarkRibbon translateY={translateY} />}
         {!isAdded && <BookmarkCard onAdded={() => setIsAdded(true)} translateY={translateY} />}
         {isAdded && (
@@ -35,15 +33,13 @@ export function BookmarkScreen({ onNavigate }: BookmarkScreenProps) {
             </Pressable>
           </View>
         )}
-        <BottomNavigation activeRoute="bookmark" onNavigate={onNavigate} />
       </View>
-    </SafeAreaView>
+    </ScreenFrame>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { backgroundColor: '#F7F4FF', flex: 1 },
-  screen: { backgroundColor: '#F7F4FF', flex: 1 },
+  content: { backgroundColor: '#F7F4FF', flex: 1, position: 'relative',marginTop: 24 },
   successState: { alignItems: 'center', left: 0, position: 'absolute', right: 0, top: 270 },
   successTitle: { color: colors.text, fontSize: 20, fontWeight: '700', marginTop: 14 },
   resetButton: { backgroundColor: colors.accent, borderRadius: 12, marginTop: 20, paddingHorizontal: 22, paddingVertical: 12 },

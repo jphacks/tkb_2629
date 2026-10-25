@@ -31,7 +31,7 @@ export function AccountRegisterScreen({ onNavigate }: { onNavigate: (route: Scre
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 24, paddingBottom: 110 },
+  content: { padding: 24, paddingBottom: 110 ,marginTop: 56 },
   title: { color: '#464646', fontSize: 26, fontWeight: '700', marginTop: 12 },
   description: { color: '#9CA3AF', fontSize: 14, marginTop: 8 },
   form: { gap: 8, marginTop: 24 },
