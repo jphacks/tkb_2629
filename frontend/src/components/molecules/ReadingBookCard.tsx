@@ -27,13 +27,13 @@ export function ReadingBookCard({ book, onBookmark, onPress }: ReadingBookCardPr
         <Text numberOfLines={1} style={styles.author}>{author}</Text>
         <ReadingProgress currentPage={book.current_page} totalPages={book.total_pages} />
         <Pressable
-          accessibilityLabel={`${book.title}にしおりを挟む`}
+          accessibilityLabel={`${book.title}にしおりを追加`}
           accessibilityRole="button"
           onPress={onBookmark}
           style={({ pressed }) => [styles.bookmarkButton, pressed && styles.pressed]}
         >
           <Ionicons color={colors.navAccent} name="bookmark-outline" size={16} />
-          <Text style={styles.bookmarkLabel}>しおりを挟む</Text>
+          <Text style={styles.bookmarkLabel}>しおりを追加</Text>
         </Pressable>
       </View>
     </GlassSurface>

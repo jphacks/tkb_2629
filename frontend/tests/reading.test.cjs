@@ -103,7 +103,7 @@ test('the card shows real book fields and separates detail and bookmark actions'
   assert.equal(progress.props.currentPage, 42);
   assert.equal(progress.props.totalPages, 180);
   tree.props.onPress();
-  button(tree, 'Book 3にしおりを挟む').props.onPress();
+  button(tree, 'Book 3にしおりを追加').props.onPress();
   assert.deepEqual(calls, ['detail', 'bookmark']);
 });
 
