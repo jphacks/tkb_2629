@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..application.results import UserSummary
+from ..application.results import PublicProfile, UserSummary
 from ..domain.entities import Identity, LoginSession, VerificationChallenge
 from ..domain.errors import RegistrationConflict, UserNotFound
 from ..domain.values import ChallengePurpose, EmailAddress
@@ -209,6 +209,20 @@ class SqlProfileRepository:
         row.name = name
         self.db.flush()
         return UserSummary(row.id, row.name, row.email)
+
+    def get_public_profile(self, user_id: int) -> PublicProfile:
+        row = self.db.get(User, user_id)
+        if row is None:
+            raise UserNotFound("User not found")
+        return PublicProfile(row.public_display_name)
+
+    def update_public_display_name(self, user_id: int, name: str) -> PublicProfile:
+        row = self.db.get(User, user_id)
+        if row is None:
+            raise UserNotFound("User not found")
+        row.public_display_name = name
+        self.db.flush()
+        return PublicProfile(row.public_display_name)
 
     def delete(self, user_id: int) -> None:
         row = self.db.get(User, user_id)

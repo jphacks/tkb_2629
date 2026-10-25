@@ -36,6 +36,8 @@ PostgreSQLの既存ボリュームがある場合、`POSTGRES_DB` を変更し�
 
 ## コード構成
 
+本人用の公開用表示名APIについては [公開用表示名](docs/public-profile.md) を参照してください。
+
 構成と境界の詳細は [コンテキスト設計](docs/contexts.md) を参照してください。
 
 - `src/backend/identity/`: 認証認可・プロフィール・本人操作の認可。
