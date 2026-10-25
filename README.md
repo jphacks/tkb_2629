@@ -1,8 +1,6 @@
-# しおり
+# Re: Read
 
-[![IMAGE ALT TEXT HERE](https://jphacks.com/wp-content/uploads/2026/07/IMG_5316.png)](https://www.youtube.com/watch?v=piaNsc6ilBI)
-
-※ 上記の画像・動画リンクはJPHACKSのテンプレートに含まれるサンプルで、本製品のデモではありません。
+![ロゴ](./docs/images/Re_Read.png)
 
 ## 製品概要
 
