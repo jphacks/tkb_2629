@@ -1,6 +1,6 @@
 import { colors } from "../../theme/colors";
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ActionButton } from '../../components/molecules/ActionButton';
@@ -12,7 +12,7 @@ import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { EmotionAnalysisCard, getEmotionTint } from '../../components/organisms/EmotionAnalysisCard';
 import { BookmarkListCard } from '../../components/organisms/BookmarkListCard';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import { ApiError, completeIteration, getBook, getBookEmotions, getBookReviews, getIterations, type Book, type BookEmotions, type PageReview, type ReadingIteration } from '../../lib/api';
+import { ApiError, completeIteration, startIteration, getBook, getBookEmotions, getBookReviews, getIterations, type Book, type BookEmotions, type PageReview, type ReadingIteration } from '../../lib/api';
 import { formatDate, iterationLabel } from '../../lib/readingStatus';
 import type { Navigate } from '../types';
 
@@ -40,6 +40,18 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
   const [iterations, setIterations] = useState<ReadingIteration[] | null>(null);
   const [iterationError, setIterationError] = useState<string | null>(null);
   const [iterationVersion, setIterationVersion] = useState(0);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+  const startLocked = useRef(false);
+  const activeBook = useRef<number | null>(null);
+
+  useEffect(() => {
+    activeBook.current = bookId;
+    startLocked.current = false;
+    setStarting(false);
+    setStartError(null);
+    return () => { activeBook.current = null; };
+  }, [bookId]);
 
   useEffect(() => {
     setCompleting(false);
@@ -138,6 +150,40 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
     );
   }
 
+  async function startRereading(target: Book) {
+    if (startLocked.current || activeBook.current !== target.id) return;
+    startLocked.current = true;
+    setStarting(true);
+    setStartError(null);
+    try {
+      await startIteration(target.id);
+      if (activeBook.current !== target.id) return;
+      setState({ bookId: target.id, status: 'loading' });
+      setRequestVersion((version) => version + 1);
+    } catch (reason: unknown) {
+      if (activeBook.current === target.id) {
+        setStartError(reason instanceof Error ? reason.message : '再読の開始に失敗しました。');
+      }
+    } finally {
+      if (activeBook.current === target.id) {
+        startLocked.current = false;
+        setStarting(false);
+      }
+    }
+  }
+
+  function confirmRereading(target: Book) {
+    if (startLocked.current) return;
+    Alert.alert(
+      'もう一度読みますか？',
+      `「${target.title}」の${target.latest_iteration + 1}回目の読書を始めます。過去のしおりは残ります。`,
+      [
+        { style: 'cancel', text: 'キャンセル' },
+        { text: 'もう一度読む', onPress: () => { void startRereading(target); } },
+      ],
+    );
+  }
+
   return (
     <ScreenFrame activeRoute="bookshelf" onNavigate={onNavigate} title="本の詳細"
       headerLeading={onBack && <BackButton onPress={onBack} />}
@@ -165,9 +211,18 @@ export function BookDetailScreen({ bookId, onNavigate, onBack }: BookDetailScree
               <View style={styles.info}>
                 <Text style={styles.title}>{book.title}</Text>
                 <Text style={styles.author}>{book.author ?? '著者不明'}</Text>
-                <Text style={styles.status}>{isReading ? '読書中' : '読了'}</Text>
+                <Text style={styles.status}>{book.latest_iteration}回目・{isReading ? '読書中' : '読了'}</Text>
               </View>
             </GlassSurface>
+            {book.reading_status === 'completed' && (
+              <GlassSurface style={styles.card}>
+                <ActionButton
+                  label={starting ? '再読を開始しています…' : 'もう一度読む'}
+                  onPress={starting ? undefined : () => confirmRereading(book)}
+                />
+                {startError && <Text accessibilityRole="alert" style={styles.message}>{startError}</Text>}
+              </GlassSurface>
+            )}
             {isReading && (
               <GlassSurface style={styles.card}>
                 <ReadingProgress color={emotionColor} currentPage={book.current_page} totalPages={book.total_pages} />

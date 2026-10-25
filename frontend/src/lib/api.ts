@@ -143,6 +143,11 @@ export async function completeIteration(bookId: number, iteration: number): Prom
   await parseResponse<unknown>(response, '読了の記録に失敗しました');
 }
 
+export async function startIteration(bookId: number): Promise<ReadingIteration> {
+  const response = await fetch(`${API_URL}/books/${bookId}/iterations`, { method: 'POST' });
+  return parseResponse<ReadingIteration>(response, '再読の開始に失敗しました');
+}
+
 export type ReadingIteration = {
   iteration_number: number;
   status: string;
