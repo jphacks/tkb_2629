@@ -105,3 +105,5 @@ class PageReviewResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     iteration_number: int
+    analysis_status: str
+    source: str | None

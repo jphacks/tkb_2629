@@ -6,9 +6,9 @@ import { MyThoughtCard } from '../../components/molecules/MyThoughtCard';
 import { allBookmarks, myBookmarks } from '../../components/organisms/BookmarkListCard';
 import { getAggregateEmotionColor, getEmotionTint } from '../../components/organisms/EmotionAnalysisCard';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import type { ScreenKey } from '../types';
+import type { Navigate } from '../types';
 
-export function HomeScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => void }) {
+export function HomeScreen({ onNavigate }: { onNavigate: Navigate }) {
   const totalReadBooks = 12;
   const myThought = myBookmarks[0];
   const emotionColor = getAggregateEmotionColor(allBookmarks);
@@ -24,7 +24,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => v
               emotionColor={emotionColor}
               emotionTint={emotionTint}
               note={myThought.note}
-              onPress={() => onNavigate('book-detail')}
+              onPress={() => onNavigate({ name: 'book-detail', bookId: 1 })}
             />
           )}
         </View>

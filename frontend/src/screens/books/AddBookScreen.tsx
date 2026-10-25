@@ -14,10 +14,10 @@ import {
   searchGoogleBooks,
   type GoogleBook,
 } from '../../lib/api';
-import type { ScreenKey } from '../types';
+import type { Navigate, ScreenKey } from '../types';
 
 type AddBookScreenProps = {
-  onNavigate: (route: ScreenKey) => void;
+  onNavigate: Navigate;
   activeRoute?: ScreenKey;
   title?: string;
   subtitle?: string;

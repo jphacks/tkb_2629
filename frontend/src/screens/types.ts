@@ -15,3 +15,15 @@ export type ScreenKey =
   | 'reading-complete'
   | 'bookmark'
   | 'bookmark-book-select';
+
+export type Route =
+  | { name: Exclude<ScreenKey, 'book-detail' | 'book-edit' | 'bookmark'> }
+  | { name: 'book-detail' | 'book-edit'; bookId: number }
+  | { name: 'bookmark'; bookId?: never; iteration?: never; page?: never }
+  | { name: 'bookmark'; bookId: number; iteration: number; page?: number };
+
+export type NavigationTarget =
+  | Exclude<ScreenKey, 'book-detail' | 'book-edit'>
+  | Route;
+
+export type Navigate = (route: NavigationTarget) => void;

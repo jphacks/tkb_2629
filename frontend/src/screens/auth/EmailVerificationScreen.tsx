@@ -5,9 +5,9 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { ActionButton } from '../../components/molecules/ActionButton';
 import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
-import type { ScreenKey } from '../types';
+import type { Navigate } from '../types';
 
-export function EmailVerificationScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => void }) {
+export function EmailVerificationScreen({ onNavigate }: { onNavigate: Navigate }) {
   const [code, setCode] = useState('');
   return (
     <ScreenFrame activeRoute="account" onNavigate={onNavigate}>

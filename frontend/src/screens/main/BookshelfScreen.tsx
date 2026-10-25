@@ -8,9 +8,9 @@ import { GlassSurface } from '../../components/atoms/GlassSurface';
 import { ScreenFrame } from '../../components/organisms/ScreenFrame';
 import { getBooks, type Book } from '../../lib/api';
 import { colors } from '../../theme/colors';
-import type { ScreenKey } from '../types';
+import type { Navigate } from '../types';
 
-export function BookshelfScreen({ onNavigate }: { onNavigate: (route: ScreenKey) => void }) {
+export function BookshelfScreen({ onNavigate }: { onNavigate: Navigate }) {
   const [books, setBooks] = useState<Book[]>([]);
   const [bookFilter, setBookFilter] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -98,7 +98,7 @@ export function BookshelfScreen({ onNavigate }: { onNavigate: (route: ScreenKey)
         )}
         <View style={styles.grid}>
           {books.map((book) => (
-            <Pressable key={book.id} onPress={() => onNavigate('book-detail')} style={styles.book}>
+            <Pressable key={book.id} onPress={() => onNavigate({ name: 'book-detail', bookId: book.id })} style={styles.book}>
               <BookCover grid title={book.title} author={book.author ?? '著者不明'} />
               <Text numberOfLines={1} style={styles.bookTitle}>{book.title}</Text>
             </Pressable>

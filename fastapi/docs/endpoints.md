@@ -47,12 +47,16 @@ titleはtrim後1〜255文字、authorは省略可・trim後255文字以内、tot
 | メソッド・パス | 内部処理 | 正常レスポンス |
 | --- | --- | --- |
 | `GET /books/{book_id}/pages/{page_number}/review` | 本棚の所有確認→ページ範囲検証→感想取得。`iteration`未指定時は最新回。解析がcompletedなら現在のrevisionに一致する解析履歴から色を取得。 | 200、感想情報 |
+| `GET /books/{book_id}/reviews` | 本棚の所有確認→指定読書回の感想をページ番号昇順に取得。`iteration`未指定は最新回。`limit`は1〜100（既定100）、`offset`は0以上（既定0）。 | 200、感想情報の配列 |
 | `PUT /books/{book_id}/pages/{page_number}/review` | 所有確認→ページ・本文検証→本文を先に保存→同期解析→結果保存→最新の感想を再取得。`iteration`未指定時は最新回。 | 新規201、更新200、感想情報 |
 
 page_numberは1以上かつ本のtotal_pages以下。本文は前後の空白を除去して1〜140文字です。
 `iteration` クエリは1以上です。読了済みの回は参照できますが、感想の追加・更新は409です。
 本棚または取得対象の感想が存在しなければ404、ページ範囲・本文が不正なら422です。
-感想情報はid・book_id・page_number・review_text・color_code・created_at・updated_at・iteration_numberです。
+感想情報はid・book_id・page_number・review_text・color_code・created_at・updated_at・iteration_number・analysis_status・sourceです。
+analysis_statusはpending・completed・failedです。sourceは現在のrevisionの解析がある場合のみ
+jev（実AI）・mock（仮結果）などを返し、それ以外はnullです。色が同じでも解析失敗とは限りません。
+同じ感想や同様の感情は同じ色になることがあります。
 
 PUTの詳細:
 
@@ -66,7 +70,7 @@ PUTの詳細:
 
 解析履歴には色・信頼度・モデル版・source・パレット版・8感情・投影結果を保存します。現在の解析ではvalence/arousalはNULLです。
 解析未完了・失敗・対応する履歴なしの場合、取得する色は `#808080` です。
-解析状態・感情ベクトル・履歴はAPIレスポンスに含みません。
+感情ベクトル・履歴はAPIレスポンスに含みません。解析状態とsourceは公開します。
 
 ## 書籍検索とGoogle Books登録
 

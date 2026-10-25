@@ -7,4 +7,6 @@ export type Bookmark = {
   note: string;
   date: string;
   author: string;
+  color?: string;
+  analysisLabel?: string;
 };

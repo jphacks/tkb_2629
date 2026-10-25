@@ -157,6 +157,29 @@ def test_get_review(client, review_service_mock, review):
     review_service_mock.get.assert_called_once_with(1, 10, 3, None)
 
 
+def test_list_reviews(client, review_service_mock, review):
+    review_service_mock.list.return_value = [review]
+    response = client.get("/books/10/reviews?iteration=2&limit=5&offset=3")
+    assert response.status_code == 200
+    assert response.json()[0]["color_code"] == review.color_code
+    assert response.json()[0]["analysis_status"] == review.analysis_status
+    assert response.json()[0]["source"] is None
+    review_service_mock.list.assert_called_once_with(1, 10, 2, 5, 3)
+
+
+@pytest.mark.parametrize("query", ["iteration=0", "limit=0", "limit=101", "offset=-1"])
+def test_list_reviews_validates_pagination(client, review_service_mock, query):
+    assert client.get(f"/books/10/reviews?{query}").status_code == 422
+    review_service_mock.list.assert_not_called()
+
+
+def test_list_reviews_requires_authentication(client, review_service_mock, monkeypatch):
+    monkeypatch.setenv("AUTH_DISABLED", "false")
+    client.app.dependency_overrides.pop(get_current_user_id)
+    assert client.get("/books/10/reviews").status_code == 401
+    review_service_mock.list.assert_not_called()
+
+
 @pytest.mark.parametrize(("created", "status_code"), [(True, 201), (False, 200)])
 def test_save_review(client, review_service_mock, review, created, status_code):
     review_service_mock.save.return_value = ReviewSaveResult(review, created)

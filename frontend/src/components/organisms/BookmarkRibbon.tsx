@@ -2,17 +2,18 @@ import { Animated, StyleSheet, View } from 'react-native';
 
 type BookmarkRibbonProps = {
   translateY?: Animated.Value;
+  color?: string;
 };
 
-export function BookmarkRibbon({ translateY }: BookmarkRibbonProps) {
+export function BookmarkRibbon({ translateY, color }: BookmarkRibbonProps) {
   return (
     <Animated.View
       pointerEvents="none"
       style={[styles.ribbon, translateY && { transform: [{ translateY }] }]}
     >
-      <View style={[styles.arm, styles.left]} />
-      <View style={[styles.arm, styles.right]} />
-      <View style={styles.center} />
+      <View style={[styles.arm, styles.left, color ? { backgroundColor: color } : undefined]} />
+      <View style={[styles.arm, styles.right, color ? { backgroundColor: color } : undefined]} />
+      <View style={[styles.center, color ? { backgroundColor: color } : undefined]} />
     </Animated.View>
   );
 }
