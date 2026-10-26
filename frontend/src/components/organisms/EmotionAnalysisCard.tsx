@@ -70,6 +70,7 @@ export function EmotionAnalysisCard({ summary }: { summary: EmotionComparison })
           return <SvgText key={emotion.label} fill={emotion.color} fontSize="12" fontWeight="600" textAnchor="middle" x={labelPoint.x} y={labelPoint.y}>{emotion.label}</SvgText>;
         })}
       </Svg>
+      <Text style={styles.description}>自分・みんなそれぞれの最大値を外周として、感情の比率を表示しています。</Text>
       {summary.mine.review_count === 0 && <Text style={styles.description}>{"しおりを書くと、自分の感情も重なります"}</Text>}
       {summary.others.review_count === 0 && <Text style={styles.description}>{"みんなの感情は、公開しおりの解析後に表示されます"}</Text>}
     </GlassSurface>
@@ -100,8 +101,9 @@ function createPolygonPoints(emotions: Emotion[], scale: number) {
 }
 
 function createScorePoints(emotions: Emotion[]) {
+  const maxValue = Math.max(0, ...emotions.map((emotion) => emotion.value));
   return emotions.map((emotion, index) => {
-    const point = getPoint(index, emotion.value);
+    const point = getPoint(index, maxValue > 0 ? emotion.value / maxValue : 0);
     return `${point.x},${point.y}`;
   }).join(' ');
 }
