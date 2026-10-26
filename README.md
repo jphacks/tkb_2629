@@ -2,13 +2,14 @@
 
 <div align="center">
 
-https://github.com/user-attachments/assets/b8330e6d-9eec-4d0d-bc3f-677860d15367
 
 
 
 ![Re: Read](./docs/images/Re_Read.png)
 
 **読書の途中で生まれた気持ちを、色のついた「しおり」として残す読書記録アプリ**
+
+[動画デモ](https://github.com/user-attachments/assets/c475f2b0-d3d8-4461-aba1-a4215e770ee3)
 
 </div>
 
